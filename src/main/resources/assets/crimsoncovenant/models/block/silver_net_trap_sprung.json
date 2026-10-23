@@ -1,0 +1,169 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "crimsoncovenant:block/silver_net_trap",
+    "bundle": "crimsoncovenant:block/silver_net_trap"
+  },
+  "elements": [
+    {
+      "from": [
+        7.5,
+        13,
+        7.5
+      ],
+      "to": [
+        8.5,
+        16,
+        8.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#bundle"
+        },
+        "south": {
+          "texture": "#bundle"
+        },
+        "east": {
+          "texture": "#bundle"
+        },
+        "west": {
+          "texture": "#bundle"
+        },
+        "up": {
+          "texture": "#bundle"
+        },
+        "down": {
+          "texture": "#bundle"
+        }
+      }
+    },
+    {
+      "from": [
+        4,
+        12,
+        4
+      ],
+      "to": [
+        12,
+        13,
+        5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#bundle"
+        },
+        "south": {
+          "texture": "#bundle"
+        },
+        "east": {
+          "texture": "#bundle"
+        },
+        "west": {
+          "texture": "#bundle"
+        },
+        "up": {
+          "texture": "#bundle"
+        },
+        "down": {
+          "texture": "#bundle"
+        }
+      }
+    },
+    {
+      "from": [
+        4,
+        12,
+        11
+      ],
+      "to": [
+        12,
+        13,
+        12
+      ],
+      "faces": {
+        "north": {
+          "texture": "#bundle"
+        },
+        "south": {
+          "texture": "#bundle"
+        },
+        "east": {
+          "texture": "#bundle"
+        },
+        "west": {
+          "texture": "#bundle"
+        },
+        "up": {
+          "texture": "#bundle"
+        },
+        "down": {
+          "texture": "#bundle"
+        }
+      }
+    },
+    {
+      "from": [
+        4,
+        12,
+        5
+      ],
+      "to": [
+        5,
+        13,
+        11
+      ],
+      "faces": {
+        "north": {
+          "texture": "#bundle"
+        },
+        "south": {
+          "texture": "#bundle"
+        },
+        "east": {
+          "texture": "#bundle"
+        },
+        "west": {
+          "texture": "#bundle"
+        },
+        "up": {
+          "texture": "#bundle"
+        },
+        "down": {
+          "texture": "#bundle"
+        }
+      }
+    },
+    {
+      "from": [
+        11,
+        12,
+        5
+      ],
+      "to": [
+        12,
+        13,
+        11
+      ],
+      "faces": {
+        "north": {
+          "texture": "#bundle"
+        },
+        "south": {
+          "texture": "#bundle"
+        },
+        "east": {
+          "texture": "#bundle"
+        },
+        "west": {
+          "texture": "#bundle"
+        },
+        "up": {
+          "texture": "#bundle"
+        },
+        "down": {
+          "texture": "#bundle"
+        }
+      }
+    }
+  ]
+}

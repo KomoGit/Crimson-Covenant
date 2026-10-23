@@ -2,11 +2,10 @@ package com.zestudio.crimsoncovenant.client.renderer;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
-import com.zestudio.crimsoncovenant.CrimsonCovenant;
+import com.zestudio.crimsoncovenant.client.ModModelLayers;
+import com.zestudio.crimsoncovenant.client.model.BloodSpearModel;
 import com.zestudio.crimsoncovenant.entity.BloodSpear;
 
-import net.minecraft.client.model.geom.ModelLayers;
-import net.minecraft.client.model.object.projectile.TridentModel;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
@@ -17,14 +16,13 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Unit;
 
-/// The Blood Spear: the trident's shape in glowing blood
+/// The Blood Spear in flight (see BloodSpearModel), glowing
 public class BloodSpearRenderer extends EntityRenderer<BloodSpear, ThrownTridentRenderState> {
-    private static final Identifier TEXTURE = CrimsonCovenant.id("textures/entity/projectiles/blood_spear.png");
-    private final TridentModel model;
+    private final BloodSpearModel model;
 
     public BloodSpearRenderer(EntityRendererProvider.Context context) {
         super(context);
-        this.model = new TridentModel(context.bakeLayer(ModelLayers.TRIDENT));
+        this.model = new BloodSpearModel(context.bakeLayer(ModModelLayers.BLOOD_SPEAR));
     }
 
     @Override
@@ -32,7 +30,7 @@ public class BloodSpearRenderer extends EntityRenderer<BloodSpear, ThrownTrident
         poseStack.pushPose();
         poseStack.rotateDegrees(Axis.YP, state.yRot - 90.0F);
         poseStack.rotateDegrees(Axis.ZP, state.xRot + 90.0F);
-        submitNodeCollector.submitModel(this.model, Unit.INSTANCE, poseStack, TEXTURE, state.lightCoords, OverlayTexture.NO_OVERLAY, state.outlineColor);
+        submitNodeCollector.submitModel(this.model, Unit.INSTANCE, poseStack, BloodSpearModel.TEXTURE, state.lightCoords, OverlayTexture.NO_OVERLAY, state.outlineColor);
         poseStack.popPose();
         super.submit(state, poseStack, submitNodeCollector, camera);
     }

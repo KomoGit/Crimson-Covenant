@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "N": "crimsoncovenant:silver_nugget",
+    "S": "crimsoncovenant:silver_ingot"
+  },
+  "pattern": [
+    "NNN",
+    "SSS"
+  ],
+  "result": {
+    "id": "crimsoncovenant:silver_spikes",
+    "count": 2
+  }
+}

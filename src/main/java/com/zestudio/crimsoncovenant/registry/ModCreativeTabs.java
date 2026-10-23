@@ -6,6 +6,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.alchemy.PotionContents;
 import net.neoforged.neoforge.registries.DeferredHolder;
@@ -19,10 +20,23 @@ public final class ModCreativeTabs {
             .withTabsBefore(CreativeModeTabs.SPAWN_EGGS)
             .icon(() -> ModItems.HUNTER_SPAWN_EGG.get().getDefaultInstance())
             .displayItems((parameters, output) -> {
-                // The blood orb is only what the Blood Parade looks like in flight
-                ModItems.ITEMS.getEntries().stream().filter(item -> item != ModItems.BLOOD_ORB).forEach(item -> output.accept(item.get()));
+                // The blood orb is only what the Blood Parade looks like in flight, and the blood spear only comes from its skill
+                ModItems.ITEMS.getEntries().stream().filter(item -> item != ModItems.BLOOD_ORB && item != ModItems.BLOOD_SPEAR).forEach(item -> output.accept(item.get()));
                 output.accept(PotionContents.createItemStack(Items.SPLASH_POTION, ModPotions.HOLY_WATER));
                 output.accept(PotionContents.createItemStack(Items.LINGERING_POTION, ModPotions.HOLY_WATER));
+                // Black Blood is only ever drunk, so there's no splash or lingering kind
+                output.accept(PotionContents.createItemStack(Items.POTION, ModPotions.BLACK_BLOOD));
+                output.accept(PotionContents.createItemStack(Items.POTION, ModPotions.LONG_BLACK_BLOOD));
+                output.accept(PotionContents.createItemStack(Items.POTION, ModPotions.STRONG_BLACK_BLOOD));
+                for (Item container : new Item[] {Items.POTION, Items.SPLASH_POTION, Items.LINGERING_POTION}) {
+                    output.accept(PotionContents.createItemStack(container, ModPotions.GARLIC));
+                    output.accept(PotionContents.createItemStack(container, ModPotions.LONG_GARLIC));
+                    output.accept(PotionContents.createItemStack(container, ModPotions.STRONG_GARLIC));
+                }
+                output.accept(PotionContents.createItemStack(Items.SPLASH_POTION, ModPotions.SILVER));
+                output.accept(PotionContents.createItemStack(Items.LINGERING_POTION, ModPotions.SILVER));
+                output.accept(PotionContents.createItemStack(Items.POTION, ModPotions.EPHEMERAL));
+                output.accept(PotionContents.createItemStack(Items.POTION, ModPotions.LONG_EPHEMERAL));
             })
             .build());
 

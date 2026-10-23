@@ -1,0 +1,117 @@
+{
+  "sources": [
+    {
+      "type": "crimsoncovenant:silvered_weapons",
+      "weapons": [
+        {
+          "texture": "minecraft:item/wooden_sword",
+          "handle": "minecraft:item/iron_sword"
+        },
+        {
+          "texture": "minecraft:item/stone_sword",
+          "handle": "minecraft:item/iron_sword"
+        },
+        {
+          "texture": "minecraft:item/copper_sword",
+          "handle": "minecraft:item/iron_sword"
+        },
+        {
+          "texture": "minecraft:item/iron_sword"
+        },
+        {
+          "texture": "minecraft:item/golden_sword",
+          "handle": "minecraft:item/iron_sword"
+        },
+        {
+          "texture": "minecraft:item/diamond_sword",
+          "handle": "minecraft:item/iron_sword"
+        },
+        {
+          "texture": "minecraft:item/netherite_sword",
+          "handle": "minecraft:item/iron_sword"
+        },
+        {
+          "texture": "minecraft:item/wooden_axe",
+          "handle": "minecraft:item/iron_axe"
+        },
+        {
+          "texture": "minecraft:item/stone_axe",
+          "handle": "minecraft:item/iron_axe"
+        },
+        {
+          "texture": "minecraft:item/copper_axe",
+          "handle": "minecraft:item/iron_axe"
+        },
+        {
+          "texture": "minecraft:item/iron_axe"
+        },
+        {
+          "texture": "minecraft:item/golden_axe",
+          "handle": "minecraft:item/iron_axe"
+        },
+        {
+          "texture": "minecraft:item/diamond_axe",
+          "handle": "minecraft:item/iron_axe"
+        },
+        {
+          "texture": "minecraft:item/netherite_axe",
+          "handle": "minecraft:item/iron_axe"
+        },
+        {
+          "texture": "minecraft:item/wooden_spear",
+          "handle": "minecraft:item/iron_spear"
+        },
+        {
+          "texture": "minecraft:item/wooden_spear_in_hand",
+          "handle": "minecraft:item/iron_spear_in_hand"
+        },
+        {
+          "texture": "minecraft:item/stone_spear",
+          "handle": "minecraft:item/iron_spear"
+        },
+        {
+          "texture": "minecraft:item/stone_spear_in_hand",
+          "handle": "minecraft:item/iron_spear_in_hand"
+        },
+        {
+          "texture": "minecraft:item/copper_spear",
+          "handle": "minecraft:item/iron_spear"
+        },
+        {
+          "texture": "minecraft:item/copper_spear_in_hand",
+          "handle": "minecraft:item/iron_spear_in_hand"
+        },
+        {
+          "texture": "minecraft:item/iron_spear"
+        },
+        {
+          "texture": "minecraft:item/iron_spear_in_hand"
+        },
+        {
+          "texture": "minecraft:item/golden_spear",
+          "handle": "minecraft:item/iron_spear"
+        },
+        {
+          "texture": "minecraft:item/golden_spear_in_hand",
+          "handle": "minecraft:item/iron_spear_in_hand"
+        },
+        {
+          "texture": "minecraft:item/diamond_spear",
+          "handle": "minecraft:item/iron_spear"
+        },
+        {
+          "texture": "minecraft:item/diamond_spear_in_hand",
+          "handle": "minecraft:item/iron_spear_in_hand"
+        },
+        {
+          "texture": "minecraft:item/netherite_spear",
+          "handle": "minecraft:item/iron_spear"
+        },
+        {
+          "texture": "minecraft:item/netherite_spear_in_hand",
+          "handle": "minecraft:item/iron_spear_in_hand"
+        }
+      ]
+    }
+  ]
+}

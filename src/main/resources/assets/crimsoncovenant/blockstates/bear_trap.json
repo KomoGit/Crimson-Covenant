@@ -1,0 +1,34 @@
+{
+  "variants": {
+    "facing=north,sprung=false": {
+      "model": "crimsoncovenant:block/bear_trap"
+    },
+    "facing=north,sprung=true": {
+      "model": "crimsoncovenant:block/bear_trap_sprung"
+    },
+    "facing=east,sprung=false": {
+      "model": "crimsoncovenant:block/bear_trap",
+      "y": 90
+    },
+    "facing=east,sprung=true": {
+      "model": "crimsoncovenant:block/bear_trap_sprung",
+      "y": 90
+    },
+    "facing=south,sprung=false": {
+      "model": "crimsoncovenant:block/bear_trap",
+      "y": 180
+    },
+    "facing=south,sprung=true": {
+      "model": "crimsoncovenant:block/bear_trap_sprung",
+      "y": 180
+    },
+    "facing=west,sprung=false": {
+      "model": "crimsoncovenant:block/bear_trap",
+      "y": 270
+    },
+    "facing=west,sprung=true": {
+      "model": "crimsoncovenant:block/bear_trap_sprung",
+      "y": 270
+    }
+  }
+}

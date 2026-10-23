@@ -1,9 +1,15 @@
 package com.zestudio.crimsoncovenant.registry;
 
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
+import com.zestudio.crimsoncovenant.effect.BlackBloodEffect;
 import com.zestudio.crimsoncovenant.effect.BloodFlightEffect;
 import com.zestudio.crimsoncovenant.effect.BloodLossEffect;
 import com.zestudio.crimsoncovenant.effect.BloodlustEffect;
+import com.zestudio.crimsoncovenant.effect.EphemeralEffect;
+import com.zestudio.crimsoncovenant.effect.GarlicEffect;
+import com.zestudio.crimsoncovenant.effect.OverhealEffect;
+import com.zestudio.crimsoncovenant.effect.SilverDreadEffect;
+import com.zestudio.crimsoncovenant.effect.SilverWoundEffect;
 import com.zestudio.crimsoncovenant.effect.HolyFlameEffect;
 import com.zestudio.crimsoncovenant.effect.HolyWaterEffect;
 
@@ -58,6 +64,28 @@ public final class ModEffects {
     /// Drawn by client.renderer.StalkersGazeHighlight.
     public static final DeferredHolder<MobEffect, MobEffect> STALKERS_GAZE = MOB_EFFECTS.register("stalkers_gaze",
             () -> new MobEffect(MobEffectCategory.BENEFICIAL, 0xC0102A) {});
+
+    /// From the Black Blood potion: melee attackers are hurt back, like Thorns
+    public static final DeferredHolder<MobEffect, BlackBloodEffect> BLACK_BLOOD = MOB_EFFECTS.register("black_blood", BlackBloodEffect::new);
+
+    /// From the Potion of Garlic: undead hit softer and move slower
+    public static final DeferredHolder<MobEffect, GarlicEffect> GARLIC = MOB_EFFECTS.register("garlic", GarlicEffect::new);
+
+    /// From the Potion of Ephemeral: the drinker is a ghost, floating through walls
+    public static final DeferredHolder<MobEffect, EphemeralEffect> EPHEMERAL = MOB_EFFECTS.register("ephemeral", EphemeralEffect::new);
+
+    /// From the Potion of Silver: undead flee from where it touched them
+    public static final DeferredHolder<MobEffect, SilverDreadEffect> SILVER_DREAD = MOB_EFFECTS.register("silver_dread", SilverDreadEffect::new);
+
+    /// From Blood Parade: healing past full health, held as extra hearts that slowly fade once the orb is gone
+    public static final DeferredHolder<MobEffect, OverhealEffect> OVERHEAL = MOB_EFFECTS.register("overheal", OverhealEffect::new);
+
+    /// Thorned Shell (upgraded Armor of Ancient): melee attackers are hurt back, like Black Blood (see BlackBloodEffect)
+    public static final DeferredHolder<MobEffect, MobEffect> THORNED_SHELL = MOB_EFFECTS.register("thorned_shell",
+            () -> new MobEffect(MobEffectCategory.BENEFICIAL, 0x6E0A16) {});
+
+    /// From a silvered weapon: nothing heals, and a vampire's blood doesn't come back
+    public static final DeferredHolder<MobEffect, SilverWoundEffect> SILVER_WOUND = MOB_EFFECTS.register("silver_wound", SilverWoundEffect::new);
 
     private ModEffects() {}
 }

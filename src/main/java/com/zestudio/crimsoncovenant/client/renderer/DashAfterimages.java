@@ -10,6 +10,7 @@ import java.util.Set;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
 import com.zestudio.crimsoncovenant.registry.ModAttachments;
+import com.zestudio.crimsoncovenant.skill.AfterimageStrike;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -29,7 +30,7 @@ import net.neoforged.neoforge.client.event.RenderLivingEvent;
 /// faint and see-through.
 @EventBusSubscriber(modid = CrimsonCovenant.MODID, value = Dist.CLIENT)
 public final class DashAfterimages {
-    private static final int LINGER_TICKS = 8;
+    private static final int LINGER_TICKS = AfterimageStrike.LINGER_TICKS;
     /// Player entity id -> their afterimages, oldest first
     private static final Map<Integer, Deque<Afterimage>> TRAILS = new HashMap<>();
     private static boolean drawingAfterimage = false;

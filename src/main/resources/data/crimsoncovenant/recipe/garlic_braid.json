@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:string",
+    "crimsoncovenant:garlic",
+    "crimsoncovenant:garlic",
+    "crimsoncovenant:garlic"
+  ],
+  "result": {
+    "id": "crimsoncovenant:garlic_braid"
+  }
+}

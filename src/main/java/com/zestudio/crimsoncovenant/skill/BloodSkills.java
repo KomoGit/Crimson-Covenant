@@ -7,17 +7,21 @@ import org.jspecify.annotations.Nullable;
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
 import com.zestudio.crimsoncovenant.effect.BloodFlightEffect;
 import com.zestudio.crimsoncovenant.entity.BloodOrb;
-import com.zestudio.crimsoncovenant.entity.BloodSpear;
 import com.zestudio.crimsoncovenant.entity.HemorrhageZone;
 import com.zestudio.crimsoncovenant.entity.SwarmBat;
 import com.zestudio.crimsoncovenant.entity.Vampire;
+import com.zestudio.crimsoncovenant.item.BloodSpearItem;
+import com.zestudio.crimsoncovenant.item.ConjuredItems;
 import com.zestudio.crimsoncovenant.item.EphemeralSwordItem;
 import com.zestudio.crimsoncovenant.registry.ModAttachments;
+import com.zestudio.crimsoncovenant.registry.ModDataComponents;
 import com.zestudio.crimsoncovenant.registry.ModAttachments.DashState;
 import com.zestudio.crimsoncovenant.registry.ModAttachments.ShadowAnchor;
 import com.zestudio.crimsoncovenant.registry.ModEffects;
+import com.zestudio.crimsoncovenant.registry.ModItems;
 import com.zestudio.crimsoncovenant.vampirism.BloodPool;
 import com.zestudio.crimsoncovenant.vampirism.Vampirism;
+import com.zestudio.crimsoncovenant.registry.ModDamageTypes;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Holder;
@@ -39,6 +43,7 @@ import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -54,7 +59,6 @@ public final class BloodSkills {
     private static final int ANCIENT_ARMOR_DURATION = 200;
     /// One full Minecraft day
     private static final int DAYWALKER_DURATION = 24000;
-    private static final float SPEAR_SPEED = 2.8F;
 
     // Bat Swarm: the Master Vampire's swarm, sent the way the player is looking
     private static final double SWARM_RANGE = 24.0;
@@ -78,14 +82,15 @@ public final class BloodSkills {
             return false;
         }
         BloodSkill skill = skillItem.skill();
-        int cost = costFor(skill, player);
+        boolean upgraded = SkillUpgrade.isUpgraded(stack);
+        int cost = costFor(skill, player) + SkillUpgrade.extraCost(stack);
         String refusal = whyCantCast(skill, player, cost);
         if (refusal != null) {
             refuse(player, Component.translatable(refusal, BloodPool.get(player), cost));
             return false;
         }
         int spent = skill.spendsAllBlood() ? BloodPool.get(player) : cost;
-        if (!cast(skill, player, spent)) {
+        if (!cast(skill, player, spent, upgraded)) {
             return false;
         }
         BloodPool.set(player, BloodPool.get(player) - spent);
@@ -125,12 +130,14 @@ public final class BloodSkills {
         };
     }
 
-    /// Does what the skill does. False if it couldn't (and nothing should be paid), having told the player why.
-    public static boolean cast(BloodSkill skill, ServerPlayer player, int bloodSpent) {
+    /// Does what the skill does (with its Sanguine Table upgrade, if it has one). False if it couldn't (and nothing
+    /// should be paid), having told the player why.
+    public static boolean cast(BloodSkill skill, ServerPlayer player, int bloodSpent, boolean upgraded) {
         ServerLevel level = player.level();
         switch (skill) {
             case FLIGHT -> {
-                player.addEffect(new MobEffectInstance(ModEffects.BLOOD_FLIGHT, BloodFlightEffect.DURATION));
+                // Blood Wings: amplifier 1 marks the upgrade (see BloodFlightEffect)
+                player.addEffect(new MobEffectInstance(ModEffects.BLOOD_FLIGHT, BloodFlightEffect.DURATION * (upgraded ? 2 : 1), upgraded ? 1 : 0));
                 if (player.onGround()) {
                     // Off the ground first: the game drops a flying player out of flight as soon as they touch it
                     player.setDeltaMovement(player.getDeltaMovement().x, 0.6, player.getDeltaMovement().z);
@@ -149,18 +156,19 @@ public final class BloodSkills {
                     direction = Vec3.directionFromRotation(0.0F, player.getYRot());
                 }
                 player.setData(ModAttachments.DASH, new DashState(direction.normalize().scale(DASH_SPEED), DASH_TICKS));
+                player.setData(ModAttachments.DASH_STRIKING, upgraded);
                 playSound(player, SoundEvents.BREEZE_JUMP, 1.4F);
             }
             case ARMOR_OF_ANCIENT -> {
                 player.addEffect(new MobEffectInstance(ModEffects.ANCIENT_ARMOR, ANCIENT_ARMOR_DURATION));
+                if (upgraded) {
+                    player.addEffect(new MobEffectInstance(ModEffects.THORNED_SHELL, ANCIENT_ARMOR_DURATION));
+                }
                 burst(level, player, 50);
                 playSound(player, SoundEvents.ARMOR_EQUIP_NETHERITE.value(), 0.6F);
             }
             case BLOOD_SPEAR -> {
-                BloodSpear spear = new BloodSpear(level, player);
-                spear.shootFromRotation(player, player.getXRot(), player.getYRot(), 0.0F, SPEAR_SPEED, 0.5F);
-                level.addFreshEntity(spear);
-                playSound(player, SoundEvents.TRIDENT_THROW.value(), 0.7F);
+                return conjureSpear(player, upgraded);
             }
             case DAYWALKER -> {
                 player.addEffect(new MobEffectInstance(ModEffects.DAYWALKER, DAYWALKER_DURATION));
@@ -177,39 +185,43 @@ public final class BloodSkills {
             }
             case BAT_SWARM -> {
                 Vec3 direction = player.getLookAngle();
-                SwarmBat.launchSwarm(level, player, player.getEyePosition().add(direction), direction, SWARM_RANGE);
+                SwarmBat.launchSwarm(level, player, player.getEyePosition().add(direction), direction, SWARM_RANGE, upgraded);
                 playSound(player, SoundEvents.BAT_TAKEOFF, 0.7F);
             }
             case NIGHT_OF_TERROR -> {
-                NightOfTerror.unleash(level, player);
+                NightOfTerror.unleash(level, player, upgraded);
             }
             case DEFY_DEATH -> {
-                player.addEffect(new MobEffectInstance(ModEffects.DEFY_DEATH, DEFY_DEATH_DURATION));
+                // Final Feast: amplifier 1 marks the upgrade
+                player.addEffect(new MobEffectInstance(ModEffects.DEFY_DEATH, DEFY_DEATH_DURATION, upgraded ? 1 : 0));
                 burst(level, player, 30);
                 playSound(player, SoundEvents.WITHER_SPAWN, 1.6F);
             }
             case POSSESS -> {
-                return Possession.tryPossess(player);
+                return Possession.tryPossess(player, upgraded);
             }
             case SHADOW_STEP -> {
-                return shadowStep(player);
+                return shadowStep(player, upgraded);
             }
             case EPHEMERAL_SWORD -> {
-                return conjureSword(player);
+                return conjureSword(player, upgraded);
             }
             case BOILING_HEMORRHAGE -> {
                 // On the ground the vampire is looking at (up to 16 blocks away), or at their feet
                 Vec3 eye = player.getEyePosition();
                 BlockHitResult hit = level.clip(new ClipContext(eye, eye.add(player.getLookAngle().scale(16.0)), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
                 Vec3 at = hit.getType() == HitResult.Type.MISS ? player.position() : Vec3.atBottomCenterOf(hit.getBlockPos().relative(hit.getDirection()));
-                level.addFreshEntity(HemorrhageZone.create(level, player, at.x, at.y, at.z));
+                HemorrhageZone zone = HemorrhageZone.create(level, player, at.x, at.y, at.z);
+                zone.setSpreading(upgraded);
+                level.addFreshEntity(zone);
                 playSound(player, SoundEvents.LAVA_AMBIENT, 0.6F);
             }
             case DEATH_MARCH -> {
-                return DeathMarch.tryCast(player);
+                return DeathMarch.tryCast(player, upgraded);
             }
             case STALKERS_GAZE -> {
-                player.addEffect(new MobEffectInstance(ModEffects.STALKERS_GAZE, STALKERS_GAZE_DURATION));
+                // Marked Prey: amplifier 1 marks the upgrade
+                player.addEffect(new MobEffectInstance(ModEffects.STALKERS_GAZE, STALKERS_GAZE_DURATION, upgraded ? 1 : 0));
                 playSound(player, SoundEvents.WARDEN_HEARTBEAT, 0.6F);
             }
         }
@@ -218,19 +230,29 @@ public final class BloodSkills {
 
     // ---- Dash ----
 
-    /// Called every tick for every player: moves a dash along
+    /// Called every tick for every player: moves a dash along, and lets its afterimages strike
     public static void tickDash(ServerPlayer player) {
         DashState dash = player.getData(ModAttachments.DASH);
-        if (dash.ticksLeft() <= 0) {
-            return;
+        if (dash.ticksLeft() > 0) {
+            moveDash(player, dash);
         }
+        AfterimageStrike.tick(player);
+    }
+
+    private static void moveDash(ServerPlayer player, DashState dash) {
         int ticksLeft = dash.ticksLeft() - 1;
         // Ease off on the last tick so the player doesn't slide on past the 10 blocks
         player.setDeltaMovement(ticksLeft == 0 ? dash.velocity().scale(0.2) : dash.velocity());
         player.syncVelocity = true;
         player.resetFallDistance();
         player.level().sendParticles(new DustParticleOptions(Vampire.BLOOD_COLOR, 1.2F), player.getX(), player.getY(0.5), player.getZ(), 6, 0.25, 0.4, 0.25, 0.0);
+        if (player.getData(ModAttachments.DASH_STRIKING)) {
+            AfterimageStrike.leaveAfterimage(player);
+        }
         player.setData(ModAttachments.DASH, ticksLeft == 0 ? DashState.NONE : new DashState(dash.velocity(), ticksLeft));
+        if (ticksLeft == 0) {
+            player.removeData(ModAttachments.DASH_STRIKING);
+        }
     }
 
     // ---- Shadow Step ----
@@ -241,7 +263,7 @@ public final class BloodSkills {
         return player.isShiftKeyDown() || anchor.isEmpty() || anchor.get().dimension() != player.level().dimension();
     }
 
-    private static boolean shadowStep(ServerPlayer player) {
+    private static boolean shadowStep(ServerPlayer player, boolean returning) {
         ServerLevel level = player.level();
         if (placesAnchor(player)) {
             player.setData(ModAttachments.SHADOW_ANCHOR, Optional.of(new ShadowAnchor(level.dimension(), player.position())));
@@ -260,9 +282,14 @@ public final class BloodSkills {
             player.stopRiding();
         }
         level.sendParticles(ParticleTypes.LARGE_SMOKE, player.getX(), player.getY(0.5), player.getZ(), 30, 0.3, 0.6, 0.3, 0.02);
+        Vec3 from = player.position();
         player.teleportTo(anchor.x, anchor.y, anchor.z);
-        // An anchor is good for one step: the next cast places a new one
-        player.setData(ModAttachments.SHADOW_ANCHOR, Optional.empty());
+        // An anchor is good for one step: the next cast places a new one. With Returning Step, the step leaves an
+        // anchor where the vampire stood, so they can step straight back.
+        player.setData(ModAttachments.SHADOW_ANCHOR, returning ? Optional.of(new ShadowAnchor(level.dimension(), from)) : Optional.empty());
+        if (returning) {
+            player.sendOverlayMessage(Component.translatable("message.crimsoncovenant.skill.anchor_left").withStyle(ChatFormatting.DARK_PURPLE));
+        }
         player.resetFallDistance();
         level.sendParticles(ParticleTypes.REVERSE_PORTAL, anchor.x, anchor.y + 1.0, anchor.z, 40, 0.3, 0.6, 0.3, 0.05);
         playSound(player, SoundEvents.ENDERMAN_TELEPORT, 0.6F);
@@ -285,9 +312,12 @@ public final class BloodSkills {
     // ---- Ephemeral Sword ----
 
     /// A fresh sword in hand (or the inventory, if the hand is busy). Casting again replaces the old one.
-    private static boolean conjureSword(ServerPlayer player) {
+    private static boolean conjureSword(ServerPlayer player, boolean thirsting) {
         EphemeralSwordItem.removeAll(player);
         ItemStack sword = EphemeralSwordItem.create(player.level().getGameTime());
+        if (thirsting) {
+            sword.set(ModDataComponents.SKILL_UPGRADED.get(), true);
+        }
         if (player.getMainHandItem().isEmpty()) {
             player.setItemInHand(InteractionHand.MAIN_HAND, sword);
         } else if (!player.getInventory().add(sword)) {
@@ -296,6 +326,31 @@ public final class BloodSkills {
         }
         burst(player.level(), player, 20);
         playSound(player, SoundEvents.AMETHYST_BLOCK_RESONATE, 0.6F);
+        return true;
+    }
+
+    // ---- Blood Spear ----
+
+    /// A spear of blood in hand, ready to be thrown like a trident (see BloodSpearItem). Whatever was in the hand
+    /// moves into the inventory to make room.
+    private static boolean conjureSpear(ServerPlayer player, boolean upgraded) {
+        ConjuredItems.removeAll(player, ModItems.BLOOD_SPEAR.get());
+        ItemStack held = player.getMainHandItem();
+        if (!held.isEmpty()) {
+            int freeSlot = player.getInventory().getFreeSlot();
+            if (freeSlot < 0) {
+                refuse(player, Component.translatable("message.crimsoncovenant.skill.no_room"));
+                return false;
+            }
+            player.getInventory().setItem(freeSlot, held.copy());
+        }
+        ItemStack spear = BloodSpearItem.create(player.level().getGameTime());
+        if (upgraded) {
+            spear.set(ModDataComponents.SKILL_UPGRADED.get(), true);
+        }
+        player.setItemInHand(InteractionHand.MAIN_HAND, spear);
+        burst(player.level(), player, 20);
+        playSound(player, SoundEvents.TRIDENT_RETURN, 0.6F);
         return true;
     }
 
@@ -309,6 +364,7 @@ public final class BloodSkills {
                 && !event.getSource().is(DamageTypeTags.BYPASSES_INVULNERABILITY) && BloodPool.get(player) >= DEFY_DEATH_COST_PER_HIT) {
             event.setCanceled(true);
             player.setHealth(1.0F);
+            UpgradeEffects.defiedDeath(player, player.getEffect(ModEffects.DEFY_DEATH));
             BloodPool.set(player, BloodPool.get(player) - DEFY_DEATH_COST_PER_HIT);
             burst(player.level(), player, 40);
             playSound(player, SoundEvents.TOTEM_USE, 1.4F);
@@ -320,13 +376,17 @@ public final class BloodSkills {
     /// Holy Water washes every active blood skill off a vampire player
     public static void dispel(ServerPlayer player) {
         boolean dispelled = player.removeEffect(ModEffects.BLOOD_FLIGHT);
+        dispelled |= player.removeEffect(ModEffects.THORNED_SHELL);
         dispelled |= player.removeEffect(ModEffects.ANCIENT_ARMOR);
         dispelled |= player.removeEffect(ModEffects.DAYWALKER);
         dispelled |= player.removeEffect(ModEffects.DEFY_DEATH);
         dispelled |= player.removeEffect(ModEffects.STALKERS_GAZE);
+        dispelled |= player.removeEffect(ModEffects.OVERHEAL);
         dispelled |= Possession.endPossessionBy(player);
         if (player.getData(ModAttachments.DASH).ticksLeft() > 0) {
             player.setData(ModAttachments.DASH, DashState.NONE);
+            player.removeData(ModAttachments.DASH_STRIKING);
+            player.removeData(ModAttachments.DASH_AFTERIMAGES);
             dispelled = true;
         }
         if (dispelled) {

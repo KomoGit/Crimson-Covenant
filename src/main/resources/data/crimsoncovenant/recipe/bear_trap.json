@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "N": "crimsoncovenant:silver_nugget",
+    "S": "crimsoncovenant:silver_ingot",
+    "I": "minecraft:iron_ingot"
+  },
+  "pattern": [
+    "N N",
+    "SIS",
+    "SSS"
+  ],
+  "result": {
+    "id": "crimsoncovenant:bear_trap"
+  }
+}

@@ -31,8 +31,8 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-/// Turns an Ancient Tome into the blood skill written in it. Use a tome on it and the translator takes the book;
-/// a few seconds later the skill pops out on top.
+/// Turns an Ancient Tome into the blood skill written in it. A skull floats over the table between four melted
+/// candles; use a tome on it and the skull takes the book in its jaws, and a few seconds later the skill pops out.
 ///
 /// The tome being translated is kept in the block state (no block entity needed), which also lets the block's loot
 /// table give the tome back if the translator is broken mid-translation.
@@ -41,6 +41,8 @@ public class AncientTranslatorBlock extends Block {
     public static final IntegerProperty TOME = IntegerProperty.create("tome", 0, BloodSkill.values().length);
     public static final int TRANSLATION_TIME = 100;
     private static final VoxelShape SHAPE = Block.box(0.0, 0.0, 0.0, 16.0, 12.0, 16.0);
+    /// The tops of the four candle wicks, in sixteenths of a block (they match the block model)
+    private static final double[][] CANDLE_WICKS = {{2, 17, 2}, {14, 15.5, 2}, {2, 16, 14}, {14, 15, 14}};
 
     public AncientTranslatorBlock(BlockBehaviour.Properties properties) {
         super(properties);
@@ -101,9 +103,20 @@ public class AncientTranslatorBlock extends Block {
         level.playSound(null, pos, SoundEvents.PLAYER_LEVELUP, SoundSource.BLOCKS, 0.8F, 0.6F);
     }
 
-    // Glyphs pour into the book while it's being read
+    // The melted candles burn, and glyphs pour into the book while it's being read
     @Override
     public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+        for (double[] wick : CANDLE_WICKS) {
+            if (random.nextInt(3) == 0) {
+                double wx = pos.getX() + wick[0] / 16.0;
+                double wy = pos.getY() + wick[1] / 16.0 + 0.03;
+                double wz = pos.getZ() + wick[2] / 16.0;
+                level.addParticle(ParticleTypes.SMALL_FLAME, wx, wy, wz, 0.0, 0.0, 0.0);
+                if (random.nextInt(8) == 0) {
+                    level.addParticle(ParticleTypes.SMOKE, wx, wy + 0.05, wz, 0.0, 0.01, 0.0);
+                }
+            }
+        }
         double x = pos.getX() + 0.5;
         double y = pos.getY() + 1.1;
         double z = pos.getZ() + 0.5;

@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "sprung=false": {
+      "model": "crimsoncovenant:block/silver_net_trap"
+    },
+    "sprung=true": {
+      "model": "crimsoncovenant:block/silver_net_trap_sprung"
+    }
+  }
+}

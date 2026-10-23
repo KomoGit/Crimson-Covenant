@@ -1,0 +1,5 @@
+{
+  "type": "crimsoncovenant:silvering",
+  "base": "#crimsoncovenant:silverable",
+  "addition": "crimsoncovenant:silver_ingot"
+}

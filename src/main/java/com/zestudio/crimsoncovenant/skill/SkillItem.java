@@ -53,10 +53,21 @@ public class SkillItem extends Item {
     @Override
     public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay display, Consumer<Component> builder, TooltipFlag flag) {
         builder.accept(Component.translatable("item.crimsoncovenant.skill.description." + this.skill.getName()).withStyle(ChatFormatting.GRAY));
+        int baseCost = this.skill.cost() + SkillUpgrade.extraCost(stack);
         Component cost = this.skill.spendsAllBlood()
-                ? Component.translatable("item.crimsoncovenant.skill.cost_all", this.skill.cost())
-                : Component.translatable("item.crimsoncovenant.skill.cost", this.skill.cost());
+                ? Component.translatable("item.crimsoncovenant.skill.cost_all", baseCost)
+                : Component.translatable("item.crimsoncovenant.skill.cost", baseCost);
         builder.accept(cost.copy().withStyle(ChatFormatting.DARK_RED));
+        SkillUpgrade upgrade = SkillUpgrade.forSkill(this.skill);
+        if (upgrade != null) {
+            Component name = Component.translatable("skill_upgrade.crimsoncovenant." + upgrade.getName());
+            if (SkillUpgrade.isUpgraded(stack)) {
+                builder.accept(Component.translatable("item.crimsoncovenant.skill.upgraded", name).withStyle(ChatFormatting.RED));
+                builder.accept(Component.translatable("skill_upgrade.crimsoncovenant." + upgrade.getName() + ".description").withStyle(ChatFormatting.GRAY));
+            } else {
+                builder.accept(Component.translatable("item.crimsoncovenant.skill.upgradable", name, upgrade.extraCost()).withStyle(ChatFormatting.DARK_GRAY));
+            }
+        }
         builder.accept(Component.translatable("item.crimsoncovenant.skill.vampires_only").withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
     }
 }

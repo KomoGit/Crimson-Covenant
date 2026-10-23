@@ -13,6 +13,8 @@ import com.zestudio.crimsoncovenant.registry.ModEntities;
 import com.zestudio.crimsoncovenant.registry.ModItems;
 import com.zestudio.crimsoncovenant.registry.ModMenus;
 import com.zestudio.crimsoncovenant.registry.ModPotions;
+import com.zestudio.crimsoncovenant.registry.ModRecipes;
+import com.zestudio.crimsoncovenant.registry.ModStructures;
 import com.zestudio.crimsoncovenant.registry.ModVillagers;
 
 import net.minecraft.resources.Identifier;
@@ -35,7 +37,10 @@ public class CrimsonCovenant {
         ModEntities.ENTITY_TYPES.register(modEventBus);
         ModEffects.MOB_EFFECTS.register(modEventBus);
         ModPotions.POTIONS.register(modEventBus);
+        ModRecipes.RECIPE_SERIALIZERS.register(modEventBus);
         ModVillagers.POI_TYPES.register(modEventBus);
+        ModStructures.STRUCTURE_TYPES.register(modEventBus);
+        ModStructures.STRUCTURE_PIECES.register(modEventBus);
         ModVillagers.PROFESSIONS.register(modEventBus);
         ModAttachments.ATTACHMENT_TYPES.register(modEventBus);
         ModMenus.MENUS.register(modEventBus);

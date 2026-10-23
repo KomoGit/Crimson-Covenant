@@ -33,11 +33,17 @@ import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
 public final class NightOfTerror {
     public static final double RADIUS = 50.0;
     public static final int DURATION = 100;
+    private static final double CONTAGION_RANGE = 4.0;
 
     private NightOfTerror() {}
 
     public static void unleash(ServerLevel level, ServerPlayer player) {
-        Terror terror = new Terror(player.position(), level.getGameTime() + DURATION);
+        unleash(level, player, false);
+    }
+
+    /// `contagious`: the Panic Contagion upgrade
+    public static void unleash(ServerLevel level, ServerPlayer player, boolean contagious) {
+        Terror terror = new Terror(player.position(), level.getGameTime() + DURATION, contagious);
         for (Mob mob : level.getEntitiesOfClass(Mob.class, player.getBoundingBox().inflate(RADIUS), mob -> canBeTerrified(mob, player))) {
             mob.setData(ModAttachments.TERROR, Optional.of(terror));
             mob.setTarget(null);
@@ -45,6 +51,13 @@ public final class NightOfTerror {
         }
         level.sendParticles(ParticleTypes.SCULK_SOUL, player.getX(), player.getY(0.5), player.getZ(), 60, 1.5, 1.0, 1.5, 0.05);
         level.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.WARDEN_ROAR, SoundSource.PLAYERS, 3.0F, 0.7F);
+    }
+
+    /// Sends a mob running from `source` for `ticks`. Also used by the Silver Dread effect.
+    public static void terrify(ServerLevel level, Mob mob, Vec3 source, int ticks) {
+        mob.setData(ModAttachments.TERROR, Optional.of(new Terror(source, level.getGameTime() + ticks, false)));
+        mob.setTarget(null);
+        level.sendParticles(ParticleTypes.SCULK_SOUL, mob.getX(), mob.getY(1.0) + 0.3, mob.getZ(), 3, 0.2, 0.2, 0.2, 0.02);
     }
 
     private static boolean canBeTerrified(Mob mob, ServerPlayer player) {
@@ -68,6 +81,17 @@ public final class NightOfTerror {
     static void addFleeGoal(EntityJoinLevelEvent event) {
         if (!event.getLevel().isClientSide() && event.getEntity() instanceof PathfinderMob mob) {
             mob.goalSelector.addGoal(-1, new FleeInTerrorGoal(mob));
+        }
+    }
+
+    /// Panic Contagion: creatures a terrified one runs past catch its fear for the rest of the terror (though they
+    /// don't pass it on again). Bosses and tamed pets keep their heads.
+    private static void spreadPanic(ServerLevel level, Mob carrier, Terror terror) {
+        for (Mob mob : level.getEntitiesOfClass(Mob.class, carrier.getBoundingBox().inflate(CONTAGION_RANGE), other -> other != carrier && other.isAlive()
+                && !isTerrified(other) && !other.is(Tags.EntityTypes.BOSSES) && !(other instanceof OwnableEntity pet && pet.getOwnerReference() != null))) {
+            mob.setData(ModAttachments.TERROR, Optional.of(new Terror(terror.source(), terror.until(), false)));
+            mob.setTarget(null);
+            level.sendParticles(ParticleTypes.SCULK_SOUL, mob.getX(), mob.getY(1.0) + 0.3, mob.getZ(), 3, 0.2, 0.2, 0.2, 0.02);
         }
     }
 
@@ -106,6 +130,7 @@ public final class NightOfTerror {
             }
             if (this.mob.tickCount % 10 == 0 && this.mob.level() instanceof ServerLevel level) {
                 level.sendParticles(ParticleTypes.SMOKE, this.mob.getX(), this.mob.getY(1.0) + 0.2, this.mob.getZ(), 2, 0.15, 0.1, 0.15, 0.0);
+                this.mob.getData(ModAttachments.TERROR).filter(Terror::contagious).ifPresent(terror -> spreadPanic(level, this.mob, terror));
             }
         }
 

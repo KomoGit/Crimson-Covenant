@@ -16,5 +16,11 @@ public final class ModDamageTypes {
     /// Blood skills cast by vampire players (Blood Spear, Blood Parade)
     public static final ResourceKey<DamageType> BLOOD_MAGIC = ResourceKey.create(Registries.DAMAGE_TYPE, CrimsonCovenant.id("blood_magic"));
 
+    /// A bear trap's jaws snapping shut
+    public static final ResourceKey<DamageType> BEAR_TRAP = ResourceKey.create(Registries.DAMAGE_TYPE, CrimsonCovenant.id("bear_trap"));
+
+    /// Silver spikes, or a silver net
+    public static final ResourceKey<DamageType> SILVER_TRAP = ResourceKey.create(Registries.DAMAGE_TYPE, CrimsonCovenant.id("silver_trap"));
+
     private ModDamageTypes() {}
 }

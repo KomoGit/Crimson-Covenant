@@ -2,7 +2,7 @@
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "M": "crimsoncovenant:hunters_mark",
+    "M": "crimsoncovenant:token_of_blood",
     "E": "minecraft:enchanting_table"
   },
   "pattern": [

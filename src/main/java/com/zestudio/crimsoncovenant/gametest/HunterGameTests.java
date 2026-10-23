@@ -74,7 +74,9 @@ final class HunterGameTests {
         helper.assertTrue(master.getItemBySlot(EquipmentSlot.OFFHAND).is(Items.SHIELD), Component.literal("Master Hunter should carry a shield"));
         helper.assertTrue(smiteLevel(helper, master.getMainHandItem()) == 3 && master.getMainHandItem().is(ItemTags.AXES),
                 Component.literal("Master Hunter should carry a Smite III axe"));
-        helper.assertTrue(helper.getEntities(ModEntities.HUNTER.get()).size() == 2, Component.literal("Master Hunter should have 2 followers"));
+        // Followers are hunters, now and then a chemist among them
+        int followers = helper.getEntities(ModEntities.HUNTER.get()).size() + helper.getEntities(ModEntities.HUNTER_CHEMIST.get()).size();
+        helper.assertTrue(followers == 2, Component.literal("Master Hunter should have 2 followers, has " + followers));
         helper.succeed();
     }
 
@@ -182,12 +184,12 @@ final class HunterGameTests {
                 Component.literal("Master Hunter should throw lingering Holy Water at a group of undead")));
     }
 
-    static void dropsHuntersMarkWhenKilledByPlayer(GameTestHelper helper) {
+    static void dropsTokenOfBloodWhenKilledByPlayer(GameTestHelper helper) {
         Hunter hunter = helper.spawnWithNoFreeWill(ModEntities.HUNTER.get(), new BlockPos(4, 1, 4));
         ServerPlayer player = helper.makeMockServerPlayerInLevel();
         hunter.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(player), 1000.0F);
         helper.getLevel().getServer().getPlayerList().remove(player);
-        helper.assertItemEntityPresent(ModItems.HUNTERS_MARK.get());
+        helper.assertItemEntityPresent(ModItems.TOKEN_OF_BLOOD.get());
         helper.succeed();
     }
 
@@ -238,7 +240,11 @@ final class HunterGameTests {
         hunter.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.CROSSBOW));
         // Husks are undead but don't burn in daylight, and with no AI they stay put as a target
         Husk husk = helper.spawnWithNoFreeWill(EntityTypes.HUSK, new BlockPos(7, 1, 4));
-        helper.succeedWhen(() -> helper.assertTrue(husk.getHealth() < husk.getMaxHealth(), Component.literal("Crossbow hunter should shoot the husk")));
+        helper.succeedWhen(() -> {
+            helper.assertTrue(husk.getHealth() < husk.getMaxHealth(), Component.literal("Crossbow hunter should shoot the husk"));
+            // Only a silver arrow slows what it hits
+            helper.assertTrue(husk.hasEffect(MobEffects.SLOWNESS), Component.literal("The hunter's bolt should be silver-tipped"));
+        });
     }
 
     static void ignoresAnimals(GameTestHelper helper) {

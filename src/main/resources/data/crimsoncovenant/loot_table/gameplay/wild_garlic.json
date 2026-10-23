@@ -1,0 +1,28 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "rolls": 1,
+      "condition": {
+        "type": "minecraft:all_of",
+        "terms": [
+          {
+            "type": "minecraft:random_chance",
+            "chance": 0.04
+          },
+          {
+            "type": "minecraft:inverted",
+            "term": "minecraft:tool/can_shear"
+          }
+        ]
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:garlic"
+        }
+      ]
+    }
+  ],
+  "random_sequence": "crimsoncovenant:gameplay/wild_garlic"
+}

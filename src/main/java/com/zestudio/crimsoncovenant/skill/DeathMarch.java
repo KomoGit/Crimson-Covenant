@@ -3,6 +3,8 @@ package com.zestudio.crimsoncovenant.skill;
 import java.util.EnumSet;
 import java.util.Optional;
 
+import org.jspecify.annotations.Nullable;
+
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
 import com.zestudio.crimsoncovenant.registry.ModAttachments;
 
@@ -12,6 +14,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
@@ -33,7 +36,7 @@ public final class DeathMarch {
 
     private DeathMarch() {}
 
-    static boolean tryCast(ServerPlayer player) {
+    static boolean tryCast(ServerPlayer player, boolean graveMarch) {
         Mob target = Possession.lookedAt(player, Mob.class, REACH);
         if (target == null) {
             BloodSkills.refuse(player, Component.translatable("message.crimsoncovenant.skill.nothing_to_march"));
@@ -43,15 +46,21 @@ public final class DeathMarch {
             BloodSkills.refuse(player, Component.translatable("message.crimsoncovenant.skill.cannot_march", target.getDisplayName()));
             return false;
         }
-        march(target);
+        march(target, graveMarch ? player : null);
         BloodSkills.playSound(player, SoundEvents.EVOKER_CAST_SPELL, 0.6F);
         return true;
     }
 
-    /// Sets the mob marching the way it's facing
     public static void march(Mob mob) {
+        march(mob, null);
+    }
+
+    /// Sets the mob marching the way it's facing. With a `raiser` (the Grave March upgrade), if it dies on the march
+    /// it rises again to serve them.
+    public static void march(Mob mob, @Nullable Player raiser) {
         Vec3 facing = Vec3.directionFromRotation(0.0F, mob.getYRot());
-        mob.setData(ModAttachments.DEATH_MARCH, Optional.of(new ModAttachments.DeathMarch(facing, mob.level().getGameTime() + DURATION)));
+        mob.setData(ModAttachments.DEATH_MARCH, Optional.of(new ModAttachments.DeathMarch(facing, mob.level().getGameTime() + DURATION,
+                Optional.ofNullable(raiser).map(Player::getUUID))));
         mob.setTarget(null);
         if (mob.level() instanceof ServerLevel level) {
             level.sendParticles(ParticleTypes.SOUL, mob.getX(), mob.getY(1.0) + 0.2, mob.getZ(), 10, 0.2, 0.2, 0.2, 0.02);

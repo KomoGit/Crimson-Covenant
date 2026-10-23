@@ -1,0 +1,13 @@
+{
+  "wants": {
+    "id": "crimsoncovenant:silver_coin",
+    "count": 5
+  },
+  "gives": {
+    "id": "crimsoncovenant:silver_spikes",
+    "count": 2
+  },
+  "max_uses": 8,
+  "xp": 10,
+  "reputation_discount": 0.05
+}

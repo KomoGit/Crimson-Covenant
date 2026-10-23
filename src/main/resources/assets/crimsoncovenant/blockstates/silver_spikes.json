@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "extended=false": {
+      "model": "crimsoncovenant:block/silver_spikes"
+    },
+    "extended=true": {
+      "model": "crimsoncovenant:block/silver_spikes_extended"
+    }
+  }
+}

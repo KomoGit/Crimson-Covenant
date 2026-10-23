@@ -3,10 +3,12 @@ package com.zestudio.crimsoncovenant.registry;
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
 import com.zestudio.crimsoncovenant.entity.BloodOrb;
 import com.zestudio.crimsoncovenant.entity.BloodSpear;
+import com.zestudio.crimsoncovenant.entity.CrimsonLightning;
 import com.zestudio.crimsoncovenant.entity.Ghost;
 import com.zestudio.crimsoncovenant.entity.HemorrhageZone;
 import com.zestudio.crimsoncovenant.entity.HeadlessHorseman;
 import com.zestudio.crimsoncovenant.entity.Hunter;
+import com.zestudio.crimsoncovenant.entity.HunterChemist;
 import com.zestudio.crimsoncovenant.entity.MasterHunter;
 import com.zestudio.crimsoncovenant.entity.MasterVampire;
 import com.zestudio.crimsoncovenant.entity.SilverArrow;
@@ -17,9 +19,12 @@ import com.zestudio.crimsoncovenant.entity.Werewolf;
 import com.zestudio.crimsoncovenant.world.BloodMoon;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.Difficulty;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.SpawnPlacementTypes;
 import net.minecraft.world.entity.ambient.Bat;
@@ -38,6 +43,10 @@ public final class ModEntities {
     public static final DeferredRegister.Entities ENTITY_TYPES = DeferredRegister.createEntities(CrimsonCovenant.MODID);
 
     public static final DeferredHolder<EntityType<?>, EntityType<Hunter>> HUNTER = ENTITY_TYPES.registerEntityType("hunter", Hunter::new, MobCategory.MONSTER,
+            builder -> builder.sized(0.6F, 1.8F).eyeHeight(1.62F).clientTrackingRange(8));
+
+    /// Throws potions instead of fighting hand to hand. Comes along with hunter parties.
+    public static final DeferredHolder<EntityType<?>, EntityType<HunterChemist>> HUNTER_CHEMIST = ENTITY_TYPES.registerEntityType("hunter_chemist", HunterChemist::new, MobCategory.MONSTER,
             builder -> builder.sized(0.6F, 1.8F).eyeHeight(1.62F).clientTrackingRange(8));
 
     public static final DeferredHolder<EntityType<?>, EntityType<MasterHunter>> MASTER_HUNTER = ENTITY_TYPES.registerEntityType("master_hunter", MasterHunter::new, MobCategory.MONSTER,
@@ -71,6 +80,9 @@ public final class ModEntities {
 
     // The Master Vampire's bat swarm attack. Short-lived and never saved.
     // The Boiling Hemorrhage skill's patch of boiling blood. Invisible itself: it's drawn by its particles.
+    /// The upgraded Blood Spear's red lightning: lives a few ticks, drawn by CrimsonLightningRenderer
+    public static final DeferredHolder<EntityType<?>, EntityType<CrimsonLightning>> CRIMSON_LIGHTNING = ENTITY_TYPES.registerEntityType("crimson_lightning", CrimsonLightning::new, MobCategory.MISC,
+            builder -> builder.noLootTable().noSave().sized(0.0F, 0.0F).clientTrackingRange(16).updateInterval(Integer.MAX_VALUE).fireImmune());
     public static final DeferredHolder<EntityType<?>, EntityType<HemorrhageZone>> HEMORRHAGE_ZONE = ENTITY_TYPES.registerEntityType("hemorrhage_zone", HemorrhageZone::new, MobCategory.MISC,
             builder -> builder.noLootTable().sized(0.5F, 0.5F).clientTrackingRange(6).updateInterval(20).fireImmune());
 
@@ -88,9 +100,24 @@ public final class ModEntities {
         return (!natural || BloodMoon.isActive(level.getLevel())) && Monster.checkMonsterSpawnRules(type, level, reason, pos, random);
     }
 
+    /// Vampire bats roost in caves: underground, below sea level and in the dark, on the same stone vanilla bats
+    /// spawn on
+    public static boolean checkVampireBatSpawnRules(EntityType<VampireBat> type, ServerLevelAccessor level, EntitySpawnReason reason, BlockPos pos, RandomSource random) {
+        if (level.getDifficulty() == Difficulty.PEACEFUL) {
+            return false;
+        }
+        if (reason != EntitySpawnReason.NATURAL && reason != EntitySpawnReason.CHUNK_GENERATION) {
+            return Mob.checkMobSpawnRules(type, level, reason, pos, random);
+        }
+        return pos.getY() < level.getSeaLevel() && pos.getY() < level.getHeightmapPos(Heightmap.Types.WORLD_SURFACE, pos).getY()
+                && level.getBlockState(pos.below()).is(BlockTags.BATS_SPAWNABLE_ON) && Monster.isDarkEnoughToSpawn(level, pos, random)
+                && Mob.checkMobSpawnRules(type, level, reason, pos, random);
+    }
+
     @SubscribeEvent
     static void registerAttributes(EntityAttributeCreationEvent event) {
         event.put(HUNTER.get(), Hunter.createAttributes().build());
+        event.put(HUNTER_CHEMIST.get(), HunterChemist.createAttributes().build());
         event.put(MASTER_HUNTER.get(), MasterHunter.createAttributes().build());
         event.put(VAMPIRE.get(), Vampire.createAttributes().build());
         event.put(MASTER_VAMPIRE.get(), MasterVampire.createAttributes().build());
@@ -112,5 +139,8 @@ public final class ModEntities {
         // Forests only, see data/crimsoncovenant/neoforge/biome_modifier/headless_horseman_spawns.json
         event.register(HEADLESS_HORSEMAN.get(), SpawnPlacementTypes.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
                 Monster::checkMonsterSpawnRules, RegisterSpawnPlacementsEvent.Operation.REPLACE);
+        // Caves only, see data/crimsoncovenant/neoforge/biome_modifier/vampire_bat_spawns.json
+        event.register(VAMPIRE_BAT.get(), SpawnPlacementTypes.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                ModEntities::checkVampireBatSpawnRules, RegisterSpawnPlacementsEvent.Operation.REPLACE);
     }
 }

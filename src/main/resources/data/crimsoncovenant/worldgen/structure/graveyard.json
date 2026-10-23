@@ -1,0 +1,44 @@
+{
+  "type": "crimsoncovenant:graveyard",
+  "biomes": "#crimsoncovenant:has_structure/graveyard",
+  "spawn_overrides": {
+    "monster": {
+      "bounding_box": "full",
+      "spawns": [
+        {
+          "type": "minecraft:zombie",
+          "count": {
+            "type": "minecraft:uniform",
+            "min_inclusive": 1,
+            "max_inclusive": 3
+          },
+          "weight": 100
+        },
+        {
+          "type": "minecraft:skeleton",
+          "count": {
+            "type": "minecraft:uniform",
+            "min_inclusive": 1,
+            "max_inclusive": 3
+          },
+          "weight": 100
+        },
+        {
+          "type": "minecraft:zombie_villager",
+          "count": 1,
+          "weight": 15
+        },
+        {
+          "type": "crimsoncovenant:vampire",
+          "count": 1,
+          "weight": 8
+        }
+      ]
+    },
+    "creature": {
+      "bounding_box": "full",
+      "spawns": []
+    }
+  },
+  "step": "surface_structures"
+}

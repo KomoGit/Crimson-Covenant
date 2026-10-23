@@ -1,6 +1,7 @@
 package com.zestudio.crimsoncovenant.effect;
 
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
+import com.zestudio.crimsoncovenant.registry.ModAttachments;
 import com.zestudio.crimsoncovenant.registry.ModEffects;
 
 import net.minecraft.server.level.ServerLevel;
@@ -38,9 +39,15 @@ public class BloodFlightEffect extends MobEffect {
         if (!(entity instanceof Player player) || flight == null) {
             return true;
         }
+        // Blood Wings (upgraded, amplifier 1) fly twice as long, and end in a dive rather than a gentle landing
+        boolean bloodWings = amplifier >= 1;
         if (flight.getDuration() <= 1) {
-            player.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, LANDING_SLOW_FALL, 0, false, false, true));
-        } else if (flight.getDuration() > DURATION - TAKEOFF_TICKS && !player.getAbilities().flying && !player.onGround()) {
+            if (bloodWings) {
+                player.setData(ModAttachments.BLOOD_WINGS_DIVE, true);
+            } else {
+                player.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, LANDING_SLOW_FALL, 0, false, false, true));
+            }
+        } else if (flight.getDuration() > DURATION * (amplifier + 1) - TAKEOFF_TICKS && !player.getAbilities().flying && !player.onGround()) {
             startFlying(player);
         }
         return true;

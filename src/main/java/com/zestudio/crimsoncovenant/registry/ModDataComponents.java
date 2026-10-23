@@ -17,5 +17,14 @@ public final class ModDataComponents {
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Long>> EXPIRES_AT = DATA_COMPONENTS.registerComponentType("expires_at",
             builder -> builder.persistent(Codec.LONG).networkSynchronized(ByteBufCodecs.VAR_LONG));
 
+    /// Set on a blood skill a Sanguine Table has upgraded (see skill.SkillUpgrade), and on a Blood Spear conjured by
+    /// an upgraded Blood Spear skill
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Boolean>> SKILL_UPGRADED = DATA_COMPONENTS.registerComponentType("skill_upgraded",
+            builder -> builder.persistent(Codec.BOOL).networkSynchronized(ByteBufCodecs.BOOL));
+
+    /// Set on a weapon silvered at the smithing table (see item.Silvering)
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Boolean>> SILVERED = DATA_COMPONENTS.registerComponentType("silvered",
+            builder -> builder.persistent(Codec.BOOL).networkSynchronized(ByteBufCodecs.BOOL));
+
     private ModDataComponents() {}
 }

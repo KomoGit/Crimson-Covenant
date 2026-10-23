@@ -249,7 +249,7 @@ final class VampireGameTests {
                             .map(uuid -> helper.getLevel().getEntity(uuid))
                             .filter(Mob.class::isInstance).map(Mob.class::cast).toList();
                     helper.assertTrue(minions.stream().anyMatch(m -> m.getType() == EntityTypes.SPIDER), Component.literal("Master should summon spiders"));
-                    helper.assertTrue(minions.stream().anyMatch(m -> m.getType() == EntityTypes.WOLF), Component.literal("Master should summon wolves"));
+                    helper.assertTrue(minions.stream().noneMatch(m -> m.getType() == EntityTypes.WOLF), Component.literal("Master should no longer summon wolves"));
                     helper.assertTrue(minions.stream().anyMatch(m -> m.getType() == ModEntities.VAMPIRE_BAT.get()), Component.literal("Master should summon vampire bats"));
                     helper.assertTrue(minions.stream().allMatch(m -> m.getTarget() == villager), Component.literal("Minions should attack the master's target"));
                 })

@@ -1,0 +1,18 @@
+{
+  "wants": {
+    "id": "crimsoncovenant:silver_coin",
+    "count": 6
+  },
+  "gives": {
+    "id": "minecraft:potion",
+    "count": 1,
+    "components": {
+      "minecraft:potion_contents": {
+        "potion": "crimsoncovenant:black_blood"
+      }
+    }
+  },
+  "max_uses": 8,
+  "xp": 10,
+  "reputation_discount": 0.05
+}

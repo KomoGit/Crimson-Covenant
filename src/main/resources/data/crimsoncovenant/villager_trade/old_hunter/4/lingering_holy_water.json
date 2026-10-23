@@ -1,0 +1,18 @@
+{
+  "wants": {
+    "id": "crimsoncovenant:silver_coin",
+    "count": 8
+  },
+  "gives": {
+    "id": "minecraft:lingering_potion",
+    "count": 1,
+    "components": {
+      "minecraft:potion_contents": {
+        "potion": "crimsoncovenant:holy_water"
+      }
+    }
+  },
+  "max_uses": 6,
+  "xp": 15,
+  "reputation_discount": 0.05
+}

@@ -5,6 +5,7 @@ import java.util.Map;
 
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
 import com.zestudio.crimsoncovenant.item.BloodBottleItem;
+import com.zestudio.crimsoncovenant.item.BloodSpearItem;
 import com.zestudio.crimsoncovenant.item.EphemeralSwordItem;
 import com.zestudio.crimsoncovenant.item.SilverArrowItem;
 import com.zestudio.crimsoncovenant.skill.AncientTomeItem;
@@ -17,7 +18,9 @@ import net.minecraft.world.item.Item;
 import net.minecraft.util.Unit;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.Rarity;
+import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.component.Consumables;
+import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProviders;
 import net.minecraft.world.item.ToolMaterial;
 import net.minecraft.world.item.SpawnEggItem;
 import net.neoforged.neoforge.registries.DeferredItem;
@@ -28,9 +31,9 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 public final class ModItems {
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(CrimsonCovenant.MODID);
 
-    // Trophies dropped when a player kills a vampire or a hunter. They'll be used as trade currency.
+    /// Dropped when a player kills a vampire or a hunter: the vampires' currency, spent with the Ancient Butler and at
+    /// the Sanguine Table
     public static final DeferredItem<Item> TOKEN_OF_BLOOD = ITEMS.registerSimpleItem("token_of_blood", properties -> properties.rarity(Rarity.UNCOMMON));
-    public static final DeferredItem<Item> HUNTERS_MARK = ITEMS.registerSimpleItem("hunters_mark", properties -> properties.rarity(Rarity.UNCOMMON));
     /// Dropped by Ghosts when Holy Water banishes them
     public static final DeferredItem<Item> ECTOPLASM = ITEMS.registerSimpleItem("ectoplasm", properties -> properties.rarity(Rarity.UNCOMMON));
 
@@ -39,6 +42,8 @@ public final class ModItems {
     public static final DeferredItem<Item> SILVER_INGOT = ITEMS.registerSimpleItem("silver_ingot");
     public static final DeferredItem<Item> SILVER_NUGGET = ITEMS.registerSimpleItem("silver_nugget");
     public static final DeferredItem<Item> SILVER_DUST = ITEMS.registerSimpleItem("silver_dust");
+    /// Minted from silver ingots: the hunters' currency, spent with the Old Hunter
+    public static final DeferredItem<Item> SILVER_COIN = ITEMS.registerSimpleItem("silver_coin");
     /// Extra damage to undead and werewolves, and slows them
     public static final DeferredItem<SilverArrowItem> SILVER_ARROW = ITEMS.registerItem("silver_arrow", SilverArrowItem::new);
 
@@ -47,6 +52,9 @@ public final class ModItems {
     public static final Map<BloodSkill, DeferredItem<SkillItem>> SKILLS = registerSkills();
     /// What the Blood Parade's orb looks like in flight. Not obtainable.
     public static final DeferredItem<Item> BLOOD_ORB = ITEMS.registerSimpleItem("blood_orb");
+    /// Conjured by the Blood Spear skill and thrown like a trident. Not obtainable otherwise.
+    public static final DeferredItem<BloodSpearItem> BLOOD_SPEAR = ITEMS.registerItem("blood_spear", BloodSpearItem::new,
+            properties -> properties.stacksTo(1).rarity(Rarity.RARE));
     /// Drunk to refill a vampire's blood bar. Sold by the Ancient Butler.
     public static final DeferredItem<BloodBottleItem> BLOOD_BOTTLE = ITEMS.registerItem("blood_bottle", BloodBottleItem::new,
             properties -> properties.component(DataComponents.CONSUMABLE, Consumables.defaultDrink().build()).usingConvertsTo(Items.GLASS_BOTTLE)
@@ -54,6 +62,12 @@ public final class ModItems {
     /// From the Ephemeral Sword skill: as good as iron, unbreakable, and gone after a minute
     public static final DeferredItem<EphemeralSwordItem> EPHEMERAL_SWORD = ITEMS.registerItem("ephemeral_sword", EphemeralSwordItem::new,
             properties -> properties.sword(ToolMaterial.IRON, 3.0F, -2.4F).component(DataComponents.UNBREAKABLE, Unit.INSTANCE).rarity(Rarity.UNCOMMON));
+
+    // ---- Garlic: planted like a carrot, brewed into the Potion of Garlic, braided to hang up ----
+    public static final DeferredItem<BlockItem> GARLIC = ITEMS.registerItem("garlic",
+            properties -> new BlockItem(ModBlocks.GARLIC_CROP.get(), properties.useItemDescriptionPrefix()),
+            properties -> properties.food(new FoodProperties.Builder().nutrition(2).saturationModifier(0.3F).build())
+                    .compostable(ContextIntProviders.COMPOSTABLE_MEDIUM));
 
     // ---- Block items ----
     public static final DeferredItem<BlockItem> SILVER_ORE = ITEMS.registerSimpleBlockItem(ModBlocks.SILVER_ORE);
@@ -67,10 +81,17 @@ public final class ModItems {
     public static final DeferredItem<BlockItem> HUNTERS_TABLE = ITEMS.registerSimpleBlockItem(ModBlocks.HUNTERS_TABLE);
     public static final DeferredItem<BlockItem> BLOOD_ALTAR = ITEMS.registerSimpleBlockItem(ModBlocks.BLOOD_ALTAR);
     public static final DeferredItem<BlockItem> ANCIENT_TRANSLATOR = ITEMS.registerSimpleBlockItem(ModBlocks.ANCIENT_TRANSLATOR);
+    public static final DeferredItem<BlockItem> SANGUINE_TABLE = ITEMS.registerSimpleBlockItem(ModBlocks.SANGUINE_TABLE);
+    public static final DeferredItem<BlockItem> GARLIC_BRAID = ITEMS.registerSimpleBlockItem(ModBlocks.GARLIC_BRAID);
+    public static final DeferredItem<BlockItem> BEAR_TRAP = ITEMS.registerSimpleBlockItem(ModBlocks.BEAR_TRAP);
+    public static final DeferredItem<BlockItem> SILVER_SPIKES = ITEMS.registerSimpleBlockItem(ModBlocks.SILVER_SPIKES);
+    public static final DeferredItem<BlockItem> SILVER_NET_TRAP = ITEMS.registerSimpleBlockItem(ModBlocks.SILVER_NET_TRAP);
 
     // Entity types are registered before items, so the hunter type is available here
     public static final DeferredItem<SpawnEggItem> HUNTER_SPAWN_EGG = ITEMS.registerItem("hunter_spawn_egg", SpawnEggItem::new,
             properties -> properties.spawnEgg(ModEntities.HUNTER.get()));
+    public static final DeferredItem<SpawnEggItem> HUNTER_CHEMIST_SPAWN_EGG = ITEMS.registerItem("hunter_chemist_spawn_egg", SpawnEggItem::new,
+            properties -> properties.spawnEgg(ModEntities.HUNTER_CHEMIST.get()));
     public static final DeferredItem<SpawnEggItem> MASTER_HUNTER_SPAWN_EGG = ITEMS.registerItem("master_hunter_spawn_egg", SpawnEggItem::new,
             properties -> properties.spawnEgg(ModEntities.MASTER_HUNTER.get()));
     public static final DeferredItem<SpawnEggItem> VAMPIRE_SPAWN_EGG = ITEMS.registerItem("vampire_spawn_egg", SpawnEggItem::new,

@@ -3,6 +3,7 @@ package com.zestudio.crimsoncovenant.vampirism;
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
 import com.zestudio.crimsoncovenant.entity.Vampire;
 import com.zestudio.crimsoncovenant.registry.ModAttachments;
+import com.zestudio.crimsoncovenant.registry.ModEffects;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -45,9 +46,9 @@ public final class BloodPool {
         set(player, get(player) + blood);
     }
 
-    /// Called every tick for vampire players
+    /// Called every tick for vampire players. A Silver Wound stops the blood coming back.
     public static void tick(ServerPlayer player) {
-        if (player.tickCount % REGEN_INTERVAL == 0) {
+        if (player.tickCount % REGEN_INTERVAL == 0 && !player.hasEffect(ModEffects.SILVER_WOUND)) {
             add(player, 1);
         }
     }

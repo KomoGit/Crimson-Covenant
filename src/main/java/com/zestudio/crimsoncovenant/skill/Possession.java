@@ -74,7 +74,7 @@ public final class Possession {
 
     private Possession() {}
 
-    static boolean tryPossess(ServerPlayer player) {
+    static boolean tryPossess(ServerPlayer player, boolean enthralls) {
         if (isPossessing(player)) {
             BloodSkills.refuse(player, Component.translatable("message.crimsoncovenant.skill.already_active"));
             return false;
@@ -88,7 +88,7 @@ public final class Possession {
             BloodSkills.refuse(player, Component.translatable("message.crimsoncovenant.skill.cannot_possess", target.getDisplayName()));
             return false;
         }
-        start(player, target);
+        start(player, target, enthralls);
         return true;
     }
 
@@ -114,8 +114,14 @@ public final class Possession {
         return player.getData(ModAttachments.POSSESSED_FORM).flatMap(form -> BuiltInRegistries.ENTITY_TYPE.getOptional(form.type()));
     }
 
-    /// The vampire steps into the creature: it leaves the world (saved on the vampire) and the vampire takes its shape
     public static void start(ServerPlayer player, Mob mob) {
+        start(player, mob, false);
+    }
+
+    /// The vampire steps into the creature: it leaves the world (saved on the vampire) and the vampire takes its shape.
+    /// With the Enthrall upgrade, the creature serves the vampire for a while once the possession runs its course.
+    public static void start(ServerPlayer player, Mob mob, boolean enthralls) {
+        player.setData(ModAttachments.POSSESSION_ENTHRALLS, enthralls);
         ServerLevel level = player.level();
         TagValueOutput saved = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, level.registryAccess());
         mob.saveWithoutId(saved);
@@ -174,10 +180,18 @@ public final class Possession {
     /// Ends the possession. The creature comes back unless it was used up (a creeper that blew itself up), and if
     /// it was killed it comes back only to die.
     static boolean end(ServerPlayer player, boolean creatureReturns, @Nullable DamageSource killedBy) {
+        return end(player, creatureReturns, killedBy, false);
+    }
+
+    /// `ranItsCourse`: the possession's time ran out with the vampire still alive (rather than being cut short), so an
+    /// Enthrall possession leaves its creature enthralled
+    static boolean end(ServerPlayer player, boolean creatureReturns, @Nullable DamageSource killedBy, boolean ranItsCourse) {
         Optional<PossessedForm> form = player.getData(ModAttachments.POSSESSED_FORM);
         if (form.isEmpty()) {
             return false;
         }
+        boolean enthralls = ranItsCourse && player.getData(ModAttachments.POSSESSION_ENTHRALLS);
+        player.setData(ModAttachments.POSSESSION_ENTHRALLS, false);
         PossessionState state = player.getData(ModAttachments.POSSESSION_STATE);
         player.setData(ModAttachments.POSSESSED_FORM, Optional.empty());
         player.setData(ModAttachments.POSSESSION_STATE, PossessionState.NONE);
@@ -196,6 +210,9 @@ public final class Possession {
                     living.setHealth(Math.max(state.health(), 1.0F));
                 }
                 level.addFreshEntity(creature);
+                if (enthralls && killedBy == null && creature instanceof Mob mob) {
+                    Enthrall.enthrall(level, mob, player);
+                }
                 if (killedBy != null) {
                     creature.hurtServer(level, killedBy, Float.MAX_VALUE);
                     if (creature.isAlive()) {
@@ -227,7 +244,7 @@ public final class Possession {
         }
         PossessionState state = player.getData(ModAttachments.POSSESSION_STATE);
         if (state.ticksLeft() <= 1 || !player.isAlive()) {
-            end(player, true, null);
+            end(player, true, null, player.isAlive());
             return;
         }
         player.setData(ModAttachments.POSSESSION_STATE, new PossessionState(state.ticksLeft() - 1, state.health(), state.attackDamage(),

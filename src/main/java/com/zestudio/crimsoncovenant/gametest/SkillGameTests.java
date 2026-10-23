@@ -1,39 +1,54 @@
 package com.zestudio.crimsoncovenant.gametest;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
+import com.zestudio.crimsoncovenant.skill.UpgradeEffects;
+import com.zestudio.crimsoncovenant.effect.BloodFlightEffect;
 import com.zestudio.crimsoncovenant.block.AncientTranslatorBlock;
+import com.zestudio.crimsoncovenant.block.GarlicBraidBlock;
+import com.zestudio.crimsoncovenant.block.SanguineTableBlock;
+import com.zestudio.crimsoncovenant.effect.BlackBloodEffect;
+import com.zestudio.crimsoncovenant.effect.GarlicEffect;
 import com.zestudio.crimsoncovenant.entity.BloodOrb;
 import com.zestudio.crimsoncovenant.entity.BloodSpear;
+import com.zestudio.crimsoncovenant.entity.CrimsonLightning;
 import com.zestudio.crimsoncovenant.entity.HemorrhageZone;
 import com.zestudio.crimsoncovenant.entity.Hunter;
 import com.zestudio.crimsoncovenant.entity.MasterVampire;
 import com.zestudio.crimsoncovenant.entity.SwarmBat;
 import com.zestudio.crimsoncovenant.entity.Vampire;
 import com.zestudio.crimsoncovenant.item.BloodBottleItem;
+import com.zestudio.crimsoncovenant.item.BloodSpearItem;
 import com.zestudio.crimsoncovenant.registry.ModAttachments;
+import com.zestudio.crimsoncovenant.registry.ModAttachments.PossessionState;
 import com.zestudio.crimsoncovenant.registry.ModBlocks;
 import com.zestudio.crimsoncovenant.registry.ModDataComponents;
 import com.zestudio.crimsoncovenant.registry.ModEffects;
 import com.zestudio.crimsoncovenant.registry.ModEntities;
 import com.zestudio.crimsoncovenant.registry.ModItems;
+import com.zestudio.crimsoncovenant.registry.ModPotions;
 import com.zestudio.crimsoncovenant.registry.ModVillagers;
 import com.zestudio.crimsoncovenant.skill.AncientTomeItem;
 import com.zestudio.crimsoncovenant.skill.BloodSkill;
 import com.zestudio.crimsoncovenant.skill.BloodSkills;
 import com.zestudio.crimsoncovenant.skill.CreatureAbilities;
 import com.zestudio.crimsoncovenant.skill.DeathMarch;
+import com.zestudio.crimsoncovenant.skill.Enthrall;
 import com.zestudio.crimsoncovenant.skill.NightOfTerror;
 import com.zestudio.crimsoncovenant.skill.Possession;
 import com.zestudio.crimsoncovenant.skill.SkillKeeper;
 import com.zestudio.crimsoncovenant.skill.SkillSlots;
+import com.zestudio.crimsoncovenant.skill.SkillUpgrade;
 import com.zestudio.crimsoncovenant.vampirism.BloodPool;
+import com.zestudio.crimsoncovenant.vampirism.GarlicWard;
 import com.zestudio.crimsoncovenant.vampirism.Vampirism;
 import com.zestudio.crimsoncovenant.world.BloodMoon;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -42,22 +57,33 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.chicken.Chicken;
 import net.minecraft.world.entity.animal.cow.Cow;
 import net.minecraft.world.entity.animal.sheep.Sheep;
 import net.minecraft.world.entity.monster.Creeper;
+import net.minecraft.world.entity.monster.spider.Spider;
+import net.minecraft.world.entity.monster.zombie.Husk;
 import net.minecraft.world.entity.monster.skeleton.Skeleton;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemUseAnimation;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.item.trading.MerchantOffer;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
@@ -65,13 +91,17 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.entity.projectile.arrow.Arrow;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.common.damagesource.DamageContainer;
+import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
+import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 
 /// Tests for the vampire's blood bar, the blood skills, the Ancient Translator, and where tomes come from
 final class SkillGameTests {
     private SkillGameTests() {}
 
     /// Mock players are always in creative; take away its creative powers so flight and item use behave as in survival
-    private static ServerPlayer makePlayer(GameTestHelper helper) {
+    static ServerPlayer makePlayer(GameTestHelper helper) {
         ServerPlayer player = helper.makeMockServerPlayerInLevel();
         player.getAbilities().mayfly = false;
         player.getAbilities().flying = false;
@@ -80,14 +110,14 @@ final class SkillGameTests {
         return player;
     }
 
-    private static ServerPlayer makeVampire(GameTestHelper helper, int blood) {
+    static ServerPlayer makeVampire(GameTestHelper helper, int blood) {
         ServerPlayer player = makePlayer(helper);
         player.setData(ModAttachments.IS_VAMPIRE, true);
         BloodPool.set(player, blood);
         return player;
     }
 
-    private static void removePlayer(GameTestHelper helper, ServerPlayer player) {
+    static void removePlayer(GameTestHelper helper, ServerPlayer player) {
         helper.getLevel().getServer().getPlayerList().remove(player);
     }
 
@@ -214,10 +244,9 @@ final class SkillGameTests {
     static void bloodSpearRefundsOnKill(GameTestHelper helper) {
         ServerPlayer player = makeVampire(helper, 10);
         helper.assertTrue(castSkill(player, BloodSkill.BLOOD_SPEAR), Component.literal("Blood Spear should cast"));
-        helper.assertValueEqual(BloodPool.get(player), 0, "blood after throwing the spear");
-        // That one was thrown from wherever the mock player stands, outside the test: get rid of it
-        helper.getLevel().getEntitiesOfClass(BloodSpear.class, player.getBoundingBox().inflate(4.0)).forEach(BloodSpear::discard);
-        // A second spear, aimed straight at a chicken a block away. It's ticked by hand so the mock player can be
+        helper.assertValueEqual(BloodPool.get(player), 0, "blood after conjuring the spear");
+        player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+        // A spear aimed straight at a chicken a block away. It's ticked by hand so the mock player can be
         // removed right away: while any player exists, monsters far from it (in other tests) despawn.
         Chicken chicken = helper.spawnWithNoFreeWill(EntityTypes.CHICKEN, new BlockPos(5, 1, 4));
         BloodSpear spear = new BloodSpear(helper.getLevel(), player);
@@ -235,36 +264,508 @@ final class SkillGameTests {
         helper.succeed();
     }
 
-    static void bloodParadeChainsThroughCrowds(GameTestHelper helper) {
+    static void bloodSpearIsThrownLikeATrident(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        ServerPlayer player = makeVampire(helper, 100);
-        helper.assertTrue(castSkill(player, BloodSkill.BLOOD_PARADE), Component.literal("Blood Parade should cast"));
-        helper.assertValueEqual(BloodPool.get(player), 0, "Blood Parade spends the whole bar");
-        // That orb was thrown from wherever the mock player stands, outside the test: get rid of it
-        level.getEntitiesOfClass(BloodOrb.class, player.getBoundingBox().inflate(4.0)).forEach(BloodOrb::discard);
+        ServerPlayer player = makeVampire(helper, 10);
+        // Inside the test, where the thrown spear can be found (mock players start at the world spawn)
+        Vec3 at = helper.absoluteVec(new Vec3(4.5, 1.0, 4.5));
+        player.teleportTo(at.x, at.y, at.z);
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.STICK));
+        helper.assertTrue(castSkill(player, BloodSkill.BLOOD_SPEAR), Component.literal("Blood Spear should cast"));
+        ItemStack spear = player.getMainHandItem();
+        helper.assertTrue(spear.is(ModItems.BLOOD_SPEAR.get()), Component.literal("Casting should put the spear in hand"));
+        helper.assertTrue(player.getInventory().contains(new ItemStack(Items.STICK)), Component.literal("Whatever was in hand moves into the inventory"));
+        helper.assertTrue(spear.getUseAnimation() == ItemUseAnimation.TRIDENT, Component.literal("It should be drawn back like a trident"));
 
-        // Two zombies by the burst, and a third out of its reach but next to the second.
-        // The burst is kept in the middle of the arena so it can't reach into other tests.
-        Zombie near = spawnWeakZombie(helper, new BlockPos(3, 1, 4));
-        Zombie edge = spawnWeakZombie(helper, new BlockPos(5, 1, 4));
-        Zombie far = spawnWeakZombie(helper, new BlockPos(7, 1, 4));
-        BloodOrb orb = new BloodOrb(level, player, new Vec3(1.0, 0.0, 0.0), 100);
-        orb.setPos(helper.absoluteVec(new Vec3(3.0, 1.5, 4.5)));
-        level.addFreshEntity(orb);
-        orb.burst(level, null);
-        helper.assertTrue(!near.isAlive() && !edge.isAlive(), Component.literal("The burst should kill the zombies around it"));
-        helper.assertTrue(!far.isAlive(), Component.literal("A slain zombie's burst should reach the next one (far health " + far.getHealth()
-                + ", from edge " + far.position().subtract(edge.position()) + ", edge dead at " + edge.position() + ")"));
-        helper.assertValueEqual(BloodPool.get(player), 0, "blood from killing zombies (they're undead, so none)");
+        int duration = spear.getUseDuration(player);
+        AABB around = player.getBoundingBox().inflate(4.0);
+        // Let go too soon and nothing is thrown
+        spear.releaseUsing(level, player, duration - (BloodSpearItem.MIN_DRAW - 5));
+        helper.assertTrue(level.getEntitiesOfClass(BloodSpear.class, around).isEmpty() && !spear.isEmpty(), Component.literal("A half-drawn spear isn't thrown"));
+        // Drawn back long enough, it flies
+        spear.releaseUsing(level, player, duration - (BloodSpearItem.MIN_DRAW + 5));
+        List<BloodSpear> thrown = level.getEntitiesOfClass(BloodSpear.class, around);
+        helper.assertTrue(thrown.size() == 1 && spear.isEmpty(), Component.literal("A fully drawn spear should be thrown and leave the hand ("
+                + thrown.size() + " thrown, " + spear.getCount() + " left in hand)"));
+        // Thrown from wherever the mock player stands, outside the test: get rid of it
+        thrown.forEach(BloodSpear::discard);
         removePlayer(helper, player);
         helper.succeed();
     }
 
-    private static Zombie spawnWeakZombie(GameTestHelper helper, BlockPos pos) {
+    static void bloodSpearDrivesAndSlams(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer player = makeVampire(helper, 0);
+        // A stone wall a block and a half behind one zombie, which is speared east (kept well clear of the other
+        // zombie's diagonal ride)
+        for (int z = 6; z <= 8; z++) {
+            for (int y = 1; y <= 2; y++) {
+                helper.setBlock(new BlockPos(3, y, z), Blocks.STONE);
+            }
+        }
+        Zombie slammed = spawnSturdyZombie(helper, new BlockPos(1, 1, 7));
+        // The other is speared corner to corner, the longest clear run in this 9x9 test area, so its whole ride
+        // (about 6.5 blocks) stays inside it
+        Zombie driven = spawnSturdyZombie(helper, new BlockPos(1, 1, 1));
+        Vec3 drivenStart = driven.position();
+        throwSpearAt(level, player, slammed, new Vec3(1.0, 0.0, 0.0));
+        throwSpearAt(level, player, driven, new Vec3(1.0, 0.0, 1.0).normalize());
+        removePlayer(helper, player);
+        helper.runAfterDelay(BloodSpear.DRIVE_TICKS + 4, () -> {
+            float slamDamage = slammed.getMaxHealth() - slammed.getHealth();
+            float driveDamage = driven.getMaxHealth() - driven.getHealth();
+            helper.assertTrue(driveDamage > 0.0F, Component.literal("The spear should hit the zombie in the open"));
+            helper.assertTrue(slamDamage > driveDamage + 4.0F, Component.literal("Slammed into the wall should hurt more: " + slamDamage + " vs " + driveDamage
+                    + " (open-ground zombie from " + helper.relativeVec(drivenStart) + " to " + helper.relativeVec(driven.position()) + ", staggered " + driven.hasEffect(MobEffects.SLOWNESS) + ")"));
+            helper.assertTrue(slammed.hasEffect(MobEffects.SLOWNESS), Component.literal("A slammed zombie should be staggered"));
+            double carried = driven.position().subtract(drivenStart).horizontalDistance();
+            helper.assertTrue(carried > 3.0, Component.literal("The spear should carry the zombie back, but it moved " + carried));
+            slammed.discard();
+            driven.discard();
+            helper.succeed();
+        });
+    }
+
+    /// A spear thrown from just in front of the zombie, so it hits on its first tick or two
+    private static void throwSpearAt(ServerLevel level, ServerPlayer thrower, Zombie zombie, Vec3 direction) {
+        throwSpearAt(level, thrower, zombie, direction, false);
+    }
+
+    private static void throwSpearAt(ServerLevel level, ServerPlayer thrower, Zombie zombie, Vec3 direction, boolean crimsonLightning) {
+        BloodSpear spear = new BloodSpear(level, thrower);
+        spear.setCrimsonLightning(crimsonLightning);
+        spear.setPos(zombie.position().add(0.0, 0.9, 0.0).subtract(direction.scale(0.9)));
+        spear.shoot(direction.x, direction.y, direction.z, 2.0F, 0.0F);
+        level.addFreshEntity(spear);
+        for (int i = 0; i < 5 && spear.isAlive(); i++) {
+            spear.tick();
+        }
+    }
+
+    /// A zombie that doesn't burn in the test's noon sun or shrug off knockback
+    private static Zombie spawnSturdyZombie(GameTestHelper helper, BlockPos pos) {
+        Zombie zombie = helper.spawn(EntityTypes.ZOMBIE, pos);
+        zombie.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+        zombie.getAttribute(Attributes.KNOCKBACK_RESISTANCE).setBaseValue(0.0);
+        zombie.setPersistenceRequired();
+        return zombie;
+    }
+
+    static void bloodParadeDrainsHostiles(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer player = makeVampire(helper, 100);
+        helper.assertTrue(castSkill(player, BloodSkill.BLOOD_PARADE), Component.literal("Blood Parade should cast"));
+        helper.assertValueEqual(BloodPool.get(player), 0, "Blood Parade spends the whole bar");
+        // That orb was cast from wherever the mock player stands, outside the test: get rid of it
+        level.getEntitiesOfClass(BloodOrb.class, player.getBoundingBox().inflate(4.0)).forEach(BloodOrb::discard);
+        removePlayer(helper, player);
+
+        // The rest is watched over seconds, and the server never ticks a mock player (so its effects would never run
+        // down): the orb here belongs to a villager instead. It hangs in the middle of the arena, with a zombie and
+        // another villager in reach. Made with no blood, so its bolts are light and the zombie lives through several volleys.
+        Villager caster = helper.spawnWithNoFreeWill(EntityTypes.VILLAGER, new BlockPos(1, 1, 1));
+        Zombie zombie = helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, new BlockPos(6, 1, 4));
+        zombie.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+        Villager villager = helper.spawnWithNoFreeWill(EntityTypes.VILLAGER, new BlockPos(2, 1, 6));
+        BloodOrb orb = new BloodOrb(level, caster, Vec3.ZERO, 0);
+        orb.setPos(helper.absoluteVec(new Vec3(4.5, 1.5, 4.5)));
+        level.addFreshEntity(orb);
+        // Nearly full, so most of what it drinks becomes overheal
+        caster.setHealth(caster.getMaxHealth() - 1.0F);
+        float[] firstOverheal = new float[1];
+        float[] zombieHealth = new float[1];
+        helper.startSequence()
+                .thenWaitUntil(() -> {
+                    helper.assertTrue(zombie.getHealth() < zombie.getMaxHealth(), Component.literal("The orb should lash the zombie"));
+                    helper.assertTrue(caster.getHealth() == caster.getMaxHealth(), Component.literal("The blood should heal the caster"));
+                    helper.assertTrue(caster.getAbsorptionAmount() > 0.0F && caster.hasEffect(ModEffects.OVERHEAL),
+                            Component.literal("Healing past full should become overheal"));
+                })
+                .thenExecute(() -> {
+                    helper.assertTrue(villager.getHealth() == villager.getMaxHealth(), Component.literal("Blood Parade only lashes hostiles"));
+                    helper.assertTrue(caster.getEffect(ModEffects.OVERHEAL).getDuration() > BloodOrb.OVERHEAL_DURATION,
+                            Component.literal("The overheal's countdown shouldn't start while the orb lasts"));
+                    firstOverheal[0] = caster.getAbsorptionAmount();
+                    zombieHealth[0] = zombie.getHealth();
+                })
+                .thenIdle(BloodOrb.BOLT_INTERVAL * 3)
+                .thenExecute(() -> {
+                    helper.assertTrue(zombie.getHealth() < zombieHealth[0], Component.literal("The orb keeps lashing the zombie"));
+                    helper.assertValueEqual(caster.getAbsorptionAmount(), firstOverheal[0], "overheal after more hits on the same zombie (it only counts once)");
+                })
+                .thenWaitUntil(() -> helper.assertTrue(orb.isRemoved(), Component.literal("The orb lasts 7 seconds")))
+                .thenExecute(() -> {
+                    int left = caster.getEffect(ModEffects.OVERHEAL).getDuration();
+                    helper.assertTrue(left > 0 && left <= BloodOrb.OVERHEAL_DURATION, Component.literal("Once the orb is gone, the overheal has 10 seconds left, not " + left));
+                    firstOverheal[0] = caster.getAbsorptionAmount();
+                })
+                // Halfway through its fade
+                .thenIdle(BloodOrb.OVERHEAL_DURATION / 2)
+                .thenExecute(() -> {
+                    float now = caster.getAbsorptionAmount();
+                    helper.assertTrue(now > 0.0F && now < firstOverheal[0], Component.literal("The overheal should be fading, not gone or held: " + now + " of " + firstOverheal[0]));
+                    // And at the end it's gone
+                    caster.removeEffect(ModEffects.OVERHEAL);
+                    helper.assertTrue(caster.getAbsorptionAmount() == 0.0F, Component.literal("The extra hearts should vanish with the overheal"));
+                    zombie.discard();
+                    villager.discard();
+                    caster.discard();
+                })
+                .thenSucceed();
+    }
+
+    static void bloodParadeBouncesOffWalls(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        for (int y = 1; y <= 3; y++) {
+            for (int z = 2; z <= 6; z++) {
+                helper.setBlock(new BlockPos(7, y, z), Blocks.STONE);
+            }
+        }
+        Villager caster = helper.spawnWithNoFreeWill(EntityTypes.VILLAGER, new BlockPos(1, 1, 1));
+        BloodOrb orb = new BloodOrb(level, caster, new Vec3(1.0, 0.0, 0.0), 0);
+        orb.setPos(helper.absoluteVec(new Vec3(5.0, 1.5, 4.5)));
+        level.addFreshEntity(orb);
+        helper.succeedWhen(() -> {
+            helper.assertTrue(orb.getDeltaMovement().x < 0.0, Component.literal("The orb should bounce back off the wall"));
+            orb.discard();
+            caster.discard();
+        });
+    }
+
+    // ---- Skill upgrades ----
+
+    /// Wears an upgraded copy of the skill in the first slot and presses its key
+    private static boolean castUpgraded(ServerPlayer player, BloodSkill skill) {
+        ItemStack stack = new ItemStack(skill.skillItem());
+        stack.set(ModDataComponents.SKILL_UPGRADED.get(), true);
+        SkillSlots.set(player, 0, stack);
+        player.getCooldowns().removeCooldown(player.getCooldowns().getCooldownGroup(stack));
+        return BloodSkills.tryCast(player, 0);
+    }
+
+    private static Zombie spawnHelmetedZombie(GameTestHelper helper, BlockPos pos) {
         Zombie zombie = helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, pos);
         zombie.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
-        zombie.setHealth(2.0F);
         return zombie;
+    }
+
+    static void bloodWingsFlyLongerAndDive(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer player = makeVampire(helper, 100);
+        Vec3 at = helper.absoluteVec(new Vec3(4.5, 1.0, 4.5));
+        player.teleportTo(at.x, at.y, at.z);
+        helper.assertTrue(castUpgraded(player, BloodSkill.FLIGHT), Component.literal("Upgraded Flight should cast"));
+        MobEffectInstance flight = player.getEffect(ModEffects.BLOOD_FLIGHT);
+        helper.assertTrue(flight != null && flight.getDuration() == BloodFlightEffect.DURATION * 2, Component.literal("Blood Wings fly twice as long"));
+
+        // The flight has run out and the vampire comes down. (The server never ticks a mock player, so the flight
+        // ending is played out by hand.)
+        player.removeEffect(ModEffects.BLOOD_FLIGHT);
+        player.getAbilities().mayfly = false;
+        player.getAbilities().flying = false;
+        Zombie below = spawnHelmetedZombie(helper, new BlockPos(5, 1, 4));
+        player.setData(ModAttachments.BLOOD_WINGS_DIVE, true);
+        player.causeFallDamage(10.0, 1.0F, level.damageSources().fall());
+        helper.assertTrue(below.getHealth() < below.getMaxHealth(), Component.literal("The dive should slam whatever is below"));
+        helper.assertTrue(!player.getData(ModAttachments.BLOOD_WINGS_DIVE), Component.literal("One dive per flight"));
+        below.discard();
+        removePlayer(helper, player);
+        helper.succeed();
+    }
+
+    static void afterimageStrikeSlashesThrough(GameTestHelper helper) {
+        ServerPlayer player = makeVampire(helper, 100);
+        // One zombie right in the dash's path, one off to the side that the dash only brushes past
+        Zombie struckThrough = spawnHelmetedZombie(helper, new BlockPos(4, 1, 4));
+        Zombie brushed = helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, new Vec3(4.5, 1.0, 6.2));
+        brushed.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+        for (Zombie zombie : List.of(struckThrough, brushed)) {
+            zombie.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200.0);
+            zombie.setHealth(200.0F);
+        }
+        Vec3 start = helper.absoluteVec(new Vec3(0.5, 1.0, 4.5));
+        player.teleportTo(start.x, start.y, start.z);
+        helper.assertTrue(castUpgraded(player, BloodSkill.DASH), Component.literal("Upgraded Dash should cast"));
+        // Mock players don't move or tick on their own: walk it along the dash, 2 blocks a tick, and tick it by hand
+        for (int tick = 1; tick <= 30; tick++) {
+            int step = tick;
+            helper.runAtTickTime(step, () -> {
+                if (step <= 5) {
+                    Vec3 at = start.add(2.0 * (step - 1), 0.0, 0.0);
+                    player.teleportTo(at.x, at.y, at.z);
+                }
+                BloodSkills.tickDash(player);
+            });
+        }
+        // One slash each so far: the zombie in the path is owed more, but they come 0.2 seconds apart
+        helper.runAtTickTime(4, () -> helper.assertValueEqual(lost(struckThrough), lost(brushed), "health lost by both zombies before the next slash is due"));
+        helper.runAtTickTime(31, () -> {
+            float slash = lost(brushed);
+            helper.assertTrue(slash > 0.0F, Component.literal("An afterimage should slash the zombie the dash brushes past"));
+            helper.assertTrue(Math.abs(lost(struckThrough) - 3.0F * slash) < 0.01F,
+                    Component.literal("Three afterimages should slash the zombie the dash runs through: lost " + lost(struckThrough) + ", one slash is " + slash));
+
+            // A plain dash doesn't slash
+            Zombie other = spawnHelmetedZombie(helper, new BlockPos(4, 1, 4));
+            Vec3 at = helper.absoluteVec(new Vec3(4.5, 1.0, 4.5));
+            player.teleportTo(at.x, at.y, at.z);
+            helper.assertTrue(castSkill(player, BloodSkill.DASH), Component.literal("Dash should cast"));
+            BloodSkills.tickDash(player);
+            helper.assertValueEqual(other.getHealth(), other.getMaxHealth(), "health of a zombie a plain dash passes through");
+            List.of(struckThrough, brushed, other).forEach(Zombie::discard);
+            removePlayer(helper, player);
+            helper.succeed();
+        });
+    }
+
+    private static float lost(LivingEntity entity) {
+        return entity.getMaxHealth() - entity.getHealth();
+    }
+
+    static void thornedShellHurtsAttackers(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer player = makeVampire(helper, 100);
+        helper.assertTrue(castUpgraded(player, BloodSkill.ARMOR_OF_ANCIENT), Component.literal("Upgraded Armor of Ancient should cast"));
+        helper.assertTrue(player.hasEffect(ModEffects.THORNED_SHELL) && player.hasEffect(ModEffects.ANCIENT_ARMOR), Component.literal("The shell comes with the armor"));
+        removePlayer(helper, player);
+        // Mock players can't be hurt, so the thorns are tried on a villager
+        Zombie zombie = spawnHelmetedZombie(helper, new BlockPos(2, 1, 4));
+        Villager villager = helper.spawnWithNoFreeWill(EntityTypes.VILLAGER, new BlockPos(4, 1, 4));
+        villager.addEffect(new MobEffectInstance(ModEffects.THORNED_SHELL, 200));
+        villager.hurtServer(level, level.damageSources().mobAttack(zombie), 2.0F);
+        helper.assertTrue(zombie.getHealth() < zombie.getMaxHealth(), Component.literal("Striking a Thorned Shell should hurt the attacker"));
+        zombie.discard();
+        villager.discard();
+        helper.succeed();
+    }
+
+    static void leechingSwarmBringsBlood(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer player = makeVampire(helper, 0);
+        Vec3 at = helper.absoluteVec(new Vec3(1.5, 1.0, 4.5));
+        player.teleportTo(at.x, at.y, at.z);
+        Cow cow = helper.spawnWithNoFreeWill(EntityTypes.COW, new BlockPos(5, 1, 4));
+        SwarmBat.launchSwarm(level, player, player.getEyePosition().add(1.0, -0.8, 0.0), new Vec3(1.0, 0.0, 0.0), 6.0, true);
+        helper.succeedWhen(() -> {
+            helper.assertTrue(BloodPool.get(player) >= SwarmBat.LEECHED_BLOOD, Component.literal("The swarm's bites should bring the vampire blood"));
+            cow.discard();
+            removePlayer(helper, player);
+        });
+    }
+
+    static void panicSpreadsFromTheFleeing(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        Zombie carrier = helper.spawn(EntityTypes.ZOMBIE, new BlockPos(4, 1, 4));
+        carrier.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+        Zombie bystander = spawnHelmetedZombie(helper, new BlockPos(5, 1, 4));
+        carrier.setData(ModAttachments.TERROR, Optional.of(new ModAttachments.Terror(carrier.position(), level.getGameTime() + 40, true)));
+        helper.succeedWhen(() -> {
+            helper.assertTrue(NightOfTerror.isTerrified(bystander), Component.literal("The terror should spread to the zombie next to the fleeing one"));
+            helper.assertTrue(!bystander.getData(ModAttachments.TERROR).orElseThrow().contagious(), Component.literal("Caught panic doesn't spread again"));
+            carrier.discard();
+            bystander.discard();
+        });
+    }
+
+    static void finalFeastHealsTheNextBlow(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer player = makeVampire(helper, 50);
+        helper.assertTrue(castUpgraded(player, BloodSkill.DEFY_DEATH), Component.literal("Upgraded Defy Death should cast"));
+        // A deadly blow, played out by hand (mock players can't be hurt)
+        player.setHealth(0.0F);
+        player.die(level.damageSources().generic());
+        helper.assertValueEqual(player.getHealth(), 1.0F, "health after a defied death");
+        Villager villager = helper.spawnWithNoFreeWill(EntityTypes.VILLAGER, new BlockPos(4, 1, 4));
+        villager.hurtServer(level, level.damageSources().playerAttack(player), 4.0F);
+        helper.assertTrue(player.getHealth() > 1.0F, Component.literal("The next blow should heal the vampire"));
+        float healed = player.getHealth();
+        villager.damageCooldownTime = 0;
+        villager.hurtServer(level, level.damageSources().playerAttack(player), 4.0F);
+        helper.assertValueEqual(player.getHealth(), healed, "health after a second blow (only the first feeds)");
+        villager.discard();
+        removePlayer(helper, player);
+        helper.succeed();
+    }
+
+    static void returningStepLeavesAnAnchor(GameTestHelper helper) {
+        ServerPlayer player = makeVampire(helper, 100);
+        Vec3 anchor = helper.absoluteVec(new Vec3(4.5, 1.0, 4.5));
+        player.teleportTo(anchor.x, anchor.y, anchor.z);
+        helper.assertTrue(castUpgraded(player, BloodSkill.SHADOW_STEP), Component.literal("The first step places the anchor"));
+        Vec3 away = anchor.add(20.0, 3.0, 0.0);
+        player.teleportTo(away.x, away.y, away.z);
+        helper.assertTrue(castUpgraded(player, BloodSkill.SHADOW_STEP), Component.literal("Returning Step should step to the anchor"));
+        helper.assertTrue(player.position().distanceTo(anchor) < 0.01, Component.literal("The vampire should be on the anchor"));
+        helper.assertTrue(player.getData(ModAttachments.SHADOW_ANCHOR).map(left -> left.position().distanceTo(away) < 0.01).orElse(false),
+                Component.literal("The step should leave an anchor where the vampire stood"));
+        removePlayer(helper, player);
+        helper.succeed();
+    }
+
+    static void thirstingBladeFeedsOnKills(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer player = makeVampire(helper, 100);
+        helper.assertTrue(castUpgraded(player, BloodSkill.EPHEMERAL_SWORD), Component.literal("Upgraded Ephemeral Sword should cast"));
+        ItemStack sword = player.getMainHandItem();
+        long expiresAt = sword.get(ModDataComponents.EXPIRES_AT.get());
+        Villager villager = helper.spawnWithNoFreeWill(EntityTypes.VILLAGER, new BlockPos(4, 1, 4));
+        villager.hurtServer(level, level.damageSources().playerAttack(player), 1000.0F);
+        helper.assertValueEqual(sword.get(ModDataComponents.EXPIRES_AT.get()), expiresAt + UpgradeEffects.THIRSTING_BLADE_TICKS, "sword's expiry after a kill");
+        removePlayer(helper, player);
+        helper.succeed();
+    }
+
+    static void graveMarchRaisesTheFallen(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer player = makeVampire(helper, 100);
+        Villager villager = helper.spawnWithNoFreeWill(EntityTypes.VILLAGER, new BlockPos(4, 1, 4));
+        DeathMarch.march(villager, player);
+        villager.kill(level);
+        List<Zombie> risen = helper.getEntities(EntityTypes.ZOMBIE).stream().filter(zombie -> zombie.entityTags().contains(Enthrall.RISEN_TAG)).toList();
+        helper.assertTrue(risen.size() == 1 && Enthrall.isThrallOf(risen.getFirst(), player), Component.literal("The fallen should rise to serve the vampire"));
+        risen.forEach(Zombie::discard);
+        removePlayer(helper, player);
+        helper.succeed();
+    }
+
+    static void markedPreyTakesMoreDamage(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer player = makeVampire(helper, 100);
+        // Within sight of the zombies, as the gaze needs
+        Vec3 at = helper.absoluteVec(new Vec3(4.5, 1.0, 1.5));
+        player.teleportTo(at.x, at.y, at.z);
+        Zombie marked = spawnHelmetedZombie(helper, new BlockPos(2, 1, 4));
+        Zombie unmarked = spawnHelmetedZombie(helper, new BlockPos(6, 1, 4));
+        helper.assertTrue(castUpgraded(player, BloodSkill.STALKERS_GAZE), Component.literal("Upgraded Stalker's Gaze should cast"));
+        marked.hurtServer(level, level.damageSources().playerAttack(player), 10.0F);
+        player.removeEffect(ModEffects.STALKERS_GAZE);
+        unmarked.hurtServer(level, level.damageSources().playerAttack(player), 10.0F);
+        float markedLost = marked.getMaxHealth() - marked.getHealth();
+        float unmarkedLost = unmarked.getMaxHealth() - unmarked.getHealth();
+        helper.assertTrue(markedLost > unmarkedLost, Component.literal("Marked prey should take more damage: " + markedLost + " against " + unmarkedLost));
+        marked.discard();
+        unmarked.discard();
+        removePlayer(helper, player);
+        helper.succeed();
+    }
+
+
+    static void enthralledCreaturesServe(GameTestHelper helper) {
+        ServerPlayer player = makeVampire(helper, 0);
+        Zombie zombie = helper.spawn(EntityTypes.ZOMBIE, new BlockPos(2, 1, 4));
+        zombie.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+        Possession.start(player, zombie, true);
+        // Let the possession run out
+        PossessionState state = player.getData(ModAttachments.POSSESSION_STATE);
+        player.setData(ModAttachments.POSSESSION_STATE, new PossessionState(1, state.health(), state.attackDamage(), 0, 0));
+        Possession.tickPossession(player);
+        Zombie thrall = helper.getEntities(EntityTypes.ZOMBIE).getFirst();
+        helper.assertTrue(Enthrall.isThrallOf(thrall, player), Component.literal("The creature should be enthralled once the possession runs its course"));
+        thrall.setTarget(player);
+        helper.assertTrue(thrall.getTarget() != player, Component.literal("A thrall shouldn't turn on its master"));
+
+        // Something hurts the master: the thrall goes for it
+        Husk husk = helper.spawnWithNoFreeWill(EntityTypes.HUSK, new BlockPos(6, 1, 4));
+        player.setLastHurtByMob(husk);
+        helper.succeedWhen(() -> {
+            helper.assertTrue(thrall.getTarget() == husk, Component.literal("The thrall should attack whatever hurt its master"));
+            thrall.discard();
+            husk.discard();
+            removePlayer(helper, player);
+        });
+    }
+
+    static void plainPossessionLeavesNoThrall(GameTestHelper helper) {
+        ServerPlayer player = makeVampire(helper, 0);
+        Zombie zombie = helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, new BlockPos(4, 1, 4));
+        Possession.start(player, zombie);
+        PossessionState state = player.getData(ModAttachments.POSSESSION_STATE);
+        player.setData(ModAttachments.POSSESSION_STATE, new PossessionState(1, state.health(), state.attackDamage(), 0, 0));
+        Possession.tickPossession(player);
+        Zombie returned = helper.getEntities(EntityTypes.ZOMBIE).getFirst();
+        helper.assertTrue(!Enthrall.isThrallOf(returned, player), Component.literal("Only the Enthrall upgrade leaves a thrall"));
+        returned.discard();
+        removePlayer(helper, player);
+        helper.succeed();
+    }
+
+
+    static void sanguineTableUpgradesSkills(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos table = new BlockPos(4, 1, 4);
+        helper.setBlock(table, ModBlocks.SANGUINE_TABLE.get());
+        BlockPos tablePos = helper.absolutePos(table);
+        BlockState state = level.getBlockState(tablePos);
+        BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(tablePos), Direction.UP, tablePos, false);
+        ServerPlayer player = makeVampire(helper, 100);
+
+        // A skill with no upgrade yet
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(BloodSkill.FLIGHT.skillItem()));
+        state.useItemOn(player.getMainHandItem(), level, player, InteractionHand.MAIN_HAND, hit);
+        helper.assertTrue(!SkillUpgrade.isUpgraded(player.getMainHandItem()), Component.literal("Flight has no upgrade"));
+
+        // One mark short, then enough
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(BloodSkill.BLOOD_SPEAR.skillItem()));
+        player.getInventory().add(new ItemStack(ModItems.TOKEN_OF_BLOOD.get(), SanguineTableBlock.PRICE - 1));
+        state.useItemOn(player.getMainHandItem(), level, player, InteractionHand.MAIN_HAND, hit);
+        helper.assertTrue(!SkillUpgrade.isUpgraded(player.getMainHandItem()), Component.literal("The table should want its full price"));
+        player.getInventory().add(new ItemStack(ModItems.TOKEN_OF_BLOOD.get(), 1));
+        state.useItemOn(player.getMainHandItem(), level, player, InteractionHand.MAIN_HAND, hit);
+        helper.assertTrue(SkillUpgrade.isUpgraded(player.getMainHandItem()), Component.literal("The table should upgrade the Blood Spear"));
+        for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+            helper.assertTrue(!player.getInventory().getItem(slot).is(ModItems.TOKEN_OF_BLOOD.get()), Component.literal("The tokens should be spent"));
+        }
+
+        // The upgraded spear costs 5 more blood, and the spear it conjures carries the lightning
+        SkillSlots.set(player, 0, player.getMainHandItem().copy());
+        player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+        helper.assertTrue(BloodSkills.tryCast(player, 0), Component.literal("The upgraded Blood Spear should cast"));
+        helper.assertValueEqual(BloodPool.get(player), 100 - BloodSkill.BLOOD_SPEAR.cost() - SkillUpgrade.CRIMSON_LIGHTNING.extraCost(), "blood after an upgraded Blood Spear");
+        helper.assertTrue(player.getMainHandItem().is(ModItems.BLOOD_SPEAR.get()) && SkillUpgrade.isUpgraded(player.getMainHandItem()),
+                Component.literal("The conjured spear should be upgraded too"));
+        removePlayer(helper, player);
+        helper.succeed();
+    }
+
+    static void crimsonLightningStrikesSpearVictims(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer player = makeVampire(helper, 0);
+        Zombie struck = helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, new BlockPos(2, 1, 1));
+        struck.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+        Zombie plain = helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, new BlockPos(6, 1, 1));
+        plain.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+        throwSpearAt(level, player, struck, new Vec3(0.0, 0.0, 1.0), true);
+        throwSpearAt(level, player, plain, new Vec3(0.0, 0.0, 1.0), false);
+        List<CrimsonLightning> bolts = level.getEntitiesOfClass(CrimsonLightning.class, struck.getBoundingBox().inflate(4.0));
+        helper.assertTrue(!bolts.isEmpty(), Component.literal("Red lightning should strike the upgraded spear's victim"));
+        helper.assertTrue(bolts.getFirst().shouldRenderAtSqrDistance(30.0 * 30.0), Component.literal("The bolt should be drawn for anyone nearby"));
+        float struckLost = struck.getMaxHealth() - struck.getHealth();
+        float plainLost = plain.getMaxHealth() - plain.getHealth();
+        helper.assertTrue(struckLost > plainLost + 4.0F, Component.literal("The lightning should hurt on top of the spear: " + struckLost + " against " + plainLost));
+        struck.discard();
+        plain.discard();
+        removePlayer(helper, player);
+        helper.succeed();
+    }
+
+    static void spreadingBoilGrowsWithDeaths(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer player = makeVampire(helper, 0);
+        Vec3 middle = helper.absoluteVec(new Vec3(4.5, 1.0, 4.5));
+        HemorrhageZone spreading = HemorrhageZone.create(level, player, middle.x, middle.y, middle.z);
+        spreading.setSpreading(true);
+        level.addFreshEntity(spreading);
+        helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, new BlockPos(5, 1, 4)).kill(level);
+        helper.assertValueEqual(spreading.getRadius(), HemorrhageZone.RADIUS + 1.0, "radius after a death in a spreading patch");
+        spreading.discard();
+
+        HemorrhageZone plain = HemorrhageZone.create(level, player, middle.x, middle.y, middle.z);
+        level.addFreshEntity(plain);
+        helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, new BlockPos(5, 1, 4)).kill(level);
+        helper.assertValueEqual(plain.getRadius(), HemorrhageZone.RADIUS, "radius after a death in a plain patch");
+        plain.discard();
+        removePlayer(helper, player);
+        helper.succeed();
     }
 
     // ---- Keeping skills ----
@@ -311,9 +812,24 @@ final class SkillGameTests {
         helper.succeed();
     }
 
-    static void translatorRecipeUsesHuntersMarks(GameTestHelper helper) {
-        var recipe = helper.getLevel().getServer().getRecipeManager().byKey(ResourceKey.create(Registries.RECIPE, CrimsonCovenant.id("ancient_translator")));
-        helper.assertTrue(recipe.isPresent(), Component.literal("Missing the Ancient Translator recipe"));
+    static void translatorRecipeUsesTokensOfBlood(GameTestHelper helper) {
+        var recipes = helper.getLevel().getServer().getRecipeManager();
+        for (String recipe : new String[] {"ancient_translator", "sanguine_table", "silver_coin"}) {
+            helper.assertTrue(recipes.byKey(ResourceKey.create(Registries.RECIPE, CrimsonCovenant.id(recipe))).isPresent(), Component.literal("Missing recipe " + recipe));
+        }
+        helper.succeed();
+    }
+
+    static void oldHunterTradesForSilverCoins(GameTestHelper helper) {
+        Villager hunter = helper.spawnWithNoFreeWill(EntityTypes.VILLAGER, new BlockPos(4, 1, 4));
+        hunter.setVillagerData(hunter.getVillagerData().withProfession(ModVillagers.OLD_HUNTER).withLevel(1));
+        helper.assertTrue(!hunter.getOffers().isEmpty(), Component.literal("A novice Old Hunter should have something to trade"));
+        for (MerchantOffer offer : hunter.getOffers()) {
+            boolean coins = offer.getCostA().is(ModItems.SILVER_COIN.get()) || offer.getCostB().is(ModItems.SILVER_COIN.get())
+                    || offer.getResult().is(Items.EMERALD);
+            helper.assertTrue(coins, Component.literal("The Old Hunter deals in Silver Coins, not " + offer.getCostA()));
+        }
+        hunter.discard();
         helper.succeed();
     }
 
@@ -324,7 +840,7 @@ final class SkillGameTests {
         butler.setVillagerData(butler.getVillagerData().withProfession(ModVillagers.ANCIENT_BUTLER).withLevel(1));
         MerchantOffer dash = butler.getOffers().stream().filter(offer -> offer.getResult().is(BloodSkill.DASH.tome())).findFirst().orElse(null);
         helper.assertTrue(dash != null, Component.literal("A novice Ancient Butler should sell the Dash tome"));
-        helper.assertTrue(dash.getCostB().is(ModItems.HUNTERS_MARK.get()), Component.literal("Tomes should cost Hunter's Marks, not Tokens of Blood"));
+        helper.assertTrue(dash.getCostB().is(ModItems.TOKEN_OF_BLOOD.get()), Component.literal("Tomes should cost Tokens of Blood"));
         boolean sellsBlood = butler.getOffers().stream().anyMatch(offer -> offer.getResult().is(ModItems.BLOOD_BOTTLE.get()));
         helper.assertTrue(sellsBlood, Component.literal("A novice Ancient Butler should sell Blood Bottles"));
         butler.discard();
@@ -721,6 +1237,79 @@ final class SkillGameTests {
         helper.succeed();
     }
 
+    static void blackBloodHurtsAttackersBack(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        Cow drinker = helper.spawnWithNoFreeWill(EntityTypes.COW, new BlockPos(3, 1, 4));
+        drinker.addEffect(new MobEffectInstance(ModEffects.BLACK_BLOOD, 200));
+        Zombie attacker = spawnSturdyZombie(helper, new BlockPos(5, 1, 4));
+        float health = attacker.getHealth();
+        drinker.hurtServer(level, level.damageSources().mobAttack(attacker), 2.0F);
+        float struck = attacker.getHealth();
+        // A little less than the full 3 gets through the zombie's armor
+        helper.assertTrue(health - struck > BlackBloodEffect.RETALIATION - 0.5F, Component.literal("Striking a Black Blood drinker should hurt the attacker back, but it lost " + (health - struck)));
+
+        // An arrow from a distance isn't answered
+        drinker.damageCooldownTime = 0;
+        Arrow arrow = new Arrow(level, attacker, new ItemStack(Items.ARROW), null);
+        drinker.hurtServer(level, level.damageSources().arrow(arrow, attacker), 2.0F);
+        helper.assertValueEqual(attacker.getHealth(), struck, "attacker's health after shooting the drinker");
+        arrow.discard();
+
+        var recipes = level.getServer().getRecipeManager();
+        for (String recipe : new String[] {"brewing/potion_awkward_token_of_blood", "brewing/potion_black_blood_glowstone", "brewing/potion_black_blood_redstone"}) {
+            helper.assertTrue(recipes.byKey(ResourceKey.create(Registries.RECIPE, CrimsonCovenant.id(recipe))).isPresent(), Component.literal("Missing recipe " + recipe));
+        }
+        // Only ever drunk: it can't be made into a splash potion
+        helper.assertTrue(recipes.byKey(ResourceKey.create(Registries.RECIPE, CrimsonCovenant.id("brewing/potion_black_blood_gunpowder"))).isEmpty(),
+                Component.literal("Black Blood shouldn't become a splash potion"));
+        attacker.discard();
+        drinker.discard();
+        helper.succeed();
+    }
+
+    static void huntersDrinkBlackBloodForAFight(GameTestHelper helper) {
+        Hunter hunter = helper.spawn(ModEntities.HUNTER.get(), new BlockPos(2, 1, 4));
+        Zombie zombie = spawnSturdyZombie(helper, new BlockPos(6, 1, 4));
+        helper.assertTrue(!hunter.hasEffect(ModEffects.BLACK_BLOOD), Component.literal("A hunter at rest hasn't drunk Black Blood"));
+        hunter.setTarget(zombie);
+        helper.succeedWhen(() -> {
+            helper.assertTrue(hunter.hasEffect(ModEffects.BLACK_BLOOD), Component.literal("A hunter going into a fight should drink Black Blood"));
+            hunter.discard();
+            zombie.discard();
+        });
+    }
+
+    static void blackBloodBurnsUndeadBiters(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        Hunter hunter = helper.spawnWithNoFreeWill(ModEntities.HUNTER.get(), new BlockPos(3, 1, 4));
+        hunter.addEffect(new MobEffectInstance(ModEffects.BLACK_BLOOD, 200));
+        Vampire vampire = helper.spawnWithNoFreeWill(ModEntities.VAMPIRE.get(), new BlockPos(5, 1, 4));
+        vampire.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+        // Vampires shrug off most harm (Resistance), so their health is checked before and after the blow
+        float health = vampire.getHealth();
+        hunter.hurtServer(level, level.damageSources().mobAttack(vampire), 2.0F);
+        helper.assertTrue(vampire.getHealth() < health, Component.literal("A vampire biting a Black Blood drinker should be hurt in turn"));
+        hunter.discard();
+        vampire.discard();
+        helper.succeed();
+    }
+
+    static void vampiresRefuseBlackBlood(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer vampire = makeVampire(helper, 0);
+        vampire.setItemInHand(InteractionHand.MAIN_HAND, PotionContents.createItemStack(Items.POTION, ModPotions.BLACK_BLOOD));
+        vampire.getMainHandItem().use(level, vampire, InteractionHand.MAIN_HAND);
+        helper.assertTrue(!vampire.isUsingItem(), Component.literal("A vampire shouldn't be able to start drinking Black Blood"));
+
+        ServerPlayer human = makePlayer(helper);
+        human.setItemInHand(InteractionHand.MAIN_HAND, PotionContents.createItemStack(Items.POTION, ModPotions.BLACK_BLOOD));
+        human.getMainHandItem().use(level, human, InteractionHand.MAIN_HAND);
+        helper.assertTrue(human.isUsingItem(), Component.literal("A human can drink Black Blood"));
+        removePlayer(helper, vampire);
+        removePlayer(helper, human);
+        helper.succeed();
+    }
+
     static void bloodBottlesRefillVampires(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         ServerPlayer vampire = makeVampire(helper, 10);
@@ -734,5 +1323,144 @@ final class SkillGameTests {
         removePlayer(helper, vampire);
         removePlayer(helper, human);
         helper.succeed();
+    }
+
+    // ---- Garlic ----
+
+    /// Hangs a Garlic Braid from a stone block one above `pos`
+    private static BlockPos hangGarlic(GameTestHelper helper, BlockPos pos) {
+        helper.setBlock(pos.above(), Blocks.STONE);
+        helper.setBlock(pos, ModBlocks.GARLIC_BRAID.get().defaultBlockState().setValue(GarlicBraidBlock.HANGING, true));
+        return helper.absolutePos(pos);
+    }
+
+    static void garlicBraidRepelsUndead(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos garlic = hangGarlic(helper, new BlockPos(4, 2, 1));
+        Husk husk = helper.spawn(EntityTypes.HUSK, new BlockPos(4, 1, 3));
+        helper.assertTrue(GarlicWard.nearestGarlic(level, husk.blockPosition(), GarlicWard.RADIUS).isPresent(),
+                Component.literal("Undead should be able to smell the garlic"));
+        helper.succeedWhen(() -> {
+            helper.assertTrue(husk.position().distanceTo(Vec3.atCenterOf(garlic)) > 5.0, Component.literal("The husk should back away from the garlic"));
+            husk.discard();
+        });
+    }
+
+    static void garlicWeakensUndead(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        Husk husk = helper.spawnWithNoFreeWill(EntityTypes.HUSK, new BlockPos(2, 1, 4));
+        husk.addEffect(new MobEffectInstance(ModEffects.GARLIC, 200));
+        Villager bitten = helper.spawnWithNoFreeWill(EntityTypes.VILLAGER, new BlockPos(5, 1, 4));
+        bitten.hurtServer(level, level.damageSources().mobAttack(husk), 10.0F);
+        float lost = bitten.getMaxHealth() - bitten.getHealth();
+        helper.assertTrue(Math.abs(lost - 10.0F * GarlicEffect.damageLeft(0)) < 0.01F, Component.literal("Garlic should take 40% off an undead's blow, lost " + lost));
+
+        // The living don't mind garlic
+        Cow cow = helper.spawnWithNoFreeWill(EntityTypes.COW, new BlockPos(6, 1, 6));
+        cow.addEffect(new MobEffectInstance(ModEffects.GARLIC, 200));
+        Villager kicked = helper.spawnWithNoFreeWill(EntityTypes.VILLAGER, new BlockPos(6, 1, 2));
+        kicked.hurtServer(level, level.damageSources().mobAttack(cow), 10.0F);
+        helper.assertValueEqual(kicked.getMaxHealth() - kicked.getHealth(), 10.0F, "damage from a garlic-soaked cow");
+
+        helper.succeedWhen(() -> {
+            helper.assertTrue(husk.hasEffect(MobEffects.SLOWNESS), Component.literal("Garlic should slow undead"));
+            helper.assertTrue(!cow.hasEffect(MobEffects.SLOWNESS), Component.literal("Garlic shouldn't slow the living"));
+        });
+    }
+
+    static void garlicReeksToVampirePlayers(GameTestHelper helper) {
+        hangGarlic(helper, new BlockPos(4, 2, 6));
+        ServerPlayer vampire = makeVampire(helper, 50);
+        Vec3 at = helper.absoluteVec(new Vec3(4.5, 1.0, 4.5));
+        vampire.teleportTo(at.x, at.y, at.z);
+        // Mock players are always in creative, which garlic leaves alone, so this skips straight to the check
+        GarlicWard.reelFromGarlic(vampire);
+        helper.assertTrue(vampire.hasEffect(ModEffects.GARLIC), Component.literal("A vampire next to hung garlic should reel from it"));
+        removePlayer(helper, vampire);
+        helper.succeed();
+    }
+
+    static void garlicGrowsAndBrews(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        helper.assertTrue(ModItems.GARLIC.get().getBlock() == ModBlocks.GARLIC_CROP.get(), Component.literal("Garlic should plant the garlic crop"));
+        var recipes = level.getServer().getRecipeManager();
+        for (String recipe : new String[] {"garlic_braid", "brewing/potion_awkward_garlic", "brewing/potion_garlic_redstone", "brewing/potion_garlic_glowstone_dust",
+                "brewing/potion_garlic_gunpowder", "brewing/splash_potion_garlic_dragon_breath", "brewing/potion_awkward_ectoplasm", "brewing/potion_ephemeral_redstone"}) {
+            helper.assertTrue(recipes.byKey(ResourceKey.create(Registries.RECIPE, CrimsonCovenant.id(recipe))).isPresent(), Component.literal("Missing recipe " + recipe));
+        }
+        helper.assertTrue(recipes.byKey(ResourceKey.create(Registries.RECIPE, CrimsonCovenant.id("brewing/potion_ephemeral_gunpowder"))).isEmpty(),
+                Component.literal("The Potion of Ephemeral is drink-only"));
+
+        // Wild garlic turns up in grass now and then
+        LootTable grass = level.getServer().reloadableRegistries().getLootTable(
+                ResourceKey.create(Registries.LOOT_TABLE, net.minecraft.resources.Identifier.withDefaultNamespace("blocks/short_grass")));
+        LootParams params = new LootParams.Builder(level).withParameter(LootContextParams.ORIGIN, helper.absoluteVec(Vec3.ZERO))
+                .withParameter(LootContextParams.BLOCK_STATE, Blocks.SHORT_GRASS.defaultBlockState())
+                .withParameter(LootContextParams.TOOL, ItemStack.EMPTY).create(LootContextParamSets.BLOCK);
+        int garlic = 0;
+        for (int i = 0; i < 1000; i++) {
+            for (ItemStack stack : grass.getRandomItems(params)) {
+                if (stack.is(ModItems.GARLIC.get())) {
+                    garlic += stack.getCount();
+                }
+            }
+        }
+        // 4% a time: about 40 in 1000
+        helper.assertTrue(garlic > 10 && garlic < 90, Component.literal("Expected about 40 garlic from 1000 tufts of grass, got " + garlic));
+        helper.succeed();
+    }
+
+    // ---- The Potion of Ephemeral ----
+
+    static void ephemeralPassesThroughWalls(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        // The player stands inside a pillar of stone
+        helper.setBlock(new BlockPos(4, 1, 4), Blocks.STONE);
+        helper.setBlock(new BlockPos(4, 2, 4), Blocks.STONE);
+        ServerPlayer player = makePlayer(helper);
+        Vec3 at = helper.absoluteVec(new Vec3(4.5, 1.0, 4.5));
+        player.teleportTo(at.x, at.y, at.z);
+        player.addEffect(new MobEffectInstance(ModEffects.EPHEMERAL, 100));
+        player.doTick();
+        helper.assertTrue(player.noPhysics, Component.literal("A ghost shouldn't collide with walls"));
+        helper.assertTrue(player.getAbilities().flying, Component.literal("A ghost should float"));
+        helper.assertTrue(player.getData(ModAttachments.GHOSTLY), Component.literal("Others should see the player as a ghost"));
+
+        player.removeEffect(ModEffects.EPHEMERAL);
+        player.doTick();
+        helper.assertTrue(!player.noPhysics && !player.getData(ModAttachments.GHOSTLY), Component.literal("The player should be solid again"));
+        helper.assertTrue(level.noCollision(player, player.getBoundingBox()), Component.literal("A ghost turning solid inside a wall should be pushed out of it"));
+        removePlayer(helper, player);
+        helper.succeed();
+    }
+
+    static void ghostsCantBeHit(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer player = makePlayer(helper);
+        Zombie zombie = spawnHelmetedZombie(helper, new BlockPos(4, 1, 4));
+        player.addEffect(new MobEffectInstance(ModEffects.EPHEMERAL, 100));
+        DamageSource blow = level.damageSources().mobAttack(zombie);
+        helper.assertTrue(NeoForge.EVENT_BUS.post(new LivingIncomingDamageEvent(player, new DamageContainer(blow, 4.0F))).isCanceled(),
+                Component.literal("A zombie's blow should pass through a ghost"));
+        helper.assertTrue(!NeoForge.EVENT_BUS.post(new LivingIncomingDamageEvent(player, new DamageContainer(level.damageSources().fall(), 4.0F))).isCanceled(),
+                Component.literal("Harm nobody dealt, like a fall, still hurts a ghost"));
+        Arrow arrow = new Arrow(level, zombie, new ItemStack(Items.ARROW), null);
+        helper.assertTrue(NeoForge.EVENT_BUS.post(new ProjectileImpactEvent(arrow, new EntityHitResult(player))).isCanceled(),
+                Component.literal("An arrow should fly straight through a ghost"));
+
+        player.removeEffect(ModEffects.EPHEMERAL);
+        helper.assertTrue(!NeoForge.EVENT_BUS.post(new LivingIncomingDamageEvent(player, new DamageContainer(blow, 4.0F))).isCanceled(),
+                Component.literal("Once solid again, the player can be hit"));
+        zombie.discard();
+        removePlayer(helper, player);
+        helper.succeed();
+    }
+
+    // ---- The Master Vampire's summons ----
+
+    static void orphanedMinionsCrumble(GameTestHelper helper) {
+        Spider spider = helper.spawnWithNoFreeWill(EntityTypes.SPIDER, new BlockPos(4, 1, 4));
+        spider.addTag(MasterVampire.FAMILIAR_TAG);
+        helper.succeedWhen(() -> helper.assertTrue(spider.isRemoved(), Component.literal("A summon with no master should crumble")));
     }
 }

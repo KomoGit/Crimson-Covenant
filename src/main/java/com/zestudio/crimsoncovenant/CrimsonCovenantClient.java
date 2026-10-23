@@ -2,16 +2,21 @@ package com.zestudio.crimsoncovenant;
 
 import com.zestudio.crimsoncovenant.client.ModModelLayers;
 import com.zestudio.crimsoncovenant.client.hud.BloodBarLayer;
+import com.zestudio.crimsoncovenant.client.hud.FadingItemsLayer;
 import com.zestudio.crimsoncovenant.client.hud.SkillBarLayer;
 import com.zestudio.crimsoncovenant.client.screen.SkillsScreen;
+import com.zestudio.crimsoncovenant.client.model.BloodSpearModel;
 import com.zestudio.crimsoncovenant.client.model.GhostModel;
 import com.zestudio.crimsoncovenant.client.model.WerewolfModel;
 import com.zestudio.crimsoncovenant.client.renderer.AncientArmorLayer;
+import com.zestudio.crimsoncovenant.client.renderer.BloodSpearItemRenderer;
 import com.zestudio.crimsoncovenant.client.renderer.BloodSpearRenderer;
+import com.zestudio.crimsoncovenant.client.renderer.CrimsonLightningRenderer;
 import com.zestudio.crimsoncovenant.client.renderer.GhostRenderer;
 import com.zestudio.crimsoncovenant.client.renderer.HeadlessHorsemanRenderer;
 import com.zestudio.crimsoncovenant.client.renderer.HunterRenderer;
 import com.zestudio.crimsoncovenant.client.renderer.SilverArrowRenderer;
+import com.zestudio.crimsoncovenant.client.renderer.SilveredWeaponSprites;
 import com.zestudio.crimsoncovenant.client.renderer.VampireBatRenderer;
 import com.zestudio.crimsoncovenant.client.renderer.VampireRenderer;
 import com.zestudio.crimsoncovenant.client.renderer.WerewolfRenderer;
@@ -44,6 +49,8 @@ import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
+import net.neoforged.neoforge.client.event.RegisterSpecialModelRendererEvent;
+import net.neoforged.neoforge.client.event.RegisterSpriteSourcesEvent;
 import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 import net.neoforged.neoforge.client.renderstate.AvatarRenderStateModifier;
@@ -77,6 +84,7 @@ public class CrimsonCovenantClient {
         event.registerLayerDefinition(ModModelLayers.VAMPIRE, () -> LayerDefinition.create(PlayerModel.createMesh(CubeDeformation.NONE, false), 64, 64));
         event.registerLayerDefinition(ModModelLayers.GHOST, GhostModel::createBodyLayer);
         event.registerLayerDefinition(ModModelLayers.WEREWOLF, WerewolfModel::createBodyLayer);
+        event.registerLayerDefinition(ModModelLayers.BLOOD_SPEAR, BloodSpearModel::createLayer);
         // Slightly inflated so the blood armor shell sits just outside the body, like the wither's armor
         event.registerLayerDefinition(ModModelLayers.VAMPIRE_BLOOD_ARMOR, () -> LayerDefinition.create(PlayerModel.createMesh(new CubeDeformation(0.5F), false), 64, 64));
     }
@@ -84,11 +92,13 @@ public class CrimsonCovenantClient {
     @SubscribeEvent
     static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ModEntities.HUNTER.get(), HunterRenderer::new);
+        event.registerEntityRenderer(ModEntities.HUNTER_CHEMIST.get(), context -> new HunterRenderer(context, HunterRenderer.HUNTER_CHEMIST_TEXTURE, 1.0F));
         event.registerEntityRenderer(ModEntities.MASTER_HUNTER.get(), context -> new HunterRenderer(context, HunterRenderer.MASTER_HUNTER_TEXTURE, 1.1F));
         event.registerEntityRenderer(ModEntities.VAMPIRE.get(), VampireRenderer::new);
         event.registerEntityRenderer(ModEntities.VAMPIRE_BAT.get(), VampireBatRenderer::new);
         event.registerEntityRenderer(ModEntities.SWARM_BAT.get(), VampireBatRenderer::new);
         event.registerEntityRenderer(ModEntities.HEMORRHAGE_ZONE.get(), NoopRenderer::new);
+        event.registerEntityRenderer(ModEntities.CRIMSON_LIGHTNING.get(), CrimsonLightningRenderer::new);
         event.registerEntityRenderer(ModEntities.HEADLESS_HORSEMAN.get(), HeadlessHorsemanRenderer::new);
         event.registerEntityRenderer(ModEntities.GHOST.get(), GhostRenderer::new);
         event.registerEntityRenderer(ModEntities.WEREWOLF.get(), WerewolfRenderer::new);
@@ -103,6 +113,7 @@ public class CrimsonCovenantClient {
     static void registerGuiLayers(RegisterGuiLayersEvent event) {
         event.registerAbove(VanillaGuiLayers.FOOD_LEVEL, BloodBarLayer.ID, new BloodBarLayer());
         event.registerAbove(VanillaGuiLayers.HOTBAR, SkillBarLayer.ID, new SkillBarLayer());
+        event.registerAbove(VanillaGuiLayers.HOTBAR, FadingItemsLayer.ID, new FadingItemsLayer());
     }
 
     // Vampires don't hunger, so they have no hunger bar: the blood bar takes its place
@@ -111,6 +122,18 @@ public class CrimsonCovenantClient {
         if (event.getName().equals(VanillaGuiLayers.FOOD_LEVEL) && Minecraft.getInstance().getCameraEntity() instanceof Player player && Vampirism.isVampire(player)) {
             event.setCanceled(true);
         }
+    }
+
+    // The Blood Spear held in hand is drawn like a trident
+    @SubscribeEvent
+    static void registerSpecialItemRenderers(RegisterSpecialModelRendererEvent event) {
+        event.register(BloodSpearItemRenderer.ID, BloodSpearItemRenderer.Unbaked.MAP_CODEC);
+    }
+
+    // Silvered weapons' textures, made from the plain ones as the items atlas is built
+    @SubscribeEvent
+    static void registerSpriteSources(RegisterSpriteSourcesEvent event) {
+        event.register(CrimsonCovenant.id("silvered_weapons"), SilveredWeaponSprites.MAP_CODEC);
     }
 
     @SubscribeEvent
@@ -135,6 +158,11 @@ public class CrimsonCovenantClient {
             @Override
             public <T extends Avatar & ClientAvatarEntity> void accept(T avatar, AvatarRenderState state) {
                 state.setRenderData(AncientArmorLayer.ACTIVE, avatar instanceof Player player && player.getData(ModAttachments.ANCIENT_ARMOR_VISIBLE));
+                // A ghost from the Potion of Ephemeral: drawn faint, the way an invisible player looks to a teammate
+                if (avatar instanceof Player player && player.getData(ModAttachments.GHOSTLY)) {
+                    state.isInvisible = true;
+                    state.isInvisibleToPlayer = false;
+                }
             }
         });
     }

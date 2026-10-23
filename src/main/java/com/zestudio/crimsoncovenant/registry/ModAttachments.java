@@ -2,16 +2,20 @@ package com.zestudio.crimsoncovenant.registry;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Supplier;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
+import com.zestudio.crimsoncovenant.skill.Enthrall;
+import com.zestudio.crimsoncovenant.skill.AfterimageStrike;
 
 import io.netty.buffer.ByteBuf;
 
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.Identifier;
@@ -58,6 +62,39 @@ public final class ModAttachments {
             () -> AttachmentType.builder(() -> List.<ItemStack>of()).serialize(ItemStack.OPTIONAL_CODEC.listOf().fieldOf("skills")).copyOnDeath()
                     .sync((holder, to) -> holder == to, ItemStack.OPTIONAL_STREAM_CODEC.apply(ByteBufCodecs.list())).build());
 
+    /// Whether the player is a ghost from the Potion of Ephemeral, sent to everyone nearby so they can draw them
+    /// faint (effects themselves only reach the player's own client). Not saved.
+    public static final Supplier<AttachmentType<Boolean>> GHOSTLY = ATTACHMENT_TYPES.register("ghostly",
+            () -> AttachmentType.builder(() -> false).sync(ByteBufCodecs.BOOL).build());
+
+    /// The bear trap holding a creature fast, if one is. Sent to a player's own client, which moves them, so the
+    /// trap can hold them there too. Not saved: logging out slips the trap.
+    public static final Supplier<AttachmentType<Optional<BlockPos>>> TRAPPED_IN = ATTACHMENT_TYPES.register("trapped_in",
+            () -> AttachmentType.builder(() -> Optional.<BlockPos>empty()).sync((holder, to) -> holder == to, ByteBufCodecs.optional(BlockPos.STREAM_CODEC)).build());
+
+    /// A creature under a vampire's spell after an Enthrall possession (see skill.Enthrall). Not saved.
+    public static final Supplier<AttachmentType<Optional<Enthrall.Thrall>>> THRALL = ATTACHMENT_TYPES.register("thrall",
+            () -> AttachmentType.builder(() -> Optional.<Enthrall.Thrall>empty()).build());
+
+    /// Whether the possession a player is in was cast with the Enthrall upgrade. Not saved.
+    public static final Supplier<AttachmentType<Boolean>> POSSESSION_ENTHRALLS = ATTACHMENT_TYPES.register("possession_enthralls",
+            () -> AttachmentType.builder(() -> false).build());
+
+    /// Blood Wings (upgraded Flight): set when the flight runs out, until the vampire lands in a diving slam. Not saved.
+    public static final Supplier<AttachmentType<Boolean>> BLOOD_WINGS_DIVE = ATTACHMENT_TYPES.register("blood_wings_dive",
+            () -> AttachmentType.builder(() -> false).build());
+
+    /// Afterimage Strike (upgraded Dash): whether the dash under way leaves slashing afterimages, and the afterimages
+    /// with the slashes they still owe (see skill.AfterimageStrike). Not saved.
+    public static final Supplier<AttachmentType<Boolean>> DASH_STRIKING = ATTACHMENT_TYPES.register("dash_striking",
+            () -> AttachmentType.builder(() -> false).build());
+    public static final Supplier<AttachmentType<AfterimageStrike.Trail>> DASH_AFTERIMAGES = ATTACHMENT_TYPES.register("dash_afterimages",
+            () -> AttachmentType.builder(AfterimageStrike.Trail::new).build());
+
+    /// Final Feast (upgraded Defy Death): the game time until which the vampire's next blow heals them. Not saved.
+    public static final Supplier<AttachmentType<Long>> FINAL_FEAST_UNTIL = ATTACHMENT_TYPES.register("final_feast_until",
+            () -> AttachmentType.builder(() -> 0L).build());
+
     /// Where a player's Shadow Step anchor is, if they've placed one. Survives death.
     public static final Supplier<AttachmentType<Optional<ShadowAnchor>>> SHADOW_ANCHOR = ATTACHMENT_TYPES.register("shadow_anchor",
             () -> AttachmentType.builder(() -> Optional.<ShadowAnchor>empty()).serialize(ShadowAnchor.CODEC.optionalFieldOf("anchor")).copyOnDeath().build());
@@ -96,6 +133,10 @@ public final class ModAttachments {
     public static final Supplier<AttachmentType<Optional<DeathMarch>>> DEATH_MARCH = ATTACHMENT_TYPES.register("death_march",
             () -> AttachmentType.builder(() -> Optional.<DeathMarch>empty()).build());
 
+    /// A creature a Blood Spear is driving back (see BloodSpear). Not saved.
+    public static final Supplier<AttachmentType<Optional<SpearDrive>>> SPEAR_DRIVE = ATTACHMENT_TYPES.register("spear_drive",
+            () -> AttachmentType.builder(() -> Optional.<SpearDrive>empty()).build());
+
     public record DashState(Vec3 velocity, int ticksLeft) {
         public static final DashState NONE = new DashState(Vec3.ZERO, 0);
         public static final StreamCodec<ByteBuf, DashState> STREAM_CODEC = StreamCodec.composite(
@@ -104,7 +145,11 @@ public final class ModAttachments {
                 DashState::new);
     }
 
-    public record DeathMarch(Vec3 direction, long until) {}
+    /// `raiser`: the vampire whose Grave March raises the creature if it dies on the march
+    public record DeathMarch(Vec3 direction, long until, Optional<UUID> raiser) {}
+
+    /// A creature being carried along by a Blood Spear: its speed and heading, the ticks left, and who threw it
+    public record SpearDrive(Vec3 velocity, int ticksLeft, Optional<UUID> thrower) {}
 
     public record ShadowAnchor(ResourceKey<Level> dimension, Vec3 position) {
         public static final Codec<ShadowAnchor> CODEC = RecordCodecBuilder.create(instance -> instance.group(
@@ -112,7 +157,8 @@ public final class ModAttachments {
                 Vec3.CODEC.fieldOf("position").forGetter(ShadowAnchor::position)).apply(instance, ShadowAnchor::new));
     }
 
-    public record Terror(Vec3 source, long until) {}
+    /// `contagious`: Panic Contagion, the fleeing creature spreads its terror to others it passes
+    public record Terror(Vec3 source, long until, boolean contagious) {}
 
     public record PossessedForm(Identifier type, CompoundTag data) {
         public static final Codec<PossessedForm> CODEC = RecordCodecBuilder.create(instance -> instance.group(

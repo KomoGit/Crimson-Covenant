@@ -54,6 +54,11 @@ public final class Vampirism {
 
     /// Whether a vampire can drink from this: only the living. Not the undead (other vampires included), and not
     /// armor stands.
+    /// Undead creatures, and vampire players with them
+    public static boolean isUndead(LivingEntity entity) {
+        return entity.is(EntityTypeTags.UNDEAD) || (entity instanceof Player player && isVampire(player));
+    }
+
     public static boolean hasLivingBlood(LivingEntity entity) {
         return !entity.is(EntityTypeTags.UNDEAD) && !(entity instanceof ArmorStand) && !(entity instanceof Player player && isVampire(player));
     }
@@ -177,6 +182,7 @@ public final class Vampirism {
     public static void tickVampire(ServerPlayer player) {
         BloodPool.tick(player);
         BloodSkills.showAnchor(player);
+        GarlicWard.tickVampirePlayer(player);
         // Vampires don't hunger: blood is all they need. Food stays full (so they can sprint and heal like anyone
         // with a full belly) but without saturation, which would heal them much faster.
         player.getFoodData().setFoodLevel(20);

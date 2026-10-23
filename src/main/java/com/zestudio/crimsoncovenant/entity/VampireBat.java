@@ -20,7 +20,8 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
 /// A hostile, undead bat. It flutters around like a normal bat until it finds prey, then dives at it and
-/// bites, healing a little with every bite. Burns in sunlight. Master Vampires summon them.
+/// bites, healing a little with every bite. Burns in sunlight. Master Vampires summon them, and they roost in caves
+/// (see ModEntities.checkVampireBatSpawnRules).
 public class VampireBat extends Bat implements Enemy {
     private static final int BITE_COOLDOWN = 20;
     private static final float BITE_HEAL = 1.0F;

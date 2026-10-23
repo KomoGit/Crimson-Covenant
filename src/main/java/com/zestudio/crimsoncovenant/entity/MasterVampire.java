@@ -3,10 +3,13 @@ package com.zestudio.crimsoncovenant.entity;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.jspecify.annotations.Nullable;
 
+import com.zestudio.crimsoncovenant.CrimsonCovenant;
+import com.zestudio.crimsoncovenant.block.BearTrapBlock;
 import com.zestudio.crimsoncovenant.registry.ModDamageTypes;
 import com.zestudio.crimsoncovenant.registry.ModEffects;
 import com.zestudio.crimsoncovenant.registry.ModEntities;
@@ -14,6 +17,7 @@ import com.zestudio.crimsoncovenant.registry.ModTags;
 import com.zestudio.crimsoncovenant.vampirism.Vampirism;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.particles.TrailParticleOption;
@@ -27,10 +31,10 @@ import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.BossEvent;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityReference;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
@@ -40,19 +44,26 @@ import net.minecraft.world.entity.SpawnPlacementTypes;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.Goal;
-import net.minecraft.world.entity.animal.wolf.Wolf;
 import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.tick.EntityTickEvent;
 
 /// A vampire lord: much tougher than a regular vampire, drains the life of every enemy standing near it,
-/// sends telegraphed bat swarms down a fixed path, grows blood armor and calls spiders, wolves and vampire bats
-/// to its side when badly hurt. The summons attack whatever it's fighting
-/// and crumble to dust when it dies. Unlike other vampires it hunts turned players too, and it only walks the
+/// sends telegraphed bat swarms down a fixed path, grows blood armor and calls spiders and vampire bats
+/// to its side when badly hurt. It knows a vampire's blood skills too: it hurls Blood Spears and boils the ground
+/// under its prey with Boiling Hemorrhage. The summons attack whatever it's fighting
+/// and crumble to dust when it dies, even if that happens out of their sight. Unlike other vampires it hunts turned players too, and it only walks the
 /// world during a blood moon. Shows a boss bar to nearby players.
+@EventBusSubscriber(modid = CrimsonCovenant.MODID)
 public class MasterVampire extends Vampire {
     // Life drain aura
     private static final double DRAIN_RANGE = 6.0;
@@ -62,11 +73,15 @@ public class MasterVampire extends Vampire {
     // Summoning
     private static final float SUMMON_HEALTH_THRESHOLD = 0.4F;
     private static final int SUMMON_COOLDOWN = 600;
-    private static final int SPIDERS_PER_SUMMON = 2;
-    private static final int WOLVES_PER_SUMMON = 2;
+    private static final int SPIDERS_PER_SUMMON = 3;
     private static final int BATS_PER_SUMMON = 3;
     private static final int MAX_MINIONS = 9;
     private static final int MINION_UPDATE_INTERVAL = 10;
+    /// How long a bear trap holds a master before it tears the thing apart
+    private static final int TRAP_STRUGGLE_TICKS = 40;
+    /// How often a summon checks that its master still lives, and how far it looks for it
+    private static final int MASTER_CHECK_INTERVAL = 20;
+    private static final double MASTER_RANGE = 64.0;
 
     // Blood armor
     private static final float BLOOD_ARMOR_THRESHOLD = 0.4F;
@@ -82,6 +97,18 @@ public class MasterVampire extends Vampire {
     private static final double SWARM_MIN_RANGE = 5.0;
     private static final double SWARM_MAX_RANGE = 24.0;
 
+    // Blood skills
+    private static final int SPEAR_FIRST_COOLDOWN = 60;
+    private static final int SPEAR_MIN_COOLDOWN = 100;
+    private static final int SPEAR_EXTRA_COOLDOWN = 60;
+    private static final double SPEAR_MIN_RANGE = 5.0;
+    private static final double SPEAR_MAX_RANGE = 24.0;
+    private static final float SPEAR_SPEED = 2.4F;
+    private static final int HEMORRHAGE_FIRST_COOLDOWN = 120;
+    private static final int HEMORRHAGE_MIN_COOLDOWN = 300;
+    private static final int HEMORRHAGE_EXTRA_COOLDOWN = 100;
+    private static final double HEMORRHAGE_RANGE = 16.0;
+
     /// Entity tag put on summoned minions, see Vampire.isFamiliar
     public static final String FAMILIAR_TAG = "crimsoncovenant.familiar";
 
@@ -89,6 +116,9 @@ public class MasterVampire extends Vampire {
             BossEvent.BossBarColor.RED, BossEvent.BossBarOverlay.PROGRESS);
     private final List<UUID> minions = new ArrayList<>();
     private int summonCooldown = 0;
+    private int trapStruggle = 0;
+    private int spearCooldown = SPEAR_FIRST_COOLDOWN;
+    private int hemorrhageCooldown = HEMORRHAGE_FIRST_COOLDOWN;
     private boolean wasBloodArmored = false;
     private int swarmCooldown = SWARM_FIRST_COOLDOWN;
     private int swarmWindup = 0;
@@ -132,6 +162,8 @@ public class MasterVampire extends Vampire {
         }
         this.tickBloodArmor(level);
         this.tickBatSwarm(level);
+        this.tearFreeOfTraps(level);
+        this.castBloodSkills(level);
         this.bossEvent.setProgress(this.getHealth() / this.getMaxHealth());
     }
 
@@ -188,6 +220,71 @@ public class MasterVampire extends Vampire {
             return !player.isCreative() && !player.isSpectator() && !Vampirism.isVampire(player);
         }
         return entity == currentTarget || entity.is(ModTags.Entities.VAMPIRE_PREY);
+    }
+
+    // ---- Blood skills ----
+
+    private void castBloodSkills(ServerLevel level) {
+        if (this.spearCooldown > 0) {
+            this.spearCooldown--;
+        }
+        if (this.hemorrhageCooldown > 0) {
+            this.hemorrhageCooldown--;
+        }
+        LivingEntity target = this.getTarget();
+        if (target == null || !target.isAlive() || this.isCastingBatSwarm() || !this.getSensing().hasLineOfSight(target)) {
+            return;
+        }
+        double distance = this.distanceTo(target);
+        if (this.hemorrhageCooldown <= 0 && distance <= HEMORRHAGE_RANGE && target.onGround()) {
+            this.boilHemorrhage(level, target);
+            this.hemorrhageCooldown = HEMORRHAGE_MIN_COOLDOWN + this.random.nextInt(HEMORRHAGE_EXTRA_COOLDOWN);
+        } else if (this.spearCooldown <= 0 && distance >= SPEAR_MIN_RANGE && distance <= SPEAR_MAX_RANGE) {
+            this.hurlBloodSpear(level, target);
+            this.spearCooldown = SPEAR_MIN_COOLDOWN + this.random.nextInt(SPEAR_EXTRA_COOLDOWN);
+        }
+    }
+
+    /// The Blood Spear skill: a spear of blood that drives its victim back and slams them into any wall behind
+    public void hurlBloodSpear(ServerLevel level, LivingEntity target) {
+        BloodSpear spear = new BloodSpear(level, this);
+        spear.pickup = AbstractArrow.Pickup.DISALLOWED;
+        spear.setPos(this.getX(), this.getEyeY() - 0.1, this.getZ());
+        double dx = target.getX() - spear.getX();
+        double dy = target.getY(0.5) - spear.getY();
+        double dz = target.getZ() - spear.getZ();
+        spear.shoot(dx, dy + Math.sqrt(dx * dx + dz * dz) * 0.05, dz, SPEAR_SPEED, 1.0F);
+        level.addFreshEntity(spear);
+        this.swingForAttack(InteractionHand.MAIN_HAND);
+        level.playSound(null, this.getX(), this.getY(), this.getZ(), SoundEvents.TRIDENT_THROW.value(), SoundSource.HOSTILE, 1.5F, 0.6F);
+        level.sendParticles(new DustParticleOptions(0x9B0A14, 1.4F), this.getX(), this.getEyeY(), this.getZ(), 12, 0.3, 0.3, 0.3, 0.0);
+    }
+
+    /// The Boiling Hemorrhage skill, under the target's feet. It spares the master's own kind, and whatever dies in it
+    /// heals the master.
+    public void boilHemorrhage(ServerLevel level, LivingEntity target) {
+        level.addFreshEntity(HemorrhageZone.create(level, this, target.getX(), target.getY(), target.getZ()));
+        level.playSound(null, target.getX(), target.getY(), target.getZ(), SoundEvents.LAVA_AMBIENT, SoundSource.HOSTILE, 1.5F, 0.6F);
+        this.playSound(SoundEvents.EVOKER_CAST_SPELL, 1.5F, 0.6F);
+    }
+
+    // ---- Bear traps ----
+
+    /// No trap holds a master for long: it thrashes for a couple of seconds, then rips the jaws apart
+    private void tearFreeOfTraps(ServerLevel level) {
+        Optional<BlockPos> trap = BearTrapBlock.heldIn(this);
+        if (trap.isEmpty()) {
+            this.trapStruggle = 0;
+            return;
+        }
+        if (this.trapStruggle % 10 == 0) {
+            level.sendParticles(new DustParticleOptions(0x9B0A14, 1.2F), this.getX(), this.getY(0.2), this.getZ(), 6, 0.3, 0.1, 0.3, 0.0);
+            this.playSound(SoundEvents.ZOMBIE_ATTACK_IRON_DOOR, 0.6F, 0.6F);
+        }
+        if (++this.trapStruggle >= TRAP_STRUGGLE_TICKS) {
+            BearTrapBlock.breakOpen(level, trap.get(), this, false);
+            this.trapStruggle = 0;
+        }
     }
 
     // ---- Blood armor ----
@@ -308,15 +405,12 @@ public class MasterVampire extends Vampire {
     private boolean canSummon() {
         return this.getHealth() < this.getMaxHealth() * SUMMON_HEALTH_THRESHOLD
                 && this.getTarget() != null
-                && this.minions.size() + SPIDERS_PER_SUMMON + WOLVES_PER_SUMMON + BATS_PER_SUMMON <= MAX_MINIONS;
+                && this.minions.size() + SPIDERS_PER_SUMMON + BATS_PER_SUMMON <= MAX_MINIONS;
     }
 
     private void summonMinions(ServerLevel level) {
         for (int i = 0; i < SPIDERS_PER_SUMMON; i++) {
             this.summonMinion(level, EntityTypes.SPIDER);
-        }
-        for (int i = 0; i < WOLVES_PER_SUMMON; i++) {
-            this.summonMinion(level, EntityTypes.WOLF);
         }
         for (int i = 0; i < BATS_PER_SUMMON; i++) {
             this.summonMinion(level, ModEntities.VAMPIRE_BAT.get());
@@ -391,11 +485,6 @@ public class MasterVampire extends Vampire {
             return;
         }
         minion.setTarget(target);
-        // Wolves are neutral mobs and drop targets they aren't angry at
-        if (minion instanceof Wolf wolf) {
-            wolf.setPersistentAngerTarget(EntityReference.of(target));
-            wolf.startPersistentAngerTimer();
-        }
     }
 
     public List<UUID> getMinions() {
@@ -410,11 +499,32 @@ public class MasterVampire extends Vampire {
         for (UUID uuid : this.minions) {
             Entity minion = level.getEntity(uuid);
             if (minion != null && minion.isAlive()) {
-                level.sendParticles(ParticleTypes.LARGE_SMOKE, minion.getX(), minion.getY() + 0.5, minion.getZ(), 15, 0.3, 0.4, 0.3, 0.02);
-                minion.discard();
+                crumble(level, minion);
             }
         }
         this.minions.clear();
+    }
+
+    private static void crumble(ServerLevel level, Entity minion) {
+        level.sendParticles(ParticleTypes.LARGE_SMOKE, minion.getX(), minion.getY() + 0.5, minion.getZ(), 15, 0.3, 0.4, 0.3, 0.02);
+        level.sendParticles(new DustParticleOptions(0x9B0A14, 1.2F), minion.getX(), minion.getY() + 0.5, minion.getZ(), 10, 0.3, 0.4, 0.3, 0.0);
+        minion.discard();
+    }
+
+    /// A summon whose master is gone (killed while the summon was out of reach, or unloaded and never came back)
+    /// crumbles too
+    @SubscribeEvent
+    static void minionsOutliveNoMaster(EntityTickEvent.Post event) {
+        Entity entity = event.getEntity();
+        if (entity.tickCount % MASTER_CHECK_INTERVAL != 0 || !isFamiliar(entity) || !(entity.level() instanceof ServerLevel level)) {
+            return;
+        }
+        UUID uuid = entity.getUUID();
+        boolean bound = !level.getEntitiesOfClass(MasterVampire.class, new AABB(entity.blockPosition()).inflate(MASTER_RANGE),
+                master -> master.isAlive() && master.minions.contains(uuid)).isEmpty();
+        if (!bound) {
+            crumble(level, entity);
+        }
     }
 
     @Override
@@ -452,8 +562,16 @@ public class MasterVampire extends Vampire {
     }
 
     @Override
+    protected void addAdditionalSaveData(ValueOutput output) {
+        super.addAdditionalSaveData(output);
+        output.store("Minions", UUIDUtil.CODEC.listOf(), List.copyOf(this.minions));
+    }
+
+    @Override
     protected void readAdditionalSaveData(ValueInput input) {
         super.readAdditionalSaveData(input);
+        this.minions.clear();
+        input.read("Minions", UUIDUtil.CODEC.listOf()).ifPresent(this.minions::addAll);
         if (this.hasCustomName()) {
             this.bossEvent.setName(this.getDisplayName());
         }

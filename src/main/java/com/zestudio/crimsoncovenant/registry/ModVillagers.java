@@ -4,7 +4,6 @@ import com.google.common.collect.ImmutableSet;
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
 
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -29,11 +28,18 @@ public final class ModVillagers {
     // Job sites: the block a villager claims to take on the profession
     public static final DeferredHolder<PoiType, PoiType> HUNTERS_TABLE_POI = jobSite("hunters_table", ModBlocks.HUNTERS_TABLE);
     public static final DeferredHolder<PoiType, PoiType> BLOOD_ALTAR_POI = jobSite("blood_altar", ModBlocks.BLOOD_ALTAR);
+    /// Not a job site: lets undead find hung garlic quickly (see vampirism.GarlicWard)
+    public static final DeferredHolder<PoiType, PoiType> GARLIC_BRAID_POI = POI_TYPES.register("garlic_braid",
+            () -> new PoiType(ImmutableSet.copyOf(ModBlocks.GARLIC_BRAID.get().getStateDefinition().getPossibleStates()), 0, 1));
 
-    /// Hunter faction
+    /// Hunter faction: sells hunting gear for Silver Coins
     public static final DeferredHolder<VillagerProfession, VillagerProfession> OLD_HUNTER = profession("old_hunter", HUNTERS_TABLE_POI.getKey(), SoundEvents.VILLAGER_WORK_FLETCHER,
-            Int2ObjectMaps.emptyMap());
-    /// Vampire faction
+            Int2ObjectMap.ofEntries(
+                    Int2ObjectMap.entry(1, tradeSet("old_hunter/level_1")),
+                    Int2ObjectMap.entry(2, tradeSet("old_hunter/level_2")),
+                    Int2ObjectMap.entry(3, tradeSet("old_hunter/level_3")),
+                    Int2ObjectMap.entry(4, tradeSet("old_hunter/level_4"))));
+    /// Vampire faction: sells tomes and blood for Tokens of Blood
     public static final DeferredHolder<VillagerProfession, VillagerProfession> ANCIENT_BUTLER = profession("ancient_butler", BLOOD_ALTAR_POI.getKey(), SoundEvents.VILLAGER_WORK_CLERIC,
             Int2ObjectMap.ofEntries(
                     Int2ObjectMap.entry(1, tradeSet("ancient_butler/level_1")),

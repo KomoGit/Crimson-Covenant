@@ -2,13 +2,21 @@ package com.zestudio.crimsoncovenant.registry;
 
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
 import com.zestudio.crimsoncovenant.block.AncientTranslatorBlock;
+import com.zestudio.crimsoncovenant.block.BearTrapBlock;
 import com.zestudio.crimsoncovenant.block.DecorBlock;
+import com.zestudio.crimsoncovenant.block.GarlicBraidBlock;
+import com.zestudio.crimsoncovenant.block.GarlicCropBlock;
+import com.zestudio.crimsoncovenant.block.SanguineTableBlock;
+import com.zestudio.crimsoncovenant.block.SilverNetBlock;
+import com.zestudio.crimsoncovenant.block.SilverNetTrapBlock;
+import com.zestudio.crimsoncovenant.block.SilverSpikesBlock;
 
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.properties.NoteBlockInstrument;
 import net.minecraft.world.level.material.MapColor;
+import net.minecraft.world.level.material.PushReaction;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -64,6 +72,39 @@ public final class ModBlocks {
     public static final DeferredBlock<AncientTranslatorBlock> ANCIENT_TRANSLATOR = BLOCKS.registerBlock("ancient_translator", AncientTranslatorBlock::new,
             properties -> properties.mapColor(MapColor.COLOR_RED).instrument(NoteBlockInstrument.BASEDRUM).requiresCorrectToolForDrops().strength(5.0F, 1200.0F)
                     .lightLevel(state -> AncientTranslatorBlock.isTranslating(state) ? 10 : 5));
+
+    /// Upgrades blood skills, for Tokens of Blood (see skill.SkillUpgrade)
+    public static final DeferredBlock<SanguineTableBlock> SANGUINE_TABLE = BLOCKS.registerBlock("sanguine_table",
+            properties -> new SanguineTableBlock(properties, DecorBlock.shape(
+                    new double[] {0, 10, 0, 16, 16, 16}, new double[] {1, 0, 1, 4, 10, 4}, new double[] {12, 0, 1, 15, 10, 4},
+                    new double[] {1, 0, 12, 4, 10, 15}, new double[] {12, 0, 12, 15, 10, 15})),
+            properties -> properties.mapColor(MapColor.COLOR_BLACK).requiresCorrectToolForDrops().strength(3.5F, 1200.0F).sound(SoundType.POLISHED_DEEPSLATE)
+                    .noOcclusion().lightLevel(state -> 4));
+
+    // ---- Garlic ----
+
+    /// Planted from a bulb of garlic. Its item is ModItems.GARLIC.
+    public static final DeferredBlock<GarlicCropBlock> GARLIC_CROP = BLOCKS.registerBlock("garlic_crop", GarlicCropBlock::new,
+            properties -> properties.mapColor(MapColor.PLANT).noCollision().randomTicks().instabreak().sound(SoundType.CROP).pushReaction(PushReaction.POPPED));
+    /// Hung from a ceiling, a wall or a door to keep the undead away (see vampirism.GarlicWard)
+    public static final DeferredBlock<GarlicBraidBlock> GARLIC_BRAID = BLOCKS.registerBlock("garlic_braid", GarlicBraidBlock::new,
+            properties -> properties.mapColor(MapColor.SAND).noCollision().instabreak().sound(SoundType.CROP).pushReaction(PushReaction.POPPED));
+
+    // ---- Hunting gear ----
+
+    /// Snaps shut on whatever steps in it and holds it until it's broken. Silver: bites the undead hardest.
+    public static final DeferredBlock<BearTrapBlock> BEAR_TRAP = BLOCKS.registerBlock("bear_trap", BearTrapBlock::new,
+            properties -> properties.mapColor(MapColor.METAL).noCollision().strength(2.0F, 6.0F).sound(SoundType.CHAIN).pushReaction(PushReaction.POPPED));
+
+    /// Stabs up through whoever steps on it, then sinks back
+    public static final DeferredBlock<SilverSpikesBlock> SILVER_SPIKES = BLOCKS.registerBlock("silver_spikes", SilverSpikesBlock::new,
+            properties -> properties.mapColor(MapColor.METAL).noCollision().strength(2.0F, 6.0F).sound(SoundType.CHAIN).pushReaction(PushReaction.POPPED));
+    /// Hangs from a ceiling and drops a Silver Net on whatever walks beneath
+    public static final DeferredBlock<SilverNetTrapBlock> SILVER_NET_TRAP = BLOCKS.registerBlock("silver_net_trap", SilverNetTrapBlock::new,
+            properties -> properties.mapColor(MapColor.WOOL).noCollision().strength(0.8F).sound(SoundType.WOOL).pushReaction(PushReaction.POPPED));
+    /// What the net trap drops: tangles like a cobweb, and burns the undead
+    public static final DeferredBlock<SilverNetBlock> SILVER_NET = BLOCKS.registerBlock("silver_net", SilverNetBlock::new,
+            properties -> properties.mapColor(MapColor.WOOL).noCollision().strength(1.0F).sound(SoundType.WOOL).pushReaction(PushReaction.POPPED).noLootTable());
 
     private ModBlocks() {}
 

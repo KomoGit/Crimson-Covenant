@@ -3,6 +3,7 @@ package com.zestudio.crimsoncovenant.entity;
 import org.jspecify.annotations.Nullable;
 
 import com.zestudio.crimsoncovenant.effect.HolyWaterEffect;
+import com.zestudio.crimsoncovenant.registry.ModDataComponents;
 import com.zestudio.crimsoncovenant.registry.ModPotions;
 
 import net.minecraft.core.component.DataComponents;
@@ -91,6 +92,7 @@ public class MasterHunter extends Hunter {
         super.populateDefaultEquipmentSlots(random, difficulty);
         ItemStack axe = new ItemStack(Items.IRON_AXE);
         this.enchantSmite(axe, 3);
+        axe.set(ModDataComponents.SILVERED.get(), true);
         this.setItemSlot(EquipmentSlot.MAINHAND, axe);
         this.setItemSlot(EquipmentSlot.OFFHAND, createHunterShield());
     }
@@ -158,6 +160,12 @@ public class MasterHunter extends Hunter {
                 && !this.hasEffect(MobEffects.REGENERATION)
                 && this.tickCount - this.lastCombatTick > CALM_TICKS_BEFORE_DRINKING
                 && this.tickCount - this.getLastHurtByMobTimestamp() > CALM_TICKS_BEFORE_DRINKING;
+    }
+
+    // Masters throw Holy Water, not garlic
+    @Override
+    protected boolean throwsGarlic() {
+        return false;
     }
 
     private boolean canThrowHolyWaterAt(@Nullable LivingEntity target) {

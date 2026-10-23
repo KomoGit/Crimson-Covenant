@@ -9,11 +9,13 @@ import org.jspecify.annotations.Nullable;
 import com.zestudio.crimsoncovenant.registry.ModDamageTypes;
 import com.zestudio.crimsoncovenant.registry.ModEffects;
 import com.zestudio.crimsoncovenant.registry.ModEntities;
+import com.zestudio.crimsoncovenant.vampirism.BloodPool;
 import com.zestudio.crimsoncovenant.vampirism.Vampirism;
 
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.EntitySpawnReason;
@@ -41,6 +43,9 @@ public class SwarmBat extends Bat {
     private static final double SWARM_SPEED = 0.8;
 
     private @Nullable LivingEntity owner;
+    private boolean leeching = false;
+    /// Blood each bite of a Leeching Swarm brings its vampire
+    public static final int LEECHED_BLOOD = 3;
     // Shared by every bat in one swarm, so each enemy is only hurt once per swarm
     private Set<UUID> struck = new HashSet<>();
     private int life = 0;
@@ -56,6 +61,11 @@ public class SwarmBat extends Bat {
 
     /// Sends a whole swarm down a path, spread out a little around it
     public static void launchSwarm(ServerLevel level, LivingEntity owner, Vec3 origin, Vec3 direction, double range) {
+        launchSwarm(level, owner, origin, direction, range, false);
+    }
+
+    /// `leeching`: the Leeching Swarm upgrade, every bite brings a vampire player blood
+    public static void launchSwarm(ServerLevel level, LivingEntity owner, Vec3 origin, Vec3 direction, double range, boolean leeching) {
         direction = direction.normalize();
         Vec3 right = direction.cross(new Vec3(0.0, 1.0, 0.0));
         right = right.lengthSqr() < 1.0E-4 ? new Vec3(1.0, 0.0, 0.0) : right.normalize();
@@ -65,15 +75,18 @@ public class SwarmBat extends Bat {
             Vec3 offset = right.scale((owner.getRandom().nextDouble() - 0.5) * 3.0)
                     .add(up.scale((owner.getRandom().nextDouble() - 0.5) * 2.0))
                     .add(direction.scale(-owner.getRandom().nextDouble() * 1.5));
-            launch(level, owner, origin.add(offset), direction.scale(SWARM_SPEED), range, struck);
+            SwarmBat bat = launch(level, owner, origin.add(offset), direction.scale(SWARM_SPEED), range, struck);
+            if (bat != null) {
+                bat.leeching = leeching;
+            }
         }
     }
 
     /// Sends a bat flying along the path for `range` blocks, after which it vanishes
-    public static void launch(ServerLevel level, LivingEntity owner, Vec3 position, Vec3 velocity, double range, Set<UUID> sharedStruck) {
+    public static @Nullable SwarmBat launch(ServerLevel level, LivingEntity owner, Vec3 position, Vec3 velocity, double range, Set<UUID> sharedStruck) {
         SwarmBat bat = ModEntities.SWARM_BAT.get().create(level, EntitySpawnReason.MOB_SUMMONED);
         if (bat == null) {
-            return;
+            return null;
         }
         bat.owner = owner;
         bat.flightVelocity = velocity;
@@ -82,6 +95,7 @@ public class SwarmBat extends Bat {
         bat.snapTo(position.x, position.y, position.z, (float) Math.toDegrees(Math.atan2(-velocity.x, velocity.z)), 0.0F);
         bat.setDeltaMovement(velocity);
         level.addFreshEntity(bat);
+        return bat;
     }
 
     public @Nullable LivingEntity getOwner() {
@@ -132,6 +146,9 @@ public class SwarmBat extends Bat {
                     // Vampires only drink from the living
                     if (this.owner != null && this.owner.isAlive() && Vampirism.hasLivingBlood(victim)) {
                         this.owner.heal(OWNER_HEAL_PER_HIT);
+                        if (this.leeching && this.owner instanceof ServerPlayer player) {
+                            BloodPool.add(player, LEECHED_BLOOD);
+                        }
                     }
                 }
             }

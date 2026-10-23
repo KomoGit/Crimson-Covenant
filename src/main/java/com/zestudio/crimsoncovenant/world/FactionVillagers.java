@@ -3,12 +3,15 @@ package com.zestudio.crimsoncovenant.world;
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
 import com.zestudio.crimsoncovenant.registry.ModBlocks;
 import com.zestudio.crimsoncovenant.registry.ModVillagers;
+import com.zestudio.crimsoncovenant.vampirism.Vampirism;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import net.minecraft.world.entity.ai.village.poi.PoiType;
 import net.minecraft.world.entity.npc.villager.Villager;
@@ -18,12 +21,14 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.registries.DeferredHolder;
 
 /// A village sides with the hunters or with the vampires, never both. The Old Hunter (Hunter's Table) and the
 /// Ancient Butler (Blood Altar) can't live within 64 blocks of each other, so a faction's workstation can't be
 /// placed near the other faction's workstation or villager.
+/// The Old Hunter won't deal with vampire players at all.
 @EventBusSubscriber(modid = CrimsonCovenant.MODID)
 public final class FactionVillagers {
     public static final int VILLAGE_RANGE = 64;
@@ -79,6 +84,23 @@ public final class FactionVillagers {
         event.setCanceled(true);
         if (event.getEntity() instanceof Player player) {
             player.sendSystemMessage(Component.translatable("message.crimsoncovenant.faction_conflict." + faction.opposite().name).withStyle(ChatFormatting.RED));
+        }
+    }
+
+    @SubscribeEvent
+    static void refuseVampires(PlayerInteractEvent.EntityInteract event) {
+        Player player = event.getEntity();
+        if (!(event.getTarget() instanceof Villager villager) || !isProfession(villager.getVillagerData().profession(), Faction.HUNTERS)
+                || !Vampirism.isVampire(player)) {
+            return;
+        }
+        event.setCanceled(true);
+        event.setCancellationResult(InteractionResult.SUCCESS);
+        if (!villager.level().isClientSide()) {
+            // Shakes his head, the way a villager with nothing to sell does
+            villager.setUnhappyCounter(40);
+            villager.makeSound(SoundEvents.VILLAGER_NO);
+            player.sendOverlayMessage(Component.translatable("message.crimsoncovenant.old_hunter_refuses").withStyle(ChatFormatting.RED));
         }
     }
 }

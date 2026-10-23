@@ -5,13 +5,17 @@ import java.util.EnumSet;
 
 import org.jspecify.annotations.Nullable;
 
+import com.zestudio.crimsoncovenant.registry.ModEffects;
+import com.zestudio.crimsoncovenant.registry.ModItems;
+import com.zestudio.crimsoncovenant.registry.ModPotions;
 import com.zestudio.crimsoncovenant.registry.ModEntities;
-import com.zestudio.crimsoncovenant.world.BloodMoon;
 import com.zestudio.crimsoncovenant.vampirism.Vampirism;
+import com.zestudio.crimsoncovenant.world.BloodMoon;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderGetter;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -26,6 +30,7 @@ import net.minecraft.tags.EntityTypeTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.ConversionParams;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
@@ -46,11 +51,16 @@ import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
 import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.monster.CrossbowAttackMob;
+import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownSplashPotion;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ProjectileWeaponItem;
+import net.minecraft.world.item.alchemy.PotionContents;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.item.Rarity;
 import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.item.enchantment.Enchantments;
@@ -65,15 +75,29 @@ import net.neoforged.neoforge.common.CommonHooks;
 
 /// A human monster hunter. Hunters roam in parties of three led by a banner-carrying leader.
 /// They attack every undead mob (vampires included) and every infected or vampire player on sight,
-/// and fight back against anything that hurts them.
+/// and fight back against anything that hurts them. Going into a fight they down a bottle of Black Blood.
 public class Hunter extends PathfinderMob implements CrossbowAttackMob {
     private static final EntityDataAccessor<Boolean> IS_CHARGING_CROSSBOW = SynchedEntityData.defineId(Hunter.class, EntityDataSerializers.BOOLEAN);
     public static final int PARTY_SIZE = 3;
     /// Chance that a naturally spawned party is led by a Master Hunter
     public static final float MASTER_HUNTER_PARTY_CHANCE = 0.15F;
+    /// Chance that each follower in a party is a Hunter Chemist (at most one per party)
+    public static final float CHEMIST_CHANCE = 0.35F;
+
+    // A swig of Black Blood at the start of a fight: 30 seconds of hurting whatever strikes them, at most once a minute
+    private static final int BLACK_BLOOD_DURATION = 600;
+    private static final int BLACK_BLOOD_COOLDOWN = 1200;
 
     private boolean leader = false;
     private boolean ascensionPending = false;
+    private int blackBloodCooldown = 0;
+
+    // Splash Potions of Garlic, thrown at undead from a safe distance (Master Hunters throw Holy Water instead)
+    private static final int GARLIC_MIN_COOLDOWN = 160;
+    private static final int GARLIC_EXTRA_COOLDOWN = 80;
+    private static final double GARLIC_MIN_RANGE = 3.0;
+    private static final double GARLIC_MAX_RANGE = 10.0;
+    private int garlicCooldown = 40;
 
     public Hunter(EntityType<? extends Hunter> type, Level level) {
         super(type, level);
@@ -91,6 +115,8 @@ public class Hunter extends PathfinderMob implements CrossbowAttackMob {
     @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(0, new FloatGoal(this));
+        // A hunter caught in a bear trap comes before any fight
+        this.goalSelector.addGoal(1, new FreeTrappedHunterGoal(this));
         // The crossbow goal only runs while holding a crossbow, otherwise the melee goal takes over
         this.goalSelector.addGoal(2, new RangedCrossbowAttackGoal<>(this, 1.0, 12.0F));
         this.goalSelector.addGoal(3, new MeleeAttackGoal(this, 1.0, false));
@@ -211,10 +237,13 @@ public class Hunter extends PathfinderMob implements CrossbowAttackMob {
 
     private static int spawnFollowers(ServerLevel level, BlockPos origin, int count, RandomSource random) {
         int spawned = 0;
+        boolean chemistAlong = false;
         for (int attempt = 0; attempt < count * 4 && spawned < count; attempt++) {
             BlockPos pos = findGroundNear(level, origin.offset(random.nextInt(5) - random.nextInt(5), 0, random.nextInt(5) - random.nextInt(5)));
-            Hunter follower = pos == null ? null : createAt(level, ModEntities.HUNTER.get(), pos, EntitySpawnReason.MOB_SUMMONED);
+            EntityType<? extends Hunter> type = !chemistAlong && random.nextFloat() < CHEMIST_CHANCE ? ModEntities.HUNTER_CHEMIST.get() : ModEntities.HUNTER.get();
+            Hunter follower = pos == null ? null : createAt(level, type, pos, EntitySpawnReason.MOB_SUMMONED);
             if (follower != null) {
+                chemistAlong |= follower instanceof HunterChemist;
                 follower.finalizeSpawn(level, level.getCurrentDifficultyAt(pos), EntitySpawnReason.MOB_SUMMONED, null);
                 level.addFreshEntityWithPassengers(follower);
                 spawned++;
@@ -278,6 +307,58 @@ public class Hunter extends PathfinderMob implements CrossbowAttackMob {
                 level.playSound(null, master.getX(), master.getY(), master.getZ(), SoundEvents.PLAYER_LEVELUP, SoundSource.NEUTRAL, 1.0F, 0.8F);
             }
         }
+        this.drinkBlackBloodForTheFight(level);
+        if (this.throwsGarlic()) {
+            this.throwGarlicAtUndead(level);
+        }
+    }
+
+    /// Whether this hunter carries Splash Potions of Garlic. Master Hunters carry Holy Water instead.
+    protected boolean throwsGarlic() {
+        return true;
+    }
+
+    /// Every so often, a hunter fighting an undead that isn't reeking of garlic yet lobs a Splash Potion of Garlic at
+    /// it, softening its blows and slowing it down
+    private void throwGarlicAtUndead(ServerLevel level) {
+        if (this.garlicCooldown > 0) {
+            this.garlicCooldown--;
+            return;
+        }
+        LivingEntity target = this.getTarget();
+        if (target == null || !target.isAlive() || !Vampirism.isUndead(target) || target.hasEffect(ModEffects.GARLIC)) {
+            return;
+        }
+        double distance = this.distanceTo(target);
+        if (distance < GARLIC_MIN_RANGE || distance > GARLIC_MAX_RANGE || !this.getSensing().hasLineOfSight(target)) {
+            return;
+        }
+        // Same aim as a witch throwing a potion
+        Vec3 targetMovement = target.getDeltaMovement();
+        double dx = target.getX() + targetMovement.x - this.getX();
+        double dy = target.getEyeY() - 1.1 - this.getY();
+        double dz = target.getZ() + targetMovement.z - this.getZ();
+        double horizontalDistance = Math.sqrt(dx * dx + dz * dz);
+        ItemStack garlic = PotionContents.createItemStack(Items.SPLASH_POTION, ModPotions.GARLIC);
+        Projectile.spawnProjectileUsingShoot(ThrownSplashPotion::new, level, garlic, this, dx, dy + horizontalDistance * 0.2, dz, 0.75F, 8.0F);
+        this.swingForAttack(InteractionHand.MAIN_HAND);
+        this.playSound(SoundEvents.WITCH_THROW, 1.0F, 0.8F + this.random.nextFloat() * 0.4F);
+        this.garlicCooldown = GARLIC_MIN_COOLDOWN + this.random.nextInt(GARLIC_EXTRA_COOLDOWN);
+    }
+
+    /// Going into a fight, a hunter downs a bottle of Black Blood, so whatever strikes them is hurt in turn
+    private void drinkBlackBloodForTheFight(ServerLevel level) {
+        if (this.blackBloodCooldown > 0) {
+            this.blackBloodCooldown--;
+            return;
+        }
+        if (this.getTarget() == null || !this.getTarget().isAlive() || this.hasEffect(ModEffects.BLACK_BLOOD)) {
+            return;
+        }
+        this.addEffect(new MobEffectInstance(ModEffects.BLACK_BLOOD, BLACK_BLOOD_DURATION));
+        this.blackBloodCooldown = BLACK_BLOOD_COOLDOWN;
+        level.sendParticles(new DustParticleOptions(0x150508, 1.2F), this.getX(), this.getY(0.8), this.getZ(), 12, 0.25, 0.3, 0.25, 0.0);
+        level.playSound(null, this.getX(), this.getY(), this.getZ(), SoundEvents.GENERIC_DRINK, SoundSource.HOSTILE, 1.0F, 0.8F);
     }
 
     @Override
@@ -314,7 +395,7 @@ public class Hunter extends PathfinderMob implements CrossbowAttackMob {
     public ItemStack getProjectile(ItemStack heldWeapon) {
         if (heldWeapon.getItem() instanceof ProjectileWeaponItem weapon) {
             ItemStack heldProjectile = ProjectileWeaponItem.getHeldProjectile(this, weapon.getSupportedHeldProjectiles(heldWeapon));
-            return CommonHooks.getProjectile(this, heldWeapon, heldProjectile.isEmpty() ? new ItemStack(Items.ARROW) : heldProjectile);
+            return CommonHooks.getProjectile(this, heldWeapon, heldProjectile.isEmpty() ? new ItemStack(ModItems.SILVER_ARROW.get()) : heldProjectile);
         }
         return super.getProjectile(heldWeapon);
     }

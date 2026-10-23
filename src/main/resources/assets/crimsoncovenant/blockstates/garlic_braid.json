@@ -1,0 +1,34 @@
+{
+  "variants": {
+    "facing=south,hanging=false": {
+      "model": "crimsoncovenant:block/garlic_braid"
+    },
+    "facing=south,hanging=true": {
+      "model": "crimsoncovenant:block/garlic_braid_hanging"
+    },
+    "facing=west,hanging=false": {
+      "model": "crimsoncovenant:block/garlic_braid",
+      "y": 90
+    },
+    "facing=west,hanging=true": {
+      "model": "crimsoncovenant:block/garlic_braid_hanging",
+      "y": 90
+    },
+    "facing=north,hanging=false": {
+      "model": "crimsoncovenant:block/garlic_braid",
+      "y": 180
+    },
+    "facing=north,hanging=true": {
+      "model": "crimsoncovenant:block/garlic_braid_hanging",
+      "y": 180
+    },
+    "facing=east,hanging=false": {
+      "model": "crimsoncovenant:block/garlic_braid",
+      "y": 270
+    },
+    "facing=east,hanging=true": {
+      "model": "crimsoncovenant:block/garlic_braid_hanging",
+      "y": 270
+    }
+  }
+}

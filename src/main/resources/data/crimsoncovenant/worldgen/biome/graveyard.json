@@ -1,0 +1,74 @@
+{
+  "attributes": {
+    "minecraft:gameplay/natural_mob_spawns": {
+      "argument": {
+        "spawn_costs": {},
+        "spawns_by_category": {
+          "ambient": [
+            {
+              "type": "minecraft:bat",
+              "count": 4,
+              "weight": 10
+            }
+          ],
+          "monster": [
+            {
+              "type": "minecraft:zombie",
+              "count": {
+                "type": "minecraft:uniform",
+                "min_inclusive": 1,
+                "max_inclusive": 3
+              },
+              "weight": 100
+            },
+            {
+              "type": "minecraft:skeleton",
+              "count": {
+                "type": "minecraft:uniform",
+                "min_inclusive": 1,
+                "max_inclusive": 3
+              },
+              "weight": 100
+            },
+            {
+              "type": "minecraft:zombie_villager",
+              "count": 1,
+              "weight": 15
+            },
+            {
+              "type": "crimsoncovenant:vampire",
+              "count": 1,
+              "weight": 8
+            }
+          ]
+        }
+      },
+      "modifier": "overlay"
+    },
+    "minecraft:visual/ambient_particles": {
+      "argument": [
+        {
+          "particle": {
+            "type": "minecraft:white_ash"
+          },
+          "probability": 0.004
+        }
+      ],
+      "modifier": "append"
+    },
+    "minecraft:visual/fog_color": "#6b6f66",
+    "minecraft:visual/sky_color": "#8a8f99",
+    "minecraft:visual/water_fog_color": "#3d4a48"
+  },
+  "carvers": [],
+  "downfall": 0.4,
+  "effects": {
+    "water_color": "#4a5a58",
+    "grass_color": "#6f7556",
+    "foliage_color": "#5f6448",
+    "dry_foliage_color": "#7a7560"
+  },
+  "features": [],
+  "has_precipitation": true,
+  "temperature": 0.5
+}

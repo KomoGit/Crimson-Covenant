@@ -19,6 +19,7 @@ import net.minecraft.world.item.ItemStack;
 public class HunterRenderer extends HumanoidMobRenderer<Hunter, HumanoidRenderState, HumanoidModel<HumanoidRenderState>> {
     public static final Identifier HUNTER_TEXTURE = CrimsonCovenant.id("textures/entity/hunter/hunter.png");
     public static final Identifier MASTER_HUNTER_TEXTURE = CrimsonCovenant.id("textures/entity/hunter/master_hunter.png");
+    public static final Identifier HUNTER_CHEMIST_TEXTURE = CrimsonCovenant.id("textures/entity/hunter/hunter_chemist.png");
 
     private final Identifier texture;
     private final float scale;
