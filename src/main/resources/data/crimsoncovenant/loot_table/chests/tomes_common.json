@@ -1,0 +1,65 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:empty",
+          "weight": 90
+        },
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:flight_tome",
+          "weight": 4
+        },
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:dash_tome",
+          "weight": 5
+        },
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:daywalker_tome",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:blood_spear_tome",
+          "weight": 2
+        },
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:armor_of_ancient_tome",
+          "weight": 1
+        },
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:bat_swarm_tome",
+          "weight": 4
+        },
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:defy_death_tome",
+          "weight": 2
+        },
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:ephemeral_sword_tome",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:death_march_tome",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:stalkers_gaze_tome",
+          "weight": 3
+        }
+      ]
+    }
+  ],
+  "random_sequence": "crimsoncovenant:chests/tomes_common"
+}

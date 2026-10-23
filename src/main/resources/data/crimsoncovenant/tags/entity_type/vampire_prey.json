@@ -1,0 +1,14 @@
+{
+  "values": [
+    "minecraft:villager",
+    "minecraft:wandering_trader",
+    "minecraft:pillager",
+    "minecraft:vindicator",
+    "minecraft:evoker",
+    "minecraft:illusioner",
+    "minecraft:witch",
+    "minecraft:iron_golem",
+    "crimsoncovenant:hunter",
+    "crimsoncovenant:master_hunter"
+  ]
+}

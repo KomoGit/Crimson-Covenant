@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "silver_ingot",
+  "key": {
+    "#": "crimsoncovenant:silver_nugget"
+  },
+  "pattern": [
+    "###",
+    "###",
+    "###"
+  ],
+  "result": {
+    "id": "crimsoncovenant:silver_ingot"
+  }
+}

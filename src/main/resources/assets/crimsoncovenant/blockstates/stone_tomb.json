@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "crimsoncovenant:block/stone_tomb"
+    },
+    "facing=east": {
+      "model": "crimsoncovenant:block/stone_tomb",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "crimsoncovenant:block/stone_tomb",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "crimsoncovenant:block/stone_tomb",
+      "y": 270
+    }
+  }
+}

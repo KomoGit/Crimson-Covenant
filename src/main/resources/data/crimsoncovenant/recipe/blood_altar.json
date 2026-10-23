@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "T": "crimsoncovenant:token_of_blood",
+    "B": "minecraft:polished_blackstone"
+  },
+  "pattern": [
+    " T ",
+    "BBB",
+    "BBB"
+  ],
+  "result": {
+    "id": "crimsoncovenant:blood_altar"
+  }
+}

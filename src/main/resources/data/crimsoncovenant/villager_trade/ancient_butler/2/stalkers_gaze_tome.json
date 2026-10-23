@@ -1,0 +1,17 @@
+{
+  "wants": {
+    "id": "minecraft:emerald",
+    "count": 16
+  },
+  "additional_wants": {
+    "id": "crimsoncovenant:hunters_mark",
+    "count": 3
+  },
+  "gives": {
+    "id": "crimsoncovenant:stalkers_gaze_tome",
+    "count": 1
+  },
+  "max_uses": 3,
+  "xp": 20,
+  "reputation_discount": 0.05
+}

@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "M": "crimsoncovenant:hunters_mark",
+    "E": "minecraft:enchanting_table"
+  },
+  "pattern": [
+    "MMM",
+    "MEM",
+    "MMM"
+  ],
+  "result": {
+    "id": "crimsoncovenant:ancient_translator"
+  }
+}

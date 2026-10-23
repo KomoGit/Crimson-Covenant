@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": "minecraft:crossbow",
+    "P": "#minecraft:planks"
+  },
+  "pattern": [
+    " C ",
+    "PPP",
+    "P P"
+  ],
+  "result": {
+    "id": "crimsoncovenant:hunters_table"
+  }
+}

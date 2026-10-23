@@ -1,0 +1,85 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:empty",
+          "weight": 80
+        },
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:flight_tome",
+          "weight": 6
+        },
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:dash_tome",
+          "weight": 6
+        },
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:daywalker_tome",
+          "weight": 6
+        },
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:blood_spear_tome",
+          "weight": 8
+        },
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:armor_of_ancient_tome",
+          "weight": 8
+        },
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:blood_parade_tome",
+          "weight": 6
+        },
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:bat_swarm_tome",
+          "weight": 6
+        },
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:night_of_terror_tome",
+          "weight": 6
+        },
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:defy_death_tome",
+          "weight": 6
+        },
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:possess_tome",
+          "weight": 6
+        },
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:ephemeral_sword_tome",
+          "weight": 6
+        },
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:boiling_hemorrhage_tome",
+          "weight": 6
+        },
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:death_march_tome",
+          "weight": 5
+        },
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:stalkers_gaze_tome",
+          "weight": 5
+        }
+      ]
+    }
+  ],
+  "random_sequence": "crimsoncovenant:chests/tomes_rare"
+}

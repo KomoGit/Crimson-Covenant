@@ -1,0 +1,10 @@
+{
+  "type": "neoforge:add_features",
+  "biomes": "#minecraft:is_overworld",
+  "features": [
+    "crimsoncovenant:ore_silver_upper",
+    "crimsoncovenant:ore_silver_middle",
+    "crimsoncovenant:ore_silver_small"
+  ],
+  "step": "underground_ores"
+}

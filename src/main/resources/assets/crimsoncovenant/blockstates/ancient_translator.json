@@ -1,0 +1,52 @@
+{
+  "variants": {
+    "tome=0": {
+      "model": "crimsoncovenant:block/ancient_translator"
+    },
+    "tome=1": {
+      "model": "crimsoncovenant:block/ancient_translator_active"
+    },
+    "tome=2": {
+      "model": "crimsoncovenant:block/ancient_translator_active"
+    },
+    "tome=3": {
+      "model": "crimsoncovenant:block/ancient_translator_active"
+    },
+    "tome=4": {
+      "model": "crimsoncovenant:block/ancient_translator_active"
+    },
+    "tome=5": {
+      "model": "crimsoncovenant:block/ancient_translator_active"
+    },
+    "tome=6": {
+      "model": "crimsoncovenant:block/ancient_translator_active"
+    },
+    "tome=7": {
+      "model": "crimsoncovenant:block/ancient_translator_active"
+    },
+    "tome=8": {
+      "model": "crimsoncovenant:block/ancient_translator_active"
+    },
+    "tome=9": {
+      "model": "crimsoncovenant:block/ancient_translator_active"
+    },
+    "tome=10": {
+      "model": "crimsoncovenant:block/ancient_translator_active"
+    },
+    "tome=11": {
+      "model": "crimsoncovenant:block/ancient_translator_active"
+    },
+    "tome=12": {
+      "model": "crimsoncovenant:block/ancient_translator_active"
+    },
+    "tome=13": {
+      "model": "crimsoncovenant:block/ancient_translator_active"
+    },
+    "tome=14": {
+      "model": "crimsoncovenant:block/ancient_translator_active"
+    },
+    "tome=15": {
+      "model": "crimsoncovenant:block/ancient_translator_active"
+    }
+  }
+}

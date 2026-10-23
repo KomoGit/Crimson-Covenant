@@ -1,0 +1,258 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "rolls": 1,
+      "condition": {
+        "type": "minecraft:survives_explosion"
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:ancient_translator"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "condition": {
+        "type": "minecraft:match_block",
+        "blocks": "crimsoncovenant:ancient_translator",
+        "state": {
+          "tome": "1"
+        }
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:flight_tome"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "condition": {
+        "type": "minecraft:match_block",
+        "blocks": "crimsoncovenant:ancient_translator",
+        "state": {
+          "tome": "2"
+        }
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:dash_tome"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "condition": {
+        "type": "minecraft:match_block",
+        "blocks": "crimsoncovenant:ancient_translator",
+        "state": {
+          "tome": "3"
+        }
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:armor_of_ancient_tome"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "condition": {
+        "type": "minecraft:match_block",
+        "blocks": "crimsoncovenant:ancient_translator",
+        "state": {
+          "tome": "4"
+        }
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:blood_spear_tome"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "condition": {
+        "type": "minecraft:match_block",
+        "blocks": "crimsoncovenant:ancient_translator",
+        "state": {
+          "tome": "5"
+        }
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:daywalker_tome"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "condition": {
+        "type": "minecraft:match_block",
+        "blocks": "crimsoncovenant:ancient_translator",
+        "state": {
+          "tome": "6"
+        }
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:blood_parade_tome"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "condition": {
+        "type": "minecraft:match_block",
+        "blocks": "crimsoncovenant:ancient_translator",
+        "state": {
+          "tome": "7"
+        }
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:bat_swarm_tome"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "condition": {
+        "type": "minecraft:match_block",
+        "blocks": "crimsoncovenant:ancient_translator",
+        "state": {
+          "tome": "8"
+        }
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:night_of_terror_tome"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "condition": {
+        "type": "minecraft:match_block",
+        "blocks": "crimsoncovenant:ancient_translator",
+        "state": {
+          "tome": "9"
+        }
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:defy_death_tome"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "condition": {
+        "type": "minecraft:match_block",
+        "blocks": "crimsoncovenant:ancient_translator",
+        "state": {
+          "tome": "10"
+        }
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:possess_tome"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "condition": {
+        "type": "minecraft:match_block",
+        "blocks": "crimsoncovenant:ancient_translator",
+        "state": {
+          "tome": "11"
+        }
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:shadow_step_tome"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "condition": {
+        "type": "minecraft:match_block",
+        "blocks": "crimsoncovenant:ancient_translator",
+        "state": {
+          "tome": "12"
+        }
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:ephemeral_sword_tome"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "condition": {
+        "type": "minecraft:match_block",
+        "blocks": "crimsoncovenant:ancient_translator",
+        "state": {
+          "tome": "13"
+        }
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:boiling_hemorrhage_tome"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "condition": {
+        "type": "minecraft:match_block",
+        "blocks": "crimsoncovenant:ancient_translator",
+        "state": {
+          "tome": "14"
+        }
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:death_march_tome"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "condition": {
+        "type": "minecraft:match_block",
+        "blocks": "crimsoncovenant:ancient_translator",
+        "state": {
+          "tome": "15"
+        }
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "crimsoncovenant:stalkers_gaze_tome"
+        }
+      ]
+    }
+  ],
+  "random_sequence": "crimsoncovenant:blocks/ancient_translator"
+}

@@ -1,0 +1,17 @@
+{
+  "wants": {
+    "id": "minecraft:emerald",
+    "count": 32
+  },
+  "additional_wants": {
+    "id": "crimsoncovenant:hunters_mark",
+    "count": 8
+  },
+  "gives": {
+    "id": "crimsoncovenant:daywalker_tome",
+    "count": 1
+  },
+  "max_uses": 2,
+  "xp": 30,
+  "reputation_discount": 0.05
+}
