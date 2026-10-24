@@ -3,14 +3,17 @@ package com.zestudio.crimsoncovenant.client;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
 import com.zestudio.crimsoncovenant.network.SkillPayloads;
+import com.zestudio.crimsoncovenant.registry.ModEffects;
 import com.zestudio.crimsoncovenant.skill.SkillSlots;
 
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.world.InteractionHand;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
@@ -38,6 +41,19 @@ public final class ModKeyMappings {
         event.register(OPEN_SKILLS);
         for (KeyMapping key : CAST_SKILL) {
             event.register(key);
+        }
+    }
+
+    /// Gliding in the Crimson Shroud, a right click is a Blood Charge instead of whatever it would otherwise do
+    @SubscribeEvent
+    static void bloodCharge(InputEvent.InteractionKeyMappingTriggered event) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (event.isUseItem() && minecraft.player != null && minecraft.player.isFallFlying() && minecraft.player.hasEffect(ModEffects.CRIMSON_SHROUD)) {
+            event.setCanceled(true);
+            event.setSwingHand(false);
+            if (event.getHand() == InteractionHand.MAIN_HAND) {
+                ClientPacketDistributor.sendToServer(new SkillPayloads.BloodCharge());
+            }
         }
     }
 

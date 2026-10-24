@@ -17,8 +17,9 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.level.Level;
 
-/// A bottle of blood, sold by the Ancient Butler. A vampire who drinks it refills their blood bar a good way; anyone
-/// else just feels sick.
+/// A bottle of blood, sold by the Ancient Butler and carried by vampires (who drop it when they die). A vampire who
+/// drinks it refills their blood bar a good way. It's tainted with the curse: a human who drinks it is sick to their
+/// stomach and catches Sanguine Vampiris.
 public class BloodBottleItem extends Item {
     public static final int BLOOD = 30;
 
@@ -34,6 +35,10 @@ public class BloodBottleItem extends Item {
             } else {
                 player.addEffect(new MobEffectInstance(MobEffects.NAUSEA, 200));
                 player.addEffect(new MobEffectInstance(MobEffects.HUNGER, 200));
+                if (!Vampirism.isInfected(player)) {
+                    Vampirism.infect(player, Vampirism.INFECTION_DURATION);
+                    player.sendOverlayMessage(Component.translatable("message.crimsoncovenant.blood_bottle.tainted").withStyle(ChatFormatting.DARK_RED));
+                }
             }
         }
         return super.finishUsingItem(stack, level, entity);
@@ -42,5 +47,6 @@ public class BloodBottleItem extends Item {
     @Override
     public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay display, Consumer<Component> builder, TooltipFlag flag) {
         builder.accept(Component.translatable("item.crimsoncovenant.blood_bottle.hint", BLOOD).withStyle(ChatFormatting.GRAY));
+        builder.accept(Component.translatable("item.crimsoncovenant.blood_bottle.warning").withStyle(ChatFormatting.DARK_RED));
     }
 }

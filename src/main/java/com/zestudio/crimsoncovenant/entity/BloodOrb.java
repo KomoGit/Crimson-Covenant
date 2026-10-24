@@ -126,8 +126,9 @@ public class BloodOrb extends Fireball {
         level.playSound(null, this.getX(), this.getY(), this.getZ(), SoundEvents.SLIME_ATTACK, SoundSource.PLAYERS, 0.8F, 0.5F);
     }
 
-    /// What Blood Parade lashes at: monsters, and anything else out to get the caster. Never players, the caster's
-    /// pets, thralls or allies.
+    /// What the vampire skills (Blood Parade, Afterimage Strike, Crimson Lightning) lash at: monsters, hunters (the
+    /// vampires' sworn enemies, even when they aren't after the caster this moment), and anything else out to get the
+    /// caster. Never players, the caster's pets, thralls or allies.
     public static boolean isHostile(LivingEntity entity, @Nullable LivingEntity owner) {
         if (entity == owner || !entity.isAlive() || entity instanceof ArmorStand || entity instanceof Player) {
             return false;
@@ -135,7 +136,7 @@ public class BloodOrb extends Fireball {
         if (owner != null && (entity.isAlliedTo(owner) || (entity instanceof OwnableEntity pet && pet.getOwner() == owner) || Enthrall.isThrallOf(entity, owner))) {
             return false;
         }
-        return entity instanceof Enemy || (entity instanceof Mob mob && owner != null && mob.getTarget() == owner);
+        return entity instanceof Enemy || entity instanceof Hunter || (entity instanceof Mob mob && owner != null && mob.getTarget() == owner);
     }
 
     private boolean canSee(ServerLevel level, Vec3 from, LivingEntity target) {

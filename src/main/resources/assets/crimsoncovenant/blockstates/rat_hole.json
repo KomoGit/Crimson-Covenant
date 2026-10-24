@@ -1,0 +1,27 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "crimsoncovenant:block/rat_hole"
+    },
+    "facing=east": {
+      "model": "crimsoncovenant:block/rat_hole",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "crimsoncovenant:block/rat_hole",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "crimsoncovenant:block/rat_hole",
+      "y": 270
+    },
+    "facing=up": {
+      "model": "crimsoncovenant:block/rat_hole",
+      "x": 270
+    },
+    "facing=down": {
+      "model": "crimsoncovenant:block/rat_hole",
+      "x": 90
+    }
+  }
+}

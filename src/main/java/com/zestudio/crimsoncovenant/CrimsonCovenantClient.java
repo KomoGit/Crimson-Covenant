@@ -6,15 +6,24 @@ import com.zestudio.crimsoncovenant.client.hud.FadingItemsLayer;
 import com.zestudio.crimsoncovenant.client.hud.SkillBarLayer;
 import com.zestudio.crimsoncovenant.client.screen.SkillsScreen;
 import com.zestudio.crimsoncovenant.client.model.BloodSpearModel;
+import com.zestudio.crimsoncovenant.client.model.BatWingsModel;
+import com.zestudio.crimsoncovenant.client.model.GargoyleModel;
 import com.zestudio.crimsoncovenant.client.model.GhostModel;
+import com.zestudio.crimsoncovenant.client.model.PlagueDoctorModel;
+import com.zestudio.crimsoncovenant.client.model.RatModel;
 import com.zestudio.crimsoncovenant.client.model.WerewolfModel;
 import com.zestudio.crimsoncovenant.client.renderer.AncientArmorLayer;
 import com.zestudio.crimsoncovenant.client.renderer.BloodSpearItemRenderer;
 import com.zestudio.crimsoncovenant.client.renderer.BloodSpearRenderer;
 import com.zestudio.crimsoncovenant.client.renderer.CrimsonLightningRenderer;
+import com.zestudio.crimsoncovenant.client.renderer.GargoyleRenderer;
 import com.zestudio.crimsoncovenant.client.renderer.GhostRenderer;
+import com.zestudio.crimsoncovenant.entity.Gargoyle;
 import com.zestudio.crimsoncovenant.client.renderer.HeadlessHorsemanRenderer;
 import com.zestudio.crimsoncovenant.client.renderer.HunterRenderer;
+import com.zestudio.crimsoncovenant.client.renderer.CrimsonShroudLayer;
+import com.zestudio.crimsoncovenant.client.renderer.PlagueDoctorRenderer;
+import com.zestudio.crimsoncovenant.client.renderer.RatRenderer;
 import com.zestudio.crimsoncovenant.client.renderer.SilverArrowRenderer;
 import com.zestudio.crimsoncovenant.client.renderer.SilveredWeaponSprites;
 import com.zestudio.crimsoncovenant.client.renderer.VampireBatRenderer;
@@ -84,7 +93,12 @@ public class CrimsonCovenantClient {
         event.registerLayerDefinition(ModModelLayers.VAMPIRE, () -> LayerDefinition.create(PlayerModel.createMesh(CubeDeformation.NONE, false), 64, 64));
         event.registerLayerDefinition(ModModelLayers.GHOST, GhostModel::createBodyLayer);
         event.registerLayerDefinition(ModModelLayers.WEREWOLF, WerewolfModel::createBodyLayer);
+        event.registerLayerDefinition(ModModelLayers.GARGOYLE, GargoyleModel::createBodyLayer);
         event.registerLayerDefinition(ModModelLayers.BLOOD_SPEAR, BloodSpearModel::createLayer);
+        event.registerLayerDefinition(ModModelLayers.RAT, RatModel::createBodyLayer);
+        event.registerLayerDefinition(ModModelLayers.PLAGUE_DOCTOR, PlagueDoctorModel::createBodyLayer);
+        event.registerLayerDefinition(ModModelLayers.BAT_WINGS, BatWingsModel::createLayer);
+        event.registerLayerDefinition(ModModelLayers.RAT_BABY, () -> RatModel.createBodyLayer().apply(RatModel.BABY_TRANSFORMER));
         // Slightly inflated so the blood armor shell sits just outside the body, like the wither's armor
         event.registerLayerDefinition(ModModelLayers.VAMPIRE_BLOOD_ARMOR, () -> LayerDefinition.create(PlayerModel.createMesh(new CubeDeformation(0.5F), false), 64, 64));
     }
@@ -102,6 +116,13 @@ public class CrimsonCovenantClient {
         event.registerEntityRenderer(ModEntities.HEADLESS_HORSEMAN.get(), HeadlessHorsemanRenderer::new);
         event.registerEntityRenderer(ModEntities.GHOST.get(), GhostRenderer::new);
         event.registerEntityRenderer(ModEntities.WEREWOLF.get(), WerewolfRenderer::new);
+        event.registerEntityRenderer(ModEntities.CATHEDRAL_GARGOYLE.get(), context -> new GargoyleRenderer(context, Gargoyle.Side.HUNTER));
+        event.registerEntityRenderer(ModEntities.BLOOD_GARGOYLE.get(), context -> new GargoyleRenderer(context, Gargoyle.Side.VAMPIRE));
+        event.registerEntityRenderer(ModEntities.RAT.get(), RatRenderer::new);
+        event.registerEntityRenderer(ModEntities.PLAGUE_DOCTOR.get(), PlagueDoctorRenderer::new);
+        event.registerEntityRenderer(ModEntities.MIASMA_CLOUD.get(), NoopRenderer::new);
+        event.registerEntityRenderer(ModEntities.SILVER_DUST_CLOUD.get(), NoopRenderer::new);
+        event.registerEntityRenderer(ModEntities.THRONE_SEAT.get(), NoopRenderer::new);
         event.registerEntityRenderer(ModEntities.SILVER_ARROW.get(), SilverArrowRenderer::new);
         event.registerEntityRenderer(ModEntities.MASTER_VAMPIRE.get(), context -> new VampireRenderer(context, VampireRenderer.MASTER_VAMPIRE_TEXTURE, 1.15F));
         event.registerEntityRenderer(ModEntities.BLOOD_SPEAR.get(), BloodSpearRenderer::new);
@@ -141,13 +162,14 @@ public class CrimsonCovenantClient {
         event.register(ModMenus.SKILLS.get(), SkillsScreen::new);
     }
 
-    // Armor of Ancient: the blood shell, on every player model
+    // Armor of Ancient's blood shell and the Crimson Shroud's wings, on every player model
     @SubscribeEvent
     static void addPlayerLayers(EntityRenderersEvent.AddLayers event) {
         for (PlayerModelType skin : event.getSkins()) {
             AvatarRenderer<AbstractClientPlayer> renderer = event.getPlayerRenderer(skin);
             if (renderer != null) {
                 renderer.addLayer(new AncientArmorLayer(renderer, event.getEntityModels()));
+                renderer.addLayer(new CrimsonShroudLayer(renderer, event.getEntityModels()));
             }
         }
     }
@@ -158,6 +180,7 @@ public class CrimsonCovenantClient {
             @Override
             public <T extends Avatar & ClientAvatarEntity> void accept(T avatar, AvatarRenderState state) {
                 state.setRenderData(AncientArmorLayer.ACTIVE, avatar instanceof Player player && player.getData(ModAttachments.ANCIENT_ARMOR_VISIBLE));
+                state.setRenderData(CrimsonShroudLayer.ACTIVE, avatar instanceof Player player && player.getData(ModAttachments.CRIMSON_SHROUD_WORN));
                 // A ghost from the Potion of Ephemeral: drawn faint, the way an invisible player looks to a teammate
                 if (avatar instanceof Player player && player.getData(ModAttachments.GHOSTLY)) {
                     state.isInvisible = true;

@@ -46,5 +46,10 @@ public final class ModPotions {
     public static final DeferredHolder<Potion, Potion> SILVER = POTIONS.register("silver",
             () -> new Potion("silver", new MobEffectInstance(ModEffects.SILVER_DREAD, 300)));
 
+    /// Brewed from ferns and an Awkward Potion (or bought from a Plague Doctor): cures the Plague and the Miasma.
+    /// Gunpowder and dragon's breath make it splash and linger, and thrown it clears the Miasma away.
+    public static final DeferredHolder<Potion, Potion> CLEANSE = POTIONS.register("cleanse",
+            () -> new Potion("cleanse", new MobEffectInstance(ModEffects.CLEANSE, 1)));
+
     private ModPotions() {}
 }

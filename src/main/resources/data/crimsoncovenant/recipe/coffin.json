@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "P": "minecraft:dark_oak_planks",
+    "W": "minecraft:red_wool"
+  },
+  "pattern": [
+    "PWP",
+    "PWP",
+    "PPP"
+  ],
+  "result": {
+    "id": "crimsoncovenant:coffin"
+  }
+}

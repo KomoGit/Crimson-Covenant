@@ -21,7 +21,7 @@ public final class ModCreativeTabs {
             .icon(() -> ModItems.HUNTER_SPAWN_EGG.get().getDefaultInstance())
             .displayItems((parameters, output) -> {
                 // The blood orb is only what the Blood Parade looks like in flight, and the blood spear only comes from its skill
-                ModItems.ITEMS.getEntries().stream().filter(item -> item != ModItems.BLOOD_ORB && item != ModItems.BLOOD_SPEAR).forEach(item -> output.accept(item.get()));
+                ModItems.ITEMS.getEntries().stream().filter(item -> item != ModItems.BLOOD_ORB && item != ModItems.BLOOD_SPEAR && item != ModItems.BLOOD_CHARGE).forEach(item -> output.accept(item.get()));
                 output.accept(PotionContents.createItemStack(Items.SPLASH_POTION, ModPotions.HOLY_WATER));
                 output.accept(PotionContents.createItemStack(Items.LINGERING_POTION, ModPotions.HOLY_WATER));
                 // Black Blood is only ever drunk, so there's no splash or lingering kind
@@ -35,6 +35,9 @@ public final class ModCreativeTabs {
                 }
                 output.accept(PotionContents.createItemStack(Items.SPLASH_POTION, ModPotions.SILVER));
                 output.accept(PotionContents.createItemStack(Items.LINGERING_POTION, ModPotions.SILVER));
+                for (Item container : new Item[] {Items.POTION, Items.SPLASH_POTION, Items.LINGERING_POTION}) {
+                    output.accept(PotionContents.createItemStack(container, ModPotions.CLEANSE));
+                }
                 output.accept(PotionContents.createItemStack(Items.POTION, ModPotions.EPHEMERAL));
                 output.accept(PotionContents.createItemStack(Items.POTION, ModPotions.LONG_EPHEMERAL));
             })

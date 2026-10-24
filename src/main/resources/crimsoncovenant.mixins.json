@@ -3,7 +3,15 @@
   "package": "com.zestudio.crimsoncovenant.mixin",
   "compatibilityLevel": "JAVA_25",
   "mixins": [
-    "PlayerMixin"
+    "BrewingStandBlockEntityMixin",
+    "CrafterBlockMixin",
+    "CraftingMenuMixin",
+    "PlayerMixin",
+    "SmithingMenuMixin",
+    "StructureTemplatePoolAccessor"
+  ],
+  "client": [
+    "SkyRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

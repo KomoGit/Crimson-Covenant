@@ -33,7 +33,7 @@ import net.minecraft.world.phys.Vec3;
 /// Tests for the Graveyard structure and its biome
 final class GraveyardGameTests {
     /// The graveyard is built this many chunks east of the test, well clear of any other test
-    private static final int CHUNKS_AWAY = 24;
+    private static final int CHUNKS_AWAY = 160;
 
     private GraveyardGameTests() {}
 

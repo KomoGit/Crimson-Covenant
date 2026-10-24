@@ -1,0 +1,6 @@
+{
+  "type": "crimsoncovenant:hunter_cabin",
+  "biomes": "#crimsoncovenant:has_structure/hunter_cabin",
+  "spawn_overrides": {},
+  "step": "surface_structures"
+}

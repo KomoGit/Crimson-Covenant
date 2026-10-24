@@ -1,12 +1,15 @@
 package com.zestudio.crimsoncovenant.vampirism;
 
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
+import com.zestudio.crimsoncovenant.entity.Gargoyle;
 import com.zestudio.crimsoncovenant.entity.MasterVampire;
 import com.zestudio.crimsoncovenant.entity.Vampire;
 import com.zestudio.crimsoncovenant.registry.ModAttachments;
 import com.zestudio.crimsoncovenant.registry.ModEffects;
 import com.zestudio.crimsoncovenant.skill.BloodSkills;
 import com.zestudio.crimsoncovenant.world.BloodMoon;
+import com.zestudio.crimsoncovenant.hunter.HunterRanks;
+import com.zestudio.crimsoncovenant.block.CoffinBlock;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -53,14 +56,14 @@ public final class Vampirism {
     }
 
     /// Whether a vampire can drink from this: only the living. Not the undead (other vampires included), and not
-    /// armor stands.
+    /// armor stands or stone gargoyles.
     /// Undead creatures, and vampire players with them
     public static boolean isUndead(LivingEntity entity) {
         return entity.is(EntityTypeTags.UNDEAD) || (entity instanceof Player player && isVampire(player));
     }
 
     public static boolean hasLivingBlood(LivingEntity entity) {
-        return !entity.is(EntityTypeTags.UNDEAD) && !(entity instanceof ArmorStand) && !(entity instanceof Player player && isVampire(player));
+        return !entity.is(EntityTypeTags.UNDEAD) && !(entity instanceof ArmorStand) && !(entity instanceof Gargoyle) && !(entity instanceof Player player && isVampire(player));
     }
 
     public static boolean isInfected(Player player) {
@@ -87,6 +90,7 @@ public final class Vampirism {
         player.removeEffect(ModEffects.SANGUINE_VAMPIRIS);
         player.setData(ModAttachments.IS_VAMPIRE, true);
         player.sendSystemMessage(Component.translatable(messageKey).withStyle(ChatFormatting.DARK_RED));
+        HunterRanks.castOut(player);
         player.level().playSound(null, player.blockPosition(), SoundEvents.ZOMBIE_VILLAGER_CURE, SoundSource.PLAYERS, 1.0F, 0.6F);
     }
 
@@ -148,6 +152,10 @@ public final class Vampirism {
             if (player.getData(ModAttachments.ANCIENT_ARMOR_VISIBLE) != armored) {
                 player.setData(ModAttachments.ANCIENT_ARMOR_VISIBLE, armored);
             }
+            boolean shrouded = player.hasEffect(ModEffects.CRIMSON_SHROUD);
+            if (player.getData(ModAttachments.CRIMSON_SHROUD_WORN) != shrouded) {
+                player.setData(ModAttachments.CRIMSON_SHROUD_WORN, shrouded);
+            }
             tickInfection(player);
             if (isVampire(player)) {
                 tickVampire(player);
@@ -207,6 +215,10 @@ public final class Vampirism {
     /// Same rules vanilla uses for zombies and skeletons, randomized per tick so it doesn't ignite instantly.
     public static boolean isInSunlight(LivingEntity entity) {
         if (!(entity.level() instanceof ServerLevel level) || !level.environmentAttributes().getValue(EnvironmentAttributes.MONSTERS_BURN, entity.position())) {
+            return false;
+        }
+        // Asleep in a coffin, the sun can't reach
+        if (CoffinBlock.isInCoffin(entity)) {
             return false;
         }
         float brightness = entity.getLightLevelDependentMagicValue();

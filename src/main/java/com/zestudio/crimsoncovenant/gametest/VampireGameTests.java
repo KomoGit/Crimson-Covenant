@@ -55,6 +55,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
+import com.zestudio.crimsoncovenant.registry.ModAttachments;
 
 /// GameTests for vampires and player vampirism. Registered in ModGameTests.
 final class VampireGameTests {
@@ -285,6 +286,15 @@ final class VampireGameTests {
                 .thenSucceed();
     }
 
+    static void masterVampireDropsTokenOfMaster(GameTestHelper helper) {
+        MasterVampire master = helper.spawnWithNoFreeWill(ModEntities.MASTER_VAMPIRE.get(), new BlockPos(4, 1, 4));
+        ServerPlayer player = helper.makeMockServerPlayerInLevel();
+        master.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(player), 1000.0F);
+        helper.getLevel().getServer().getPlayerList().remove(player);
+        helper.assertItemEntityPresent(ModItems.TOKEN_OF_MASTER.get());
+        helper.succeed();
+    }
+
     static void dropsTokenOfBloodWhenKilledByPlayer(GameTestHelper helper) {
         Vampire vampire = spawnVampire(helper, new BlockPos(4, 1, 4));
         ServerPlayer player = helper.makeMockServerPlayerInLevel();
@@ -505,5 +515,15 @@ final class VampireGameTests {
 
     private static void removePlayer(GameTestHelper helper, ServerPlayer player) {
         helper.getLevel().getServer().getPlayerList().remove(player);
+    }
+
+    static void bloodBottlesCurseTheLiving(GameTestHelper helper) {
+        ServerPlayer player = SkillGameTests.makePlayer(helper);
+        helper.assertTrue(!Vampirism.isInfected(player), Component.literal("The player should start out clean"));
+        new ItemStack(ModItems.BLOOD_BOTTLE.get()).finishUsingItem(helper.getLevel(), player);
+        helper.assertTrue(Vampirism.isInfected(player) && !Vampirism.isVampire(player), Component.literal("A human who drinks a Blood Bottle should catch Sanguine Vampiris"));
+        helper.assertValueEqual(player.getData(ModAttachments.INFECTION_TICKS), Vampirism.INFECTION_DURATION, "infection after drinking a Blood Bottle");
+        SkillGameTests.removePlayer(helper, player);
+        helper.succeed();
     }
 }

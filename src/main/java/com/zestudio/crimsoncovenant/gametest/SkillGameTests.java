@@ -9,7 +9,7 @@ import com.zestudio.crimsoncovenant.skill.UpgradeEffects;
 import com.zestudio.crimsoncovenant.effect.BloodFlightEffect;
 import com.zestudio.crimsoncovenant.block.AncientTranslatorBlock;
 import com.zestudio.crimsoncovenant.block.GarlicBraidBlock;
-import com.zestudio.crimsoncovenant.block.SanguineTableBlock;
+import com.zestudio.crimsoncovenant.block.BloodAltarBlock;
 import com.zestudio.crimsoncovenant.effect.BlackBloodEffect;
 import com.zestudio.crimsoncovenant.effect.GarlicEffect;
 import com.zestudio.crimsoncovenant.entity.BloodOrb;
@@ -46,6 +46,7 @@ import com.zestudio.crimsoncovenant.vampirism.BloodPool;
 import com.zestudio.crimsoncovenant.vampirism.GarlicWard;
 import com.zestudio.crimsoncovenant.vampirism.Vampirism;
 import com.zestudio.crimsoncovenant.world.BloodMoon;
+import com.zestudio.crimsoncovenant.effect.CrimsonShroudEffect;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -75,6 +76,7 @@ import net.minecraft.world.entity.monster.skeleton.Skeleton;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemUseAnimation;
 import net.minecraft.world.item.Items;
@@ -91,10 +93,13 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.entity.projectile.arrow.Arrow;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.entity.projectile.FireworkRocketEntity;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.common.damagesource.DamageContainer;
 import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
+import net.neoforged.neoforge.common.NeoForgeMod;
+import net.neoforged.neoforge.event.entity.living.LivingFallEvent;
 
 /// Tests for the vampire's blood bar, the blood skills, the Ancient Translator, and where tomes come from
 final class SkillGameTests {
@@ -449,26 +454,57 @@ final class SkillGameTests {
         return zombie;
     }
 
-    static void bloodWingsFlyLongerAndDive(GameTestHelper helper) {
+    static void vampireSkillsHitHunters(GameTestHelper helper) {
+        ServerPlayer player = makeVampire(helper, 100);
+        Hunter hunter = helper.spawnWithNoFreeWill(ModEntities.HUNTER.get(), new BlockPos(4, 1, 4));
+        Villager villager = helper.spawnWithNoFreeWill(EntityTypes.VILLAGER, new BlockPos(6, 1, 4));
+        helper.assertTrue(BloodOrb.isHostile(hunter, player), Component.literal("Vampire skills should strike hunters, even ones not yet after the vampire"));
+        helper.assertTrue(!BloodOrb.isHostile(villager, player), Component.literal("Vampire skills should leave peaceful villagers alone"));
+        hunter.discard();
+        removePlayer(helper, player);
+        helper.succeed();
+    }
+
+    static void crimsonShroudGlidesOnBloodCharges(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         ServerPlayer player = makeVampire(helper, 100);
-        Vec3 at = helper.absoluteVec(new Vec3(4.5, 1.0, 4.5));
+        Vec3 at = helper.absoluteVec(new Vec3(4.5, 3.0, 4.5));
         player.teleportTo(at.x, at.y, at.z);
         helper.assertTrue(castUpgraded(player, BloodSkill.FLIGHT), Component.literal("Upgraded Flight should cast"));
-        MobEffectInstance flight = player.getEffect(ModEffects.BLOOD_FLIGHT);
-        helper.assertTrue(flight != null && flight.getDuration() == BloodFlightEffect.DURATION * 2, Component.literal("Blood Wings fly twice as long"));
+        MobEffectInstance shroud = player.getEffect(ModEffects.CRIMSON_SHROUD);
+        helper.assertTrue(shroud != null && shroud.getDuration() == CrimsonShroudEffect.DURATION, Component.literal("The Crimson Shroud should last a minute"));
+        helper.assertTrue(player.getAttributeValue(NeoForgeMod.GLIDING_FLIGHT) > 0.0, Component.literal("The shroud should glide like an elytra, with no elytra on"));
+        helper.assertTrue(player.getItemBySlot(EquipmentSlot.CHEST).isEmpty(), Component.literal("The shroud shouldn't take the chest slot"));
+        helper.assertTrue(!player.hasEffect(ModEffects.BLOOD_FLIGHT), Component.literal("The shroud glides; it doesn't hover like plain Flight"));
+        helper.assertTrue(NeoForge.EVENT_BUS.post(new LivingFallEvent(player, 30.0, 1.0F)).isCanceled(), Component.literal("No fall should hurt while the shroud is on"));
 
-        // The flight has run out and the vampire comes down. (The server never ticks a mock player, so the flight
-        // ending is played out by hand.)
-        player.removeEffect(ModEffects.BLOOD_FLIGHT);
-        player.getAbilities().mayfly = false;
-        player.getAbilities().flying = false;
-        Zombie below = spawnHelmetedZombie(helper, new BlockPos(5, 1, 4));
-        player.setData(ModAttachments.BLOOD_WINGS_DIVE, true);
-        player.causeFallDamage(10.0, 1.0F, level.damageSources().fall());
-        helper.assertTrue(below.getHealth() < below.getMaxHealth(), Component.literal("The dive should slam whatever is below"));
-        helper.assertTrue(!player.getData(ModAttachments.BLOOD_WINGS_DIVE), Component.literal("One dive per flight"));
-        below.discard();
+        // Blood Charges: only while gliding, five blood each, driving the vampire on like a firework
+        int before = BloodPool.get(player);
+        helper.assertTrue(!BloodSkills.bloodCharge(player) && BloodPool.get(player) == before, Component.literal("No Blood Charge without gliding"));
+        player.startFallFlying();
+        helper.assertTrue(BloodSkills.bloodCharge(player), Component.literal("A Blood Charge while gliding in the shroud"));
+        helper.assertValueEqual(BloodPool.get(player), before - BloodSkills.BLOOD_CHARGE_COST, "blood after a Blood Charge");
+        List<FireworkRocketEntity> boosts = level.getEntitiesOfClass(FireworkRocketEntity.class, player.getBoundingBox().inflate(3.0));
+        helper.assertTrue(boosts.size() == 1, Component.literal("A Blood Charge should drive the vampire on like a firework"));
+        boosts.forEach(FireworkRocketEntity::discard);
+        helper.assertTrue(!BloodSkills.bloodCharge(player), Component.literal("Not another straight away"));
+        player.getCooldowns().removeCooldown(player.getCooldowns().getCooldownGroup(new ItemStack(ModItems.BLOOD_CHARGE.get())));
+        BloodPool.set(player, BloodSkills.BLOOD_CHARGE_COST - 1);
+        helper.assertTrue(!BloodSkills.bloodCharge(player), Component.literal("No Blood Charge without the blood for it"));
+        BloodPool.set(player, before);
+
+        // Pressing the skill again takes the shroud off, free
+        int blood = BloodPool.get(player);
+        helper.assertTrue(BloodSkills.tryCast(player, 0), Component.literal("Pressing the skill again should take the shroud off"));
+        helper.assertTrue(!player.hasEffect(ModEffects.CRIMSON_SHROUD), Component.literal("The shroud should be gone"));
+        helper.assertValueEqual(BloodPool.get(player), blood, "blood after taking the shroud off");
+        helper.assertTrue(!NeoForge.EVENT_BUS.post(new LivingFallEvent(player, 30.0, 1.0F)).isCanceled(), Component.literal("Falls hurt again once it's off"));
+
+        // Holy Water washes it off too
+        player.getCooldowns().removeCooldown(player.getCooldowns().getCooldownGroup(SkillSlots.get(player, 0)));
+        helper.assertTrue(BloodSkills.tryCast(player, 0), Component.literal("The shroud should go back on"));
+        BloodSkills.dispel(player);
+        helper.assertTrue(!player.hasEffect(ModEffects.CRIMSON_SHROUD), Component.literal("Holy Water should wash the shroud off"));
         removePlayer(helper, player);
         helper.succeed();
     }
@@ -690,30 +726,34 @@ final class SkillGameTests {
     }
 
 
-    static void sanguineTableUpgradesSkills(GameTestHelper helper) {
+    static void bloodAltarUpgradesSkills(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         BlockPos table = new BlockPos(4, 1, 4);
-        helper.setBlock(table, ModBlocks.SANGUINE_TABLE.get());
+        helper.setBlock(table, ModBlocks.BLOOD_ALTAR.get());
         BlockPos tablePos = helper.absolutePos(table);
         BlockState state = level.getBlockState(tablePos);
         BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(tablePos), Direction.UP, tablePos, false);
         ServerPlayer player = makeVampire(helper, 100);
 
-        // A skill with no upgrade yet
-        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(BloodSkill.FLIGHT.skillItem()));
-        state.useItemOn(player.getMainHandItem(), level, player, InteractionHand.MAIN_HAND, hit);
-        helper.assertTrue(!SkillUpgrade.isUpgraded(player.getMainHandItem()), Component.literal("Flight has no upgrade"));
-
-        // One mark short, then enough
+        // Nothing to pay with
         player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(BloodSkill.BLOOD_SPEAR.skillItem()));
-        player.getInventory().add(new ItemStack(ModItems.TOKEN_OF_BLOOD.get(), SanguineTableBlock.PRICE - 1));
+        state.useItemOn(player.getMainHandItem(), level, player, InteractionHand.MAIN_HAND, hit);
+        helper.assertTrue(!SkillUpgrade.isUpgraded(player.getMainHandItem()), Component.literal("The table shouldn't upgrade for free"));
+
+        // Every Token of Blood but no Token of Master, then one Token of Blood short, then the full price
+        player.getInventory().add(new ItemStack(ModItems.TOKEN_OF_BLOOD.get(), BloodAltarBlock.PRICE));
+        state.useItemOn(player.getMainHandItem(), level, player, InteractionHand.MAIN_HAND, hit);
+        helper.assertTrue(!SkillUpgrade.isUpgraded(player.getMainHandItem()), Component.literal("The table should want a Token of Master too"));
+        player.getInventory().add(new ItemStack(ModItems.TOKEN_OF_MASTER.get(), BloodAltarBlock.MASTER_PRICE));
+        removeOne(player, ModItems.TOKEN_OF_BLOOD.get());
         state.useItemOn(player.getMainHandItem(), level, player, InteractionHand.MAIN_HAND, hit);
         helper.assertTrue(!SkillUpgrade.isUpgraded(player.getMainHandItem()), Component.literal("The table should want its full price"));
         player.getInventory().add(new ItemStack(ModItems.TOKEN_OF_BLOOD.get(), 1));
         state.useItemOn(player.getMainHandItem(), level, player, InteractionHand.MAIN_HAND, hit);
         helper.assertTrue(SkillUpgrade.isUpgraded(player.getMainHandItem()), Component.literal("The table should upgrade the Blood Spear"));
         for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
-            helper.assertTrue(!player.getInventory().getItem(slot).is(ModItems.TOKEN_OF_BLOOD.get()), Component.literal("The tokens should be spent"));
+            ItemStack left = player.getInventory().getItem(slot);
+            helper.assertTrue(!left.is(ModItems.TOKEN_OF_BLOOD.get()) && !left.is(ModItems.TOKEN_OF_MASTER.get()), Component.literal("The tokens should be spent"));
         }
 
         // The upgraded spear costs 5 more blood, and the spear it conjures carries the lightning
@@ -725,6 +765,15 @@ final class SkillGameTests {
                 Component.literal("The conjured spear should be upgraded too"));
         removePlayer(helper, player);
         helper.succeed();
+    }
+
+    private static void removeOne(ServerPlayer player, Item item) {
+        for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+            if (player.getInventory().getItem(slot).is(item)) {
+                player.getInventory().getItem(slot).shrink(1);
+                return;
+            }
+        }
     }
 
     static void crimsonLightningStrikesSpearVictims(GameTestHelper helper) {
@@ -814,20 +863,19 @@ final class SkillGameTests {
 
     static void translatorRecipeUsesTokensOfBlood(GameTestHelper helper) {
         var recipes = helper.getLevel().getServer().getRecipeManager();
-        for (String recipe : new String[] {"ancient_translator", "sanguine_table", "silver_coin"}) {
+        for (String recipe : new String[] {"ancient_translator", "blood_altar", "silver_coin"}) {
             helper.assertTrue(recipes.byKey(ResourceKey.create(Registries.RECIPE, CrimsonCovenant.id(recipe))).isPresent(), Component.literal("Missing recipe " + recipe));
         }
         helper.succeed();
     }
 
-    static void oldHunterTradesForSilverCoins(GameTestHelper helper) {
+    static void plagueDoctorTradesForCoinsAndEmeralds(GameTestHelper helper) {
         Villager hunter = helper.spawnWithNoFreeWill(EntityTypes.VILLAGER, new BlockPos(4, 1, 4));
-        hunter.setVillagerData(hunter.getVillagerData().withProfession(ModVillagers.OLD_HUNTER).withLevel(1));
-        helper.assertTrue(!hunter.getOffers().isEmpty(), Component.literal("A novice Old Hunter should have something to trade"));
+        hunter.setVillagerData(hunter.getVillagerData().withProfession(ModVillagers.PLAGUE_DOCTOR).withLevel(1));
+        helper.assertTrue(!hunter.getOffers().isEmpty(), Component.literal("A novice Plague Doctor should have something to trade"));
         for (MerchantOffer offer : hunter.getOffers()) {
-            boolean coins = offer.getCostA().is(ModItems.SILVER_COIN.get()) || offer.getCostB().is(ModItems.SILVER_COIN.get())
-                    || offer.getResult().is(Items.EMERALD);
-            helper.assertTrue(coins, Component.literal("The Old Hunter deals in Silver Coins, not " + offer.getCostA()));
+            boolean coins = offer.getCostA().is(ModItems.SILVER_COIN.get()) || offer.getCostA().is(Items.EMERALD) || offer.getResult().is(Items.EMERALD);
+            helper.assertTrue(coins, Component.literal("The Plague Doctor deals in Silver Coins and emeralds, not " + offer.getCostA()));
         }
         hunter.discard();
         helper.succeed();

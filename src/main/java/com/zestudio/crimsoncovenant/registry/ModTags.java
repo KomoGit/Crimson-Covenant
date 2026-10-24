@@ -6,6 +6,8 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.item.Item;
 
 public final class ModTags {
     private ModTags() {}
@@ -19,6 +21,26 @@ public final class ModTags {
         public static final TagKey<EntityType<?>> CANNOT_BE_POSSESSED = TagKey.create(Registries.ENTITY_TYPE, CrimsonCovenant.id("cannot_be_possessed"));
 
         private Entities() {}
+    }
+
+    public static final class Blocks {
+        /// Earth rats can dig their burrows into
+        public static final TagKey<Block> RATS_BURROW_IN = TagKey.create(Registries.BLOCK, CrimsonCovenant.id("rats_burrow_in"));
+        /// Wood rats can gnaw their way into, from the side only
+        public static final TagKey<Block> RATS_GNAW_INTO = TagKey.create(Registries.BLOCK, CrimsonCovenant.id("rats_gnaw_into"));
+        /// What rats eat when they raid at night: crops, and hay, pumpkins, melons, berries and the like
+        public static final TagKey<Block> RATS_EAT = TagKey.create(Registries.BLOCK, CrimsonCovenant.id("rats_eat"));
+
+        private Blocks() {}
+    }
+
+    public static final class Items {
+        /// What a Rat Trap can be baited with
+        public static final TagKey<Item> RAT_BAIT = TagKey.create(Registries.ITEM, CrimsonCovenant.id("rat_bait"));
+        /// What rats eat off the ground besides anything edible
+        public static final TagKey<Item> RATS_SCAVENGE = TagKey.create(Registries.ITEM, CrimsonCovenant.id("rats_scavenge"));
+
+        private Items() {}
     }
 
     public static final class DamageTypes {

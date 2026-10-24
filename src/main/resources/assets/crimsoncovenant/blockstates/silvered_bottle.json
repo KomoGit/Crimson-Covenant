@@ -1,0 +1,31 @@
+{
+  "variants": {
+    "facing=north,ghost=false": {
+      "model": "crimsoncovenant:block/silvered_bottle"
+    },
+    "facing=north,ghost=true": {
+      "model": "crimsoncovenant:block/silvered_bottle_ghost"
+    },
+    "facing=east,ghost=false": {
+      "model": "crimsoncovenant:block/silvered_bottle"
+    },
+    "facing=east,ghost=true": {
+      "model": "crimsoncovenant:block/silvered_bottle_ghost",
+      "y": 90
+    },
+    "facing=south,ghost=false": {
+      "model": "crimsoncovenant:block/silvered_bottle"
+    },
+    "facing=south,ghost=true": {
+      "model": "crimsoncovenant:block/silvered_bottle_ghost",
+      "y": 180
+    },
+    "facing=west,ghost=false": {
+      "model": "crimsoncovenant:block/silvered_bottle"
+    },
+    "facing=west,ghost=true": {
+      "model": "crimsoncovenant:block/silvered_bottle_ghost",
+      "y": 270
+    }
+  }
+}

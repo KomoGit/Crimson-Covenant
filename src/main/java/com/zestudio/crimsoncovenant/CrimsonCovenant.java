@@ -16,6 +16,7 @@ import com.zestudio.crimsoncovenant.registry.ModPotions;
 import com.zestudio.crimsoncovenant.registry.ModRecipes;
 import com.zestudio.crimsoncovenant.registry.ModStructures;
 import com.zestudio.crimsoncovenant.registry.ModVillagers;
+import com.zestudio.crimsoncovenant.registry.ModBlockEntities;
 
 import net.minecraft.resources.Identifier;
 import net.neoforged.bus.api.IEventBus;
@@ -33,6 +34,7 @@ public class CrimsonCovenant {
     public CrimsonCovenant(IEventBus modEventBus, ModContainer modContainer) {
         ModDataComponents.DATA_COMPONENTS.register(modEventBus);
         ModBlocks.BLOCKS.register(modEventBus);
+        ModBlockEntities.BLOCK_ENTITY_TYPES.register(modEventBus);
         ModItems.ITEMS.register(modEventBus);
         ModEntities.ENTITY_TYPES.register(modEventBus);
         ModEffects.MOB_EFFECTS.register(modEventBus);

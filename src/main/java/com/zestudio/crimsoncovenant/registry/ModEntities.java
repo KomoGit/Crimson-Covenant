@@ -4,6 +4,7 @@ import com.zestudio.crimsoncovenant.CrimsonCovenant;
 import com.zestudio.crimsoncovenant.entity.BloodOrb;
 import com.zestudio.crimsoncovenant.entity.BloodSpear;
 import com.zestudio.crimsoncovenant.entity.CrimsonLightning;
+import com.zestudio.crimsoncovenant.entity.Gargoyle;
 import com.zestudio.crimsoncovenant.entity.Ghost;
 import com.zestudio.crimsoncovenant.entity.HemorrhageZone;
 import com.zestudio.crimsoncovenant.entity.HeadlessHorseman;
@@ -17,6 +18,11 @@ import com.zestudio.crimsoncovenant.entity.Vampire;
 import com.zestudio.crimsoncovenant.entity.VampireBat;
 import com.zestudio.crimsoncovenant.entity.Werewolf;
 import com.zestudio.crimsoncovenant.world.BloodMoon;
+import com.zestudio.crimsoncovenant.entity.Rat;
+import com.zestudio.crimsoncovenant.entity.MiasmaCloud;
+import com.zestudio.crimsoncovenant.entity.PlagueDoctor;
+import com.zestudio.crimsoncovenant.entity.SilverDustCloud;
+import com.zestudio.crimsoncovenant.entity.ThroneSeat;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.BlockTags;
@@ -58,6 +64,23 @@ public final class ModEntities {
     public static final DeferredHolder<EntityType<?>, EntityType<VampireBat>> VAMPIRE_BAT = ENTITY_TYPES.registerEntityType("vampire_bat", VampireBat::new, MobCategory.MONSTER,
             builder -> builder.sized(0.5F, 0.9F).eyeHeight(0.45F).clientTrackingRange(5).notInPeaceful());
 
+    /// Vermin of the villages and woods
+    public static final DeferredHolder<EntityType<?>, EntityType<Rat>> RAT = ENTITY_TYPES.registerEntityType("rat", Rat::new, MobCategory.CREATURE,
+            builder -> builder.sized(0.5F, 0.35F).eyeHeight(0.25F).clientTrackingRange(8));
+    /// The healer who comes when the Miasma settles over a village
+    public static final DeferredHolder<EntityType<?>, EntityType<PlagueDoctor>> PLAGUE_DOCTOR = ENTITY_TYPES.registerEntityType("plague_doctor", PlagueDoctor::new, MobCategory.CREATURE,
+            builder -> builder.sized(0.6F, 1.95F).eyeHeight(1.62F).clientTrackingRange(10));
+    /// The green fog over a rat-infested village. Invisible itself: it's drawn by its particles.
+    public static final DeferredHolder<EntityType<?>, EntityType<MiasmaCloud>> MIASMA_CLOUD = ENTITY_TYPES.registerEntityType("miasma_cloud", MiasmaCloud::new, MobCategory.MISC,
+            builder -> builder.noLootTable().sized(0.5F, 0.5F).clientTrackingRange(8).updateInterval(20).fireImmune());
+
+    /// The unseen seat on a Blood Throne
+    public static final DeferredHolder<EntityType<?>, EntityType<ThroneSeat>> THRONE_SEAT = ENTITY_TYPES.registerEntityType("throne_seat", ThroneSeat::new, MobCategory.MISC,
+            builder -> builder.noLootTable().noSummon().sized(0.25F, 0.1F).clientTrackingRange(10).updateInterval(20).fireImmune());
+
+    public static final DeferredHolder<EntityType<?>, EntityType<SilverDustCloud>> SILVER_DUST_CLOUD = ENTITY_TYPES.registerEntityType("silver_dust_cloud", SilverDustCloud::new, MobCategory.MISC,
+            builder -> builder.noLootTable().sized(0.5F, 0.5F).clientTrackingRange(8).updateInterval(20).fireImmune());
+
     public static final DeferredHolder<EntityType<?>, EntityType<HeadlessHorseman>> HEADLESS_HORSEMAN = ENTITY_TYPES.registerEntityType("headless_horseman", HeadlessHorseman::new, MobCategory.MONSTER,
             builder -> builder.sized(0.6F, 1.95F).eyeHeight(1.74F).passengerAttachments(2.0F).ridingOffset(-0.7F).clientTrackingRange(10).notInPeaceful());
 
@@ -92,6 +115,15 @@ public final class ModEntities {
     public static final DeferredHolder<EntityType<?>, EntityType<MasterVampire>> MASTER_VAMPIRE = ENTITY_TYPES.registerEntityType("master_vampire", MasterVampire::new, MobCategory.MONSTER,
             builder -> builder.sized(0.7F, 2.2F).eyeHeight(2.0F).clientTrackingRange(10).notInPeaceful());
 
+    // Stone guardians, carved and woken by players (see item.GargoyleStatueItem), never spawned by the world.
+    // The hunters' is made with silver, the vampires' with blood.
+    public static final DeferredHolder<EntityType<?>, EntityType<Gargoyle>> CATHEDRAL_GARGOYLE = ENTITY_TYPES.registerEntityType("cathedral_gargoyle",
+            (type, level) -> new Gargoyle(type, level, Gargoyle.Side.HUNTER), MobCategory.MISC,
+            builder -> builder.sized(0.7F, 1.9F).eyeHeight(1.6F).clientTrackingRange(10));
+    public static final DeferredHolder<EntityType<?>, EntityType<Gargoyle>> BLOOD_GARGOYLE = ENTITY_TYPES.registerEntityType("blood_gargoyle",
+            (type, level) -> new Gargoyle(type, level, Gargoyle.Side.VAMPIRE), MobCategory.MISC,
+            builder -> builder.sized(0.7F, 1.9F).eyeHeight(1.6F).clientTrackingRange(10));
+
     private ModEntities() {}
 
     /// Master vampires only rise on their own during a blood moon (spawn eggs and commands still work any time)
@@ -114,6 +146,11 @@ public final class ModEntities {
                 && Mob.checkMobSpawnRules(type, level, reason, pos, random);
     }
 
+    /// Rats turn up on the forest floor, light or dark
+    public static boolean checkRatSpawnRules(EntityType<Rat> type, ServerLevelAccessor level, EntitySpawnReason reason, BlockPos pos, RandomSource random) {
+        return level.getBlockState(pos.below()).is(BlockTags.DIRT) && Mob.checkMobSpawnRules(type, level, reason, pos, random);
+    }
+
     @SubscribeEvent
     static void registerAttributes(EntityAttributeCreationEvent event) {
         event.put(HUNTER.get(), Hunter.createAttributes().build());
@@ -125,7 +162,11 @@ public final class ModEntities {
         event.put(SWARM_BAT.get(), Bat.createAttributes().build());
         event.put(HEADLESS_HORSEMAN.get(), HeadlessHorseman.createAttributes().build());
         event.put(GHOST.get(), Ghost.createAttributes().build());
+        event.put(RAT.get(), Rat.createAttributes().build());
+        event.put(PLAGUE_DOCTOR.get(), PlagueDoctor.createAttributes().build());
         event.put(WEREWOLF.get(), Werewolf.createAttributes().build());
+        event.put(CATHEDRAL_GARGOYLE.get(), Gargoyle.createAttributes().build());
+        event.put(BLOOD_GARGOYLE.get(), Gargoyle.createAttributes().build());
     }
 
     @SubscribeEvent
@@ -142,5 +183,8 @@ public final class ModEntities {
         // Caves only, see data/crimsoncovenant/neoforge/biome_modifier/vampire_bat_spawns.json
         event.register(VAMPIRE_BAT.get(), SpawnPlacementTypes.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
                 ModEntities::checkVampireBatSpawnRules, RegisterSpawnPlacementsEvent.Operation.REPLACE);
+        // Forests, see data/crimsoncovenant/neoforge/biome_modifier/rat_spawns.json (villages get theirs from world.RatSpawner)
+        event.register(RAT.get(), SpawnPlacementTypes.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                ModEntities::checkRatSpawnRules, RegisterSpawnPlacementsEvent.Operation.REPLACE);
     }
 }

@@ -27,7 +27,7 @@ public final class ModGameTests {
 
     private record TestEntry(DeferredHolder<Consumer<GameTestHelper>, Consumer<GameTestHelper>> function, int maxTicks, Batch batch) {}
 
-    private enum Batch { SHARED, ISOLATED, WITH_PLAYER }
+    private enum Batch { SHARED, ISOLATED, WITH_PLAYER, CALM }
 
     static {
         test("hunter_party_has_one_leader", HunterGameTests::partyHasOneLeader);
@@ -38,6 +38,13 @@ public final class ModGameTests {
         test("hunter_crossbow_shoots", HunterGameTests::crossbowShoots);
         test("hunter_targets_vampire", HunterGameTests::targetsVampire);
         test("hunter_drops_token_of_blood", HunterGameTests::dropsTokenOfBloodWhenKilledByPlayer);
+        test("master_hunter_drops_token_of_master", HunterGameTests::masterHunterDropsTokenOfMaster);
+        test("join_the_hunters_with_a_silver_coin", HunterRankGameTests::joinTheHuntersWithASilverCoin);
+        test("rise_through_the_hunter_ranks", HunterRankGameTests::riseThroughTheRanks);
+        test("crafting_hunter_gear_needs_the_rank", HunterRankGameTests::craftingHunterGearNeedsTheRank);
+        test("silvering_needs_a_slayer", HunterRankGameTests::silveringNeedsASlayer);
+        test("brewing_hunter_potions_needs_the_rank", HunterRankGameTests::brewingHunterPotionsNeedsTheRank, 600);
+        test("hunter_gear_ranks", HunterRankGameTests::gearRanks);
         test("master_hunter_leads_with_shield_and_smite_axe", HunterGameTests::masterHunterLeadsWithShieldAndSmiteAxe);
         test("master_hunter_blocks_from_the_front", HunterGameTests::masterHunterBlocksFromTheFront);
         test("master_hunter_throws_holy_water", HunterGameTests::masterHunterThrowsHolyWater);
@@ -70,12 +77,19 @@ public final class ModGameTests {
         test("werewolf_flees_master_hunters", WorldGameTests::werewolfFleesMasterHunters);
         test("werewolf_vanishes_with_the_moon", WorldGameTests::werewolfVanishesWithTheMoon);
         test("hunters_hunt_werewolves", WorldGameTests::huntersHuntWerewolves);
+        test("gargoyle_statues_wake_only_for_their_side", GargoyleGameTests::statuesWakeOnlyForTheirSide);
+        test("gargoyle_makers_who_turn_are_makers_no_more", GargoyleGameTests::makersTurnedAreMakersNoMore);
+        test("sunlight_turns_gargoyles_to_stone", GargoyleGameTests::sunlightTurnsGargoylesToStone);
+        test("cathedral_gargoyle_hunts_the_undead_with_silver", GargoyleGameTests::cathedralGargoyleHuntsTheUndeadWithSilver);
+        test("blood_gargoyle_drinks_from_the_living", GargoyleGameTests::bloodGargoyleDrinksFromTheLiving);
+        test("hunters_and_vampires_fight_gargoyles", GargoyleGameTests::huntersAndVampiresFightGargoyles);
         test("ghost_only_hurt_by_holy_water", VampireGameTests::ghostOnlyHurtByHolyWater);
         test("ghost_passes_through_walls", VampireGameTests::ghostPassesThroughWalls);
         test("ghost_gives_nausea", VampireGameTests::ghostGivesNausea);
         test("holy_flame_survives_water", VampireGameTests::holyFlameSurvivesWater);
         test("vampire_bat_attacks_prey", VampireGameTests::vampireBatAttacksPrey);
         test("vampire_drops_token_of_blood", VampireGameTests::dropsTokenOfBloodWhenKilledByPlayer);
+        test("master_vampire_drops_token_of_master", VampireGameTests::masterVampireDropsTokenOfMaster);
 
         test("vampire_heals_by_killing", VampireGameTests::healsByKilling);
         test("vampire_has_resistance", VampireGameTests::hasResistance);
@@ -105,12 +119,13 @@ public final class ModGameTests {
         test("blood_spear_drives_and_slams", SkillGameTests::bloodSpearDrivesAndSlams);
         test("blood_parade_drains_hostiles", SkillGameTests::bloodParadeDrainsHostiles, 400);
         test("blood_parade_bounces_off_walls", SkillGameTests::bloodParadeBouncesOffWalls);
-        test("sanguine_table_upgrades_skills", SkillGameTests::sanguineTableUpgradesSkills);
+        test("blood_altar_upgrades_skills", SkillGameTests::bloodAltarUpgradesSkills);
         test("crimson_lightning_strikes_spear_victims", SkillGameTests::crimsonLightningStrikesSpearVictims);
         test("spreading_boil_grows_with_deaths", SkillGameTests::spreadingBoilGrowsWithDeaths);
         playerTest("enthralled_creatures_serve", SkillGameTests::enthralledCreaturesServe, DEFAULT_MAX_TICKS);
         test("plain_possession_leaves_no_thrall", SkillGameTests::plainPossessionLeavesNoThrall);
-        test("blood_wings_fly_longer_and_dive", SkillGameTests::bloodWingsFlyLongerAndDive);
+        test("crimson_shroud_glides_on_blood_charges", SkillGameTests::crimsonShroudGlidesOnBloodCharges);
+        test("vampire_skills_hit_hunters", SkillGameTests::vampireSkillsHitHunters);
         playerTest("afterimage_strike_slashes_through", SkillGameTests::afterimageStrikeSlashesThrough, DEFAULT_MAX_TICKS);
         test("thorned_shell_hurts_attackers", SkillGameTests::thornedShellHurtsAttackers);
         playerTest("leeching_swarm_brings_blood", SkillGameTests::leechingSwarmBringsBlood, DEFAULT_MAX_TICKS);
@@ -124,7 +139,7 @@ public final class ModGameTests {
         test("translator_turns_tomes_into_skills", SkillGameTests::translatorTurnsTomesIntoSkills);
         test("broken_translator_gives_the_tome_back", SkillGameTests::brokenTranslatorGivesTheTomeBack);
         test("translator_recipe_uses_tokens_of_blood", SkillGameTests::translatorRecipeUsesTokensOfBlood);
-        test("old_hunter_trades_for_silver_coins", SkillGameTests::oldHunterTradesForSilverCoins);
+        test("plague_doctor_trades_for_coins_and_emeralds", SkillGameTests::plagueDoctorTradesForCoinsAndEmeralds);
         test("ancient_butler_sells_tomes", SkillGameTests::ancientButlerSellsTomes);
         test("tomes_turn_up_in_chests", SkillGameTests::tomesTurnUpInChests);
         test("skills_are_worn_not_held", SkillGameTests::skillsAreWornNotHeld);
@@ -159,11 +174,58 @@ public final class ModGameTests {
         test("silvering_at_the_smithing_table", SilverGameTests::silveringAtTheSmithingTable);
         test("silvered_weapons_wound_undead", SilverGameTests::silveredWeaponsWoundUndead);
         test("silver_wound_stops_blood_coming_back", SilverGameTests::silverWoundStopsBloodComingBack);
-        test("old_hunter_refuses_vampires", SilverGameTests::oldHunterRefusesVampires);
+        test("plague_doctor_refuses_vampires", SilverGameTests::plagueDoctorRefusesVampires);
+        test("silvered_bottles_hold_ghosts", SilverGameTests::silveredBottlesHoldGhosts);
+        test("silver_ore_kicks_up_dust", SilverGameTests::silverOreKicksUpDust);
+        isolatedTest("coffins_let_you_sleep_by_day", CoffinGameTests::coffinsLetYouSleepByDay);
+        test("vampires_sleep_only_in_coffins", CoffinGameTests::vampiresSleepOnlyInCoffins);
+        calmTest("kin_dont_keep_vampires_awake", CoffinGameTests::kinDontKeepVampiresAwake, 100);
+        test("iron_maidens_take_villagers_captive", CoffinGameTests::ironMaidensTakeVillagersCaptive);
+        test("captives_run_dry", CoffinGameTests::captivesRunDry);
+        test("vampires_feed_on_captives_in_their_sleep", CoffinGameTests::vampiresFeedOnCaptivesInTheirSleep);
         test("vampire_bats_are_undead_cave_dwellers", SilverGameTests::vampireBatsAreUndeadCaveDwellers);
         test("orphaned_minions_crumble", SkillGameTests::orphanedMinionsCrumble);
         test("graveyard_is_built", GraveyardGameTests::graveyardIsBuilt);
         test("graveyards_are_haunted", GraveyardGameTests::graveyardsAreHaunted);
+        test("hunter_cabin_is_built", HunterCabinGameTests::cabinIsBuilt);
+        test("rats_eat_crops_and_have_litters", RatGameTests::ratsEatCropsAndHaveLitters, 600);
+        test("rats_eat_rotten_flesh", RatGameTests::ratsEatRottenFlesh);
+        test("rats_eat_hay_and_pumpkins", RatGameTests::ratsEatHayAndPumpkins);
+        test("rats_live_in_burrows_and_defend_them", RatGameTests::ratsLiveInBurrowsAndDefendThem);
+        test("rats_find_somewhere_to_burrow", RatGameTests::burrowSpotsAreFound);
+        test("miasma_over_an_infested_village", RatGameTests::miasmaOverAnInfestedVillage);
+        test("rat_traps_kill_rats", RatGameTests::ratTrapsKillRats);
+        test("rats_take_the_bait", RatGameTests::ratsTakeTheBait, 600);
+        test("iron_golems_hunt_rats", RatGameTests::ironGolemsHuntRats);
+        test("cats_catch_rats", RatGameTests::catsCatchRats, 400);
+        test("rats_chew_before_they_eat", RatGameTests::ratsChewBeforeTheyEat, 400);
+        test("young_rats_grow_and_live_with_parents", RatGameTests::youngRatsGrowFasterAndLiveWithTheirParents);
+        test("farm_animals_cry_out_at_rats", RatGameTests::farmAnimalsCryOutAtRats);
+        test("miasma_rises_from_burrows", RatGameTests::miasmaRisesFromBurrows);
+        test("rats_gnaw_into_wood_from_the_side", RatGameTests::ratsGnawIntoWoodFromTheSide);
+        test("cleanse_cures_the_sick", PlagueDoctorGameTests::cleanseCuresTheSick);
+        test("thrown_cleanse_clears_the_miasma", PlagueDoctorGameTests::thrownCleanseClearsTheMiasma);
+        test("plague_doctor_cures_for_emeralds", PlagueDoctorGameTests::doctorCuresForEmeralds);
+        test("plague_doctor_sells_cleanse", PlagueDoctorGameTests::doctorSellsCleanse);
+        test("plague_doctor_villagers_cure_too", PlagueDoctorGameTests::doctorVillagersCureToo);
+        test("villages_build_doctors_houses", PlagueDoctorGameTests::villagesBuildDoctorsHouses);
+        test("doctor_villagers_hang_garlic_over_doors", PlagueDoctorGameTests::doctorVillagersHangGarlicOverDoors);
+        calmTest("wandering_doctor_hangs_garlic_over_doors", PlagueDoctorGameTests::wanderingDoctorHangsGarlicOverDoors, 600);
+        test("blood_bottles_curse_the_living", VampireGameTests::bloodBottlesCurseTheLiving);
+        calmTest("plague_doctor_traps_burrows", PlagueDoctorGameTests::doctorTrapsBurrows, 600);
+        test("plague_doctor_wards_off_undead", PlagueDoctorGameTests::doctorWardsOffUndeadWithSilver, 300);
+        test("rats_bolt_from_villagers", RatGameTests::ratsBoltFromVillagers, 300);
+        test("villagers_killed_by_rats_rise_as_zombies", RatGameTests::villagersKilledByRatsRiseAsZombies);
+        test("rats_hide_at_home_from_danger", RatGameTests::ratsHideAtHomeFromDanger, 300);
+        isolatedTest("rat_swarms_hunt_livestock", RatGameTests::ratSwarmsHuntLivestock, 400);
+        test("rats_eat_any_dropped_food", RatGameTests::ratsEatAnyDroppedFood, 300);
+        test("rats_are_worth_a_little_experience", RatGameTests::ratsAreWorthALittleExperience);
+        calmTest("rats_turn_up_in_villages", RatGameTests::ratsTurnUpInVillages, 100);
+        // On its own: a doctor from another test running alongside would count as one already come
+        isolatedTest("plague_doctor_answers_the_call", PlagueDoctorGameTests::doctorAnswersTheCall);
+        test("plague_saps_the_living_not_the_undead", RatGameTests::plagueSapsTheLivingButNotTheUndead);
+        test("only_vampires_open_the_skills", RatGameTests::onlyVampiresOpenTheSkills);
+        test("hunter_cabin_style_follows_the_biome", HunterCabinGameTests::cabinStyleFollowsTheBiome);
         test("bear_trap_snaps_and_holds", TrapGameTests::bearTrapSnapsAndHolds);
         test("silver_spikes_stab", TrapGameTests::silverSpikesStab);
         test("silver_net_trap_catches_passers_by", TrapGameTests::silverNetTrapCatchesPassersBy);
@@ -190,13 +252,24 @@ public final class ModGameTests {
     /// For tests that change world-wide state (the clock, the blood moon): they run in a batch of their own, so
     /// their side effects can't leak into other tests running at the same time
     private static void isolatedTest(String name, Consumer<GameTestHelper> function) {
-        TESTS.add(new TestEntry(TEST_FUNCTIONS.register(name, () -> function), DEFAULT_MAX_TICKS, Batch.ISOLATED));
+        isolatedTest(name, function, DEFAULT_MAX_TICKS);
+    }
+
+    /// Also for tests that count the mobs around them (a rat swarm), which other tests' mobs would throw off
+    private static void isolatedTest(String name, Consumer<GameTestHelper> function, int maxTicks) {
+        TESTS.add(new TestEntry(TEST_FUNCTIONS.register(name, () -> function), maxTicks, Batch.ISOLATED));
     }
 
     /// For tests that keep a (mock) player in the world for a while. While any player exists, the game despawns
     /// monsters far from it, which would pull mobs out of other tests, so these get a batch of their own too.
     private static void playerTest(String name, Consumer<GameTestHelper> function, int maxTicks) {
         TESTS.add(new TestEntry(TEST_FUNCTIONS.register(name, () -> function), maxTicks, Batch.WITH_PLAYER));
+    }
+
+    /// For tests of a skittish mob going about its business (the wandering Plague Doctor), which the monsters and
+    /// doors of other tests nearby would scare off or lead astray
+    private static void calmTest(String name, Consumer<GameTestHelper> function, int maxTicks) {
+        TESTS.add(new TestEntry(TEST_FUNCTIONS.register(name, () -> function), maxTicks, Batch.CALM));
     }
 
     public static void register(IEventBus modEventBus) {
@@ -209,12 +282,14 @@ public final class ModGameTests {
         // Tests are batched by environment, so an environment of their own keeps isolated tests apart
         Holder<TestEnvironmentDefinition<?>> isolated = event.registerEnvironment(CrimsonCovenant.id("isolated"));
         Holder<TestEnvironmentDefinition<?>> withPlayer = event.registerEnvironment(CrimsonCovenant.id("with_player"));
+        Holder<TestEnvironmentDefinition<?>> calm = event.registerEnvironment(CrimsonCovenant.id("calm"));
         for (TestEntry test : TESTS) {
             ResourceKey<Consumer<GameTestHelper>> key = test.function().getKey();
             Holder<TestEnvironmentDefinition<?>> environment = switch (test.batch()) {
                 case SHARED -> shared;
                 case ISOLATED -> isolated;
                 case WITH_PLAYER -> withPlayer;
+                case CALM -> calm;
             };
             event.registerTest(key.identifier(), new FunctionGameTestInstance(key,
                     new TestData<>(environment, CrimsonCovenant.id("arena"), test.maxTicks(), 0, true)));

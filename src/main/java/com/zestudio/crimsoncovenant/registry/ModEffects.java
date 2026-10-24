@@ -12,6 +12,10 @@ import com.zestudio.crimsoncovenant.effect.SilverDreadEffect;
 import com.zestudio.crimsoncovenant.effect.SilverWoundEffect;
 import com.zestudio.crimsoncovenant.effect.HolyFlameEffect;
 import com.zestudio.crimsoncovenant.effect.HolyWaterEffect;
+import com.zestudio.crimsoncovenant.effect.PlagueEffect;
+import com.zestudio.crimsoncovenant.effect.MiasmaEffect;
+import com.zestudio.crimsoncovenant.effect.CrimsonShroudEffect;
+import com.zestudio.crimsoncovenant.effect.CleanseEffect;
 
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.effect.MobEffect;
@@ -86,6 +90,18 @@ public final class ModEffects {
 
     /// From a silvered weapon: nothing heals, and a vampire's blood doesn't come back
     public static final DeferredHolder<MobEffect, SilverWoundEffect> SILVER_WOUND = MOB_EFFECTS.register("silver_wound", SilverWoundEffect::new);
+
+    /// Carried by rats: saps the sick and spreads to those near them
+    public static final DeferredHolder<MobEffect, PlagueEffect> PLAGUE = MOB_EFFECTS.register("plague", PlagueEffect::new);
+
+    /// Breathing the Miasma over a rat-infested village: a weak poison that turns the stomach
+    public static final DeferredHolder<MobEffect, MiasmaEffect> MIASMA = MOB_EFFECTS.register("miasma", MiasmaEffect::new);
+
+    /// Crimson Shroud (upgraded Flight): wings of blood that glide like an elytra, boosted by Blood Charges
+    public static final DeferredHolder<MobEffect, CrimsonShroudEffect> CRIMSON_SHROUD = MOB_EFFECTS.register("crimson_shroud", CrimsonShroudEffect::new);
+
+    /// The Potion of Cleanse: cures the Plague and the Miasma, and clears the Miasma where it's thrown
+    public static final DeferredHolder<MobEffect, CleanseEffect> CLEANSE = MOB_EFFECTS.register("cleanse", CleanseEffect::new);
 
     private ModEffects() {}
 }

@@ -41,6 +41,17 @@ public final class ModAttachments {
             () -> AttachmentType.builder(() -> false).serialize(Codec.BOOL.fieldOf("vampire")).copyOnDeath()
                     .sync((holder, to) -> holder == to, ByteBufCodecs.BOOL).build());
 
+    /// A player's rank in the hunters, 0 when not one of them (see hunter.HunterRanks). Survives death, and is sent to
+    /// the player's own client.
+    public static final Supplier<AttachmentType<Integer>> HUNTER_RANK = ATTACHMENT_TYPES.register("hunter_rank",
+            () -> AttachmentType.builder(() -> 0).serialize(Codec.INT.fieldOf("rank")).copyOnDeath()
+                    .sync((holder, to) -> holder == to, ByteBufCodecs.VAR_INT).build());
+
+    /// On a brewing stand: the hunter rank of whoever last opened it, which decides which hunter potions it will brew
+    /// (see hunter.HunterGear)
+    public static final Supplier<AttachmentType<Integer>> BREWER_RANK = ATTACHMENT_TYPES.register("brewer_rank",
+            () -> AttachmentType.builder(() -> 0).serialize(Codec.INT.fieldOf("rank")).build());
+
     /// A vampire player's blood points, spent on blood skills (see BloodPool). Lost on death, and sent to the
     /// player's own client for the blood bar.
     public static final Supplier<AttachmentType<Integer>> BLOOD = ATTACHMENT_TYPES.register("blood",
@@ -80,9 +91,9 @@ public final class ModAttachments {
     public static final Supplier<AttachmentType<Boolean>> POSSESSION_ENTHRALLS = ATTACHMENT_TYPES.register("possession_enthralls",
             () -> AttachmentType.builder(() -> false).build());
 
-    /// Blood Wings (upgraded Flight): set when the flight runs out, until the vampire lands in a diving slam. Not saved.
-    public static final Supplier<AttachmentType<Boolean>> BLOOD_WINGS_DIVE = ATTACHMENT_TYPES.register("blood_wings_dive",
-            () -> AttachmentType.builder(() -> false).build());
+    /// Whether the player has the Crimson Shroud on, sent to everyone nearby so they see its wings. Not saved.
+    public static final Supplier<AttachmentType<Boolean>> CRIMSON_SHROUD_WORN = ATTACHMENT_TYPES.register("crimson_shroud_worn",
+            () -> AttachmentType.builder(() -> false).sync(ByteBufCodecs.BOOL).build());
 
     /// Afterimage Strike (upgraded Dash): whether the dash under way leaves slashing afterimages, and the afterimages
     /// with the slashes they still owe (see skill.AfterimageStrike). Not saved.
@@ -136,6 +147,15 @@ public final class ModAttachments {
     /// A creature a Blood Spear is driving back (see BloodSpear). Not saved.
     public static final Supplier<AttachmentType<Optional<SpearDrive>>> SPEAR_DRIVE = ATTACHMENT_TYPES.register("spear_drive",
             () -> AttachmentType.builder(() -> Optional.<SpearDrive>empty()).build());
+
+    /// How long a creature has been breathing the Miasma, in seconds, and when it last did (see entity.MiasmaCloud).
+    /// Not saved.
+    public static final Supplier<AttachmentType<MiasmaExposure>> MIASMA_EXPOSURE = ATTACHMENT_TYPES.register("miasma_exposure",
+            () -> AttachmentType.builder(() -> MiasmaExposure.NONE).build());
+
+    public record MiasmaExposure(long lastBreath, int seconds) {
+        public static final MiasmaExposure NONE = new MiasmaExposure(Long.MIN_VALUE / 2, 0);
+    }
 
     public record DashState(Vec3 velocity, int ticksLeft) {
         public static final DashState NONE = new DashState(Vec3.ZERO, 0);

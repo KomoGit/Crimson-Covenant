@@ -1,0 +1,34 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "rolls": 1,
+      "condition": {
+        "type": "minecraft:survives_explosion"
+      },
+      "entries": [
+        {
+          "type": "minecraft:alternatives",
+          "children": [
+            {
+              "type": "minecraft:item",
+              "name": "crimsoncovenant:ghost_in_a_bottle",
+              "condition": {
+                "type": "minecraft:match_block",
+                "blocks": "crimsoncovenant:silvered_bottle",
+                "state": {
+                  "ghost": "true"
+                }
+              }
+            },
+            {
+              "type": "minecraft:item",
+              "name": "crimsoncovenant:silvered_bottle"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "random_sequence": "crimsoncovenant:blocks/silvered_bottle"
+}

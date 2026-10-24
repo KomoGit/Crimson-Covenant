@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "key": {
+    "S": "minecraft:skeleton_skull",
+    "B": "crimsoncovenant:blood_bottle",
+    "P": "minecraft:polished_blackstone",
+    "W": "minecraft:red_wool"
+  },
+  "pattern": [
+    "S S",
+    "PWP",
+    "PBP"
+  ],
+  "result": {
+    "id": "crimsoncovenant:blood_throne"
+  }
+}

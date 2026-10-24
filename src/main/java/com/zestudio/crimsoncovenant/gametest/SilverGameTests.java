@@ -29,6 +29,21 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.item.crafting.SmithingRecipeInput;
 import net.minecraft.world.phys.Vec3;
+import java.util.List;
+import com.zestudio.crimsoncovenant.block.SilveredBottleBlock;
+import com.zestudio.crimsoncovenant.entity.Ghost;
+import com.zestudio.crimsoncovenant.entity.SilverDustCloud;
+import com.zestudio.crimsoncovenant.item.GhostBottleItem;
+import com.zestudio.crimsoncovenant.registry.ModBlocks;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.world.entity.monster.zombie.Zombie;
+import net.minecraft.world.item.component.BlockItemStateProperties;
+import net.minecraft.world.item.crafting.CraftingInput;
+import net.minecraft.world.item.enchantment.Enchantments;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 
 /// Silvered weapons, and the hunters' side of things
 final class SilverGameTests {
@@ -101,18 +116,18 @@ final class SilverGameTests {
         helper.succeed();
     }
 
-    static void oldHunterRefusesVampires(GameTestHelper helper) {
+    static void plagueDoctorRefusesVampires(GameTestHelper helper) {
         Villager hunter = helper.spawnWithNoFreeWill(EntityTypes.VILLAGER, new BlockPos(4, 1, 4));
-        hunter.setVillagerData(hunter.getVillagerData().withProfession(ModVillagers.OLD_HUNTER).withLevel(1));
+        hunter.setVillagerData(hunter.getVillagerData().withProfession(ModVillagers.PLAGUE_DOCTOR).withLevel(1));
         ServerPlayer player = SkillGameTests.makeVampire(helper, 50);
         Vec3 at = helper.absoluteVec(new Vec3(4.5, 1.0, 2.5));
         player.teleportTo(at.x, at.y, at.z);
         player.interactOn(hunter, InteractionHand.MAIN_HAND, hunter.position());
-        helper.assertTrue(hunter.getTradingPlayer() == null, Component.literal("The Old Hunter shouldn't trade with a vampire"));
+        helper.assertTrue(hunter.getTradingPlayer() == null, Component.literal("The Plague Doctor shouldn't trade with a vampire"));
 
         player.setData(ModAttachments.IS_VAMPIRE, false);
         player.interactOn(hunter, InteractionHand.MAIN_HAND, hunter.position());
-        helper.assertTrue(hunter.getTradingPlayer() == player, Component.literal("The Old Hunter should still trade with the living"));
+        helper.assertTrue(hunter.getTradingPlayer() == player, Component.literal("The Plague Doctor should still trade with the living"));
         player.closeContainer();
         hunter.setTradingPlayer(null);
         SkillGameTests.removePlayer(helper, player);
@@ -132,5 +147,73 @@ final class SilverGameTests {
                 Component.literal("Vampire bats shouldn't spawn naturally under the open sky"));
         bat.discard();
         helper.succeed();
+    }
+
+    static void silveredBottlesHoldGhosts(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ItemStack glass = new ItemStack(Items.GLASS);
+        CraftingInput input = CraftingInput.of(3, 2, List.of(glass, new ItemStack(ModItems.SILVER_DUST.get()), glass, ItemStack.EMPTY, glass, ItemStack.EMPTY));
+        var recipe = level.recipeAccess().getRecipeFor(RecipeType.CRAFTING, input, level);
+        helper.assertTrue(recipe.isPresent() && recipe.get().value().assemble(input).is(ModItems.SILVERED_BOTTLE.get()),
+                Component.literal("Three glass and silver dust should make a Silvered Bottle"));
+
+        // Bottling a ghost
+        Ghost ghost = helper.spawnWithNoFreeWill(ModEntities.GHOST.get(), new BlockPos(4, 2, 4));
+        ServerPlayer player = SkillGameTests.makePlayer(helper);
+        Vec3 at = helper.absoluteVec(new Vec3(4.5, 1.0, 2.5));
+        player.teleportTo(at.x, at.y, at.z);
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ModItems.SILVERED_BOTTLE.get()));
+        player.interactOn(ghost, InteractionHand.MAIN_HAND, ghost.position());
+        helper.assertTrue(ghost.isRemoved() && player.getMainHandItem().is(ModItems.GHOST_IN_A_BOTTLE.get()), Component.literal("An empty Silvered Bottle should catch a ghost"));
+
+        // Set down, the bottle keeps its ghost, glows, and gives it back when broken
+        BlockState full = player.getMainHandItem().getOrDefault(DataComponents.BLOCK_STATE, BlockItemStateProperties.EMPTY).apply(ModBlocks.SILVERED_BOTTLE.get().defaultBlockState());
+        helper.assertTrue(full.getValue(SilveredBottleBlock.GHOST) && full.getLightEmission() > 0, Component.literal("A placed Ghost in a Bottle should hold its ghost, and glow"));
+        BlockPos stand = new BlockPos(2, 1, 2);
+        helper.setBlock(stand, full);
+        BlockPos absolute = helper.absolutePos(stand);
+        helper.assertTrue(Block.getDrops(full, level, absolute, null).stream().anyMatch(stack -> stack.is(ModItems.GHOST_IN_A_BOTTLE.get())),
+                Component.literal("A broken bottle should give back the ghost in it"));
+        BlockState empty = ModBlocks.SILVERED_BOTTLE.get().defaultBlockState();
+        helper.assertTrue(Block.getDrops(empty, level, absolute, null).stream().anyMatch(stack -> stack.is(ModItems.SILVERED_BOTTLE.get())),
+                Component.literal("An empty bottle should drop itself"));
+        helper.assertTrue(new ItemStack(ModBlocks.SILVERED_BOTTLE.get()).is(ModItems.SILVERED_BOTTLE.get()), Component.literal("The bottle block's own item should be the empty bottle"));
+
+        // Uncorked, the ghost comes out
+        Ghost freed = GhostBottleItem.release(level, helper.absoluteVec(new Vec3(6.5, 2.0, 6.5)));
+        helper.assertTrue(freed != null && freed.isAlive(), Component.literal("Uncorking the bottle should let the ghost out"));
+        freed.discard();
+        SkillGameTests.removePlayer(helper, player);
+        helper.succeed();
+    }
+
+    static void silverOreKicksUpDust(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer player = SkillGameTests.makePlayer(helper);
+        BlockPos ore = new BlockPos(4, 1, 4);
+        helper.setBlock(ore, ModBlocks.SILVER_ORE.get());
+        ItemStack silkTouch = new ItemStack(Items.IRON_PICKAXE);
+        silkTouch.enchant(level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(Enchantments.SILK_TOUCH), 1);
+        player.setItemInHand(InteractionHand.MAIN_HAND, silkTouch);
+        player.gameMode.destroyBlock(helper.absolutePos(ore));
+        AABB around = new AABB(helper.absolutePos(ore)).inflate(4.0);
+        helper.assertTrue(level.getEntitiesOfClass(SilverDustCloud.class, around).isEmpty(), Component.literal("Ore lifted out whole with Silk Touch shouldn't give off dust"));
+
+        helper.setBlock(ore, ModBlocks.SILVER_ORE.get());
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.IRON_PICKAXE));
+        player.gameMode.destroyBlock(helper.absolutePos(ore));
+        helper.assertValueEqual(level.getEntitiesOfClass(SilverDustCloud.class, around).size(), 1, "dust clouds over the broken silver ore");
+        SkillGameTests.removePlayer(helper, player);
+
+        // The undead that breathe it in are burned; the living aren't
+        Zombie zombie = helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, new BlockPos(4, 1, 5));
+        Villager villager = helper.spawnWithNoFreeWill(EntityTypes.VILLAGER, new BlockPos(5, 1, 4));
+        helper.succeedWhen(() -> {
+            helper.assertTrue(zombie.getHealth() < zombie.getMaxHealth(), Component.literal("Silver dust should burn the undead who breathe it"));
+            helper.assertValueEqual(villager.getHealth(), villager.getMaxHealth(), "health of a villager in the silver dust");
+            level.getEntitiesOfClass(SilverDustCloud.class, around).forEach(SilverDustCloud::discard);
+            zombie.discard();
+            villager.discard();
+        });
     }
 }

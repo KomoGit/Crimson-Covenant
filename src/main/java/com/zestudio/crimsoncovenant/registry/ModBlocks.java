@@ -6,10 +6,16 @@ import com.zestudio.crimsoncovenant.block.BearTrapBlock;
 import com.zestudio.crimsoncovenant.block.DecorBlock;
 import com.zestudio.crimsoncovenant.block.GarlicBraidBlock;
 import com.zestudio.crimsoncovenant.block.GarlicCropBlock;
-import com.zestudio.crimsoncovenant.block.SanguineTableBlock;
+import com.zestudio.crimsoncovenant.block.BloodAltarBlock;
 import com.zestudio.crimsoncovenant.block.SilverNetBlock;
 import com.zestudio.crimsoncovenant.block.SilverNetTrapBlock;
 import com.zestudio.crimsoncovenant.block.SilverSpikesBlock;
+import com.zestudio.crimsoncovenant.block.RatBurrowBlock;
+import com.zestudio.crimsoncovenant.block.RatTrapBlock;
+import com.zestudio.crimsoncovenant.block.SilveredBottleBlock;
+import com.zestudio.crimsoncovenant.block.CoffinBlock;
+import com.zestudio.crimsoncovenant.block.IronMaidenBlock;
+import com.zestudio.crimsoncovenant.block.BloodThroneBlock;
 
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
@@ -53,7 +59,7 @@ public final class ModBlocks {
 
     // ---- Villager workstations ----
 
-    /// The Old Hunter's job site (hunter faction)
+    /// The Plague Doctor's job site (hunter faction)
     public static final DeferredBlock<DecorBlock> HUNTERS_TABLE = BLOCKS.registerBlock("hunters_table",
             properties -> new DecorBlock(properties, DecorBlock.shape(
                     new double[] {0, 13, 0, 16, 16, 16}, new double[] {1, 0, 1, 3, 13, 3}, new double[] {13, 0, 1, 15, 13, 3},
@@ -61,8 +67,8 @@ public final class ModBlocks {
             properties -> properties.mapColor(MapColor.WOOD).strength(2.5F).sound(SoundType.WOOD).noOcclusion());
 
     /// The Ancient Butler's job site (vampire faction)
-    public static final DeferredBlock<DecorBlock> BLOOD_ALTAR = BLOCKS.registerBlock("blood_altar",
-            properties -> new DecorBlock(properties, DecorBlock.shape(
+    public static final DeferredBlock<BloodAltarBlock> BLOOD_ALTAR = BLOCKS.registerBlock("blood_altar",
+            properties -> new BloodAltarBlock(properties, DecorBlock.shape(
                     new double[] {1, 0, 1, 15, 3, 15}, new double[] {3, 3, 3, 13, 11, 13}, new double[] {1, 11, 1, 15, 14, 15}, new double[] {4, 14, 4, 12, 15, 12})),
             properties -> properties.mapColor(MapColor.COLOR_BLACK).requiresCorrectToolForDrops().strength(3.5F, 6.0F).sound(SoundType.STONE).noOcclusion().lightLevel(state -> 4));
 
@@ -72,14 +78,6 @@ public final class ModBlocks {
     public static final DeferredBlock<AncientTranslatorBlock> ANCIENT_TRANSLATOR = BLOCKS.registerBlock("ancient_translator", AncientTranslatorBlock::new,
             properties -> properties.mapColor(MapColor.COLOR_RED).instrument(NoteBlockInstrument.BASEDRUM).requiresCorrectToolForDrops().strength(5.0F, 1200.0F)
                     .lightLevel(state -> AncientTranslatorBlock.isTranslating(state) ? 10 : 5));
-
-    /// Upgrades blood skills, for Tokens of Blood (see skill.SkillUpgrade)
-    public static final DeferredBlock<SanguineTableBlock> SANGUINE_TABLE = BLOCKS.registerBlock("sanguine_table",
-            properties -> new SanguineTableBlock(properties, DecorBlock.shape(
-                    new double[] {0, 10, 0, 16, 16, 16}, new double[] {1, 0, 1, 4, 10, 4}, new double[] {12, 0, 1, 15, 10, 4},
-                    new double[] {1, 0, 12, 4, 10, 15}, new double[] {12, 0, 12, 15, 10, 15})),
-            properties -> properties.mapColor(MapColor.COLOR_BLACK).requiresCorrectToolForDrops().strength(3.5F, 1200.0F).sound(SoundType.POLISHED_DEEPSLATE)
-                    .noOcclusion().lightLevel(state -> 4));
 
     // ---- Garlic ----
 
@@ -96,6 +94,16 @@ public final class ModBlocks {
     public static final DeferredBlock<BearTrapBlock> BEAR_TRAP = BLOCKS.registerBlock("bear_trap", BearTrapBlock::new,
             properties -> properties.mapColor(MapColor.METAL).noCollision().strength(2.0F, 6.0F).sound(SoundType.CHAIN).pushReaction(PushReaction.POPPED));
 
+    /// Rats live in these: earth with a hole gnawed in it (see entity.Rat)
+    public static final DeferredBlock<RatBurrowBlock> RAT_BURROW = BLOCKS.registerBlock("rat_burrow", RatBurrowBlock::new,
+            properties -> properties.mapColor(MapColor.DIRT).strength(0.6F).sound(SoundType.ROOTED_DIRT));
+    /// The same, gnawed into the side of planks or logs
+    public static final DeferredBlock<RatBurrowBlock> RAT_HOLE = BLOCKS.registerBlock("rat_hole", RatBurrowBlock::new,
+            properties -> properties.mapColor(MapColor.WOOD).strength(2.0F, 3.0F).sound(SoundType.WOOD).ignitedByLava());
+    /// A baited snap trap that kills rats
+    public static final DeferredBlock<RatTrapBlock> RAT_TRAP = BLOCKS.registerBlock("rat_trap", RatTrapBlock::new,
+            properties -> properties.mapColor(MapColor.WOOD).noCollision().strength(0.5F).sound(SoundType.WOOD).pushReaction(PushReaction.POPPED));
+
     /// Stabs up through whoever steps on it, then sinks back
     public static final DeferredBlock<SilverSpikesBlock> SILVER_SPIKES = BLOCKS.registerBlock("silver_spikes", SilverSpikesBlock::new,
             properties -> properties.mapColor(MapColor.METAL).noCollision().strength(2.0F, 6.0F).sound(SoundType.CHAIN).pushReaction(PushReaction.POPPED));
@@ -105,6 +113,22 @@ public final class ModBlocks {
     /// What the net trap drops: tangles like a cobweb, and burns the undead
     public static final DeferredBlock<SilverNetBlock> SILVER_NET = BLOCKS.registerBlock("silver_net", SilverNetBlock::new,
             properties -> properties.mapColor(MapColor.WOOL).noCollision().strength(1.0F).sound(SoundType.WOOL).pushReaction(PushReaction.POPPED).noLootTable());
+
+    /// A glass bottle lined with silver, which can hold a ghost; stands on the floor
+    public static final DeferredBlock<SilveredBottleBlock> SILVERED_BOTTLE = BLOCKS.registerBlock("silvered_bottle", SilveredBottleBlock::new,
+            properties -> properties.mapColor(MapColor.METAL).strength(0.3F).sound(SoundType.GLASS).noOcclusion().pushReaction(PushReaction.POPPED)
+                    .lightLevel(state -> state.getValue(SilveredBottleBlock.GHOST) ? SilveredBottleBlock.GHOST_LIGHT : 0));
+
+    /// Slept in like a bed, at any hour; the only bed a vampire can use
+    public static final DeferredBlock<CoffinBlock> COFFIN = BLOCKS.registerBlock("coffin", CoffinBlock::new,
+            properties -> properties.mapColor(MapColor.COLOR_BLACK).strength(1.5F).sound(SoundType.WOOD).noOcclusion().ignitedByLava().pushReaction(PushReaction.POPPED));
+    /// Two blocks tall; holds a villager captive for a vampire to feed on
+    public static final DeferredBlock<IronMaidenBlock> IRON_MAIDEN = BLOCKS.registerBlock("iron_maiden", IronMaidenBlock::new,
+            properties -> properties.mapColor(MapColor.METAL).requiresCorrectToolForDrops().strength(5.0F, 6.0F).sound(SoundType.IRON).noOcclusion().pushReaction(PushReaction.IMMOVEABLE));
+
+    /// Black stone, soaked velvet and skulls; sat on, it siphons the captives in Iron Maidens nearby
+    public static final DeferredBlock<BloodThroneBlock> BLOOD_THRONE = BLOCKS.registerBlock("blood_throne", BloodThroneBlock::new,
+            properties -> properties.mapColor(MapColor.COLOR_BLACK).requiresCorrectToolForDrops().strength(3.0F, 6.0F).sound(SoundType.POLISHED_DEEPSLATE).noOcclusion());
 
     private ModBlocks() {}
 

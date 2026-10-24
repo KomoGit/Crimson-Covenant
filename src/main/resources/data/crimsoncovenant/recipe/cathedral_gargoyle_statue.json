@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "M": "crimsoncovenant:silver_ingot",
+    "C": "minecraft:chiseled_stone_bricks",
+    "B": "minecraft:stone_bricks"
+  },
+  "pattern": [
+    " M ",
+    "MCM",
+    "BBB"
+  ],
+  "result": {
+    "id": "crimsoncovenant:cathedral_gargoyle_statue"
+  }
+}

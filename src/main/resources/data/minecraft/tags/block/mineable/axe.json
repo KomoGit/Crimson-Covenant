@@ -1,5 +1,8 @@
 {
   "values": [
-    "crimsoncovenant:hunters_table"
+    "crimsoncovenant:hunters_table",
+    "crimsoncovenant:rat_trap",
+    "crimsoncovenant:rat_hole",
+    "crimsoncovenant:coffin"
   ]
 }

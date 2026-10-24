@@ -193,6 +193,15 @@ final class HunterGameTests {
         helper.succeed();
     }
 
+    static void masterHunterDropsTokenOfMaster(GameTestHelper helper) {
+        MasterHunter master = helper.spawnWithNoFreeWill(ModEntities.MASTER_HUNTER.get(), new BlockPos(4, 1, 4));
+        ServerPlayer player = helper.makeMockServerPlayerInLevel();
+        master.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(player), 1000.0F);
+        helper.getLevel().getServer().getPlayerList().remove(player);
+        helper.assertItemEntityPresent(ModItems.TOKEN_OF_MASTER.get());
+        helper.succeed();
+    }
+
     private static int smiteLevel(GameTestHelper helper, ItemStack weapon) {
         return EnchantmentHelper.getItemEnchantmentLevel(helper.getLevel().registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(Enchantments.SMITE), weapon);
     }

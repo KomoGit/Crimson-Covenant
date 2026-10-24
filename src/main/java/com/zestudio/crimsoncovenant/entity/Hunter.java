@@ -11,6 +11,7 @@ import com.zestudio.crimsoncovenant.registry.ModPotions;
 import com.zestudio.crimsoncovenant.registry.ModEntities;
 import com.zestudio.crimsoncovenant.vampirism.Vampirism;
 import com.zestudio.crimsoncovenant.world.BloodMoon;
+import com.zestudio.crimsoncovenant.hunter.HunterRanks;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderGetter;
@@ -71,6 +72,7 @@ import net.minecraft.world.level.block.entity.BannerPatternLayers;
 import net.minecraft.world.level.block.entity.BannerPatterns;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.InteractionResult;
 import net.neoforged.neoforge.common.CommonHooks;
 
 /// A human monster hunter. Hunters roam in parties of three led by a banner-carrying leader.
@@ -140,6 +142,13 @@ public class Hunter extends PathfinderMob implements CrossbowAttackMob {
     protected void defineSynchedData(SynchedEntityData.Builder entityData) {
         super.defineSynchedData(entityData);
         entityData.define(IS_CHARGING_CROSSBOW, false);
+    }
+
+    // A player joins the hunters by offering the leader a Silver Coin, and rises through the ranks with Tokens of Blood
+    @Override
+    protected InteractionResult mobInteract(Player player, InteractionHand hand) {
+        InteractionResult offered = HunterRanks.offer(this, player, hand);
+        return offered != null ? offered : super.mobInteract(player, hand);
     }
 
     public boolean isLeader() {

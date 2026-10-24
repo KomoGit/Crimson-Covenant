@@ -3,24 +3,19 @@ package com.zestudio.crimsoncovenant.skill;
 import java.util.Optional;
 
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
-import com.zestudio.crimsoncovenant.entity.BloodOrb;
 import com.zestudio.crimsoncovenant.entity.Hunter;
 import com.zestudio.crimsoncovenant.entity.Vampire;
 import com.zestudio.crimsoncovenant.registry.ModAttachments;
-import com.zestudio.crimsoncovenant.registry.ModDamageTypes;
 import com.zestudio.crimsoncovenant.registry.ModDataComponents;
 import com.zestudio.crimsoncovenant.registry.ModEffects;
 import com.zestudio.crimsoncovenant.registry.ModItems;
 
-import net.minecraft.core.particles.BlockParticleOption;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.util.Mth;
-import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
@@ -30,23 +25,17 @@ import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
-import net.neoforged.neoforge.event.entity.living.LivingFallEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 
-/// The Sanguine Table upgrades that work through what happens in the world rather than at the moment of casting:
-/// Blood Wings' landing, Final Feast, Thirsting Blade, Grave March and Marked Prey. (See SkillUpgrade for the full
+/// The skill upgrades that work through what happens in the world rather than at the moment of casting:
+/// Final Feast, Thirsting Blade, Grave March and Marked Prey. (See SkillUpgrade for the full
 /// list; the rest live with their skills.)
 @EventBusSubscriber(modid = CrimsonCovenant.MODID)
 public final class UpgradeEffects {
-    // Blood Wings: the slam at the end of the dive, stronger the further the fall
-    private static final double DIVE_RADIUS = 3.5;
-    private static final float MIN_DIVE_DAMAGE = 2.0F;
-    private static final float MAX_DIVE_DAMAGE = 12.0F;
     /// Final Feast: how long after a defied death the healing blow can come
     public static final int FINAL_FEAST_WINDOW = 100;
     /// Thirsting Blade: what each kill adds to the Ephemeral Sword's time
@@ -58,31 +47,6 @@ public final class UpgradeEffects {
     private static final double MARKED_PREY_RANGE = 48.0;
 
     private UpgradeEffects() {}
-
-    // ---- Blood Wings ----
-
-    /// Landing from a Blood Wings flight: no fall damage for the vampire, a slam for everything hostile around them
-    @SubscribeEvent
-    static void bloodWingsLanding(LivingFallEvent event) {
-        if (!(event.getEntity() instanceof ServerPlayer player) || !player.getData(ModAttachments.BLOOD_WINGS_DIVE)) {
-            return;
-        }
-        player.removeData(ModAttachments.BLOOD_WINGS_DIVE);
-        event.setDamageMultiplier(0.0F);
-        ServerLevel level = player.level();
-        float damage = Mth.clamp((float) event.getDistance(), MIN_DIVE_DAMAGE, MAX_DIVE_DAMAGE);
-        DamageSource source = level.damageSources().source(ModDamageTypes.BLOOD_MAGIC, player);
-        for (LivingEntity victim : level.getEntitiesOfClass(LivingEntity.class, player.getBoundingBox().inflate(DIVE_RADIUS),
-                entity -> BloodOrb.isHostile(entity, player) && entity.distanceToSqr(player) <= DIVE_RADIUS * DIVE_RADIUS)) {
-            victim.hurtServer(level, source, damage);
-        }
-        BlockState ground = level.getBlockState(player.getOnPos());
-        if (!ground.isAir()) {
-            level.sendParticles(new BlockParticleOption(ParticleTypes.BLOCK, ground), player.getX(), player.getY(), player.getZ(), 60, 1.2, 0.1, 1.2, 0.15);
-        }
-        level.sendParticles(new DustParticleOptions(Vampire.BLOOD_COLOR, 2.0F), player.getX(), player.getY() + 0.2, player.getZ(), 40, 1.5, 0.2, 1.5, 0.0);
-        level.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.MACE_SMASH_GROUND_HEAVY, SoundSource.PLAYERS, 1.0F, 0.8F);
-    }
 
     // ---- Final Feast ----
 

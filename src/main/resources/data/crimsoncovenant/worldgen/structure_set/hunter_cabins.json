@@ -1,0 +1,14 @@
+{
+  "placement": {
+    "type": "minecraft:random_spread",
+    "salt": 771240553,
+    "spacing": 34,
+    "separation": 12
+  },
+  "structures": [
+    {
+      "structure": "crimsoncovenant:hunter_cabin",
+      "weight": 1
+    }
+  ]
+}

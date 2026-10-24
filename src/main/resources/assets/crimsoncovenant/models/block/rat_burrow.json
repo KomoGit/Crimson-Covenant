@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "particle": "crimsoncovenant:block/rat_burrow",
+    "north": "crimsoncovenant:block/rat_burrow_hole",
+    "south": "crimsoncovenant:block/rat_burrow",
+    "east": "crimsoncovenant:block/rat_burrow",
+    "west": "crimsoncovenant:block/rat_burrow",
+    "up": "crimsoncovenant:block/rat_burrow",
+    "down": "crimsoncovenant:block/rat_burrow"
+  }
+}

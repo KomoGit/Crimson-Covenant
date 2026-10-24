@@ -1,0 +1,64 @@
+{
+  "variants": {
+    "facing=north,half=lower,occupied=false": {
+      "model": "crimsoncovenant:block/iron_maiden_lower"
+    },
+    "facing=north,half=lower,occupied=true": {
+      "model": "crimsoncovenant:block/iron_maiden_lower_occupied"
+    },
+    "facing=north,half=upper,occupied=false": {
+      "model": "crimsoncovenant:block/iron_maiden_upper"
+    },
+    "facing=north,half=upper,occupied=true": {
+      "model": "crimsoncovenant:block/iron_maiden_upper_occupied"
+    },
+    "facing=east,half=lower,occupied=false": {
+      "model": "crimsoncovenant:block/iron_maiden_lower",
+      "y": 90
+    },
+    "facing=east,half=lower,occupied=true": {
+      "model": "crimsoncovenant:block/iron_maiden_lower_occupied",
+      "y": 90
+    },
+    "facing=east,half=upper,occupied=false": {
+      "model": "crimsoncovenant:block/iron_maiden_upper",
+      "y": 90
+    },
+    "facing=east,half=upper,occupied=true": {
+      "model": "crimsoncovenant:block/iron_maiden_upper_occupied",
+      "y": 90
+    },
+    "facing=south,half=lower,occupied=false": {
+      "model": "crimsoncovenant:block/iron_maiden_lower",
+      "y": 180
+    },
+    "facing=south,half=lower,occupied=true": {
+      "model": "crimsoncovenant:block/iron_maiden_lower_occupied",
+      "y": 180
+    },
+    "facing=south,half=upper,occupied=false": {
+      "model": "crimsoncovenant:block/iron_maiden_upper",
+      "y": 180
+    },
+    "facing=south,half=upper,occupied=true": {
+      "model": "crimsoncovenant:block/iron_maiden_upper_occupied",
+      "y": 180
+    },
+    "facing=west,half=lower,occupied=false": {
+      "model": "crimsoncovenant:block/iron_maiden_lower",
+      "y": 270
+    },
+    "facing=west,half=lower,occupied=true": {
+      "model": "crimsoncovenant:block/iron_maiden_lower_occupied",
+      "y": 270
+    },
+    "facing=west,half=upper,occupied=false": {
+      "model": "crimsoncovenant:block/iron_maiden_upper",
+      "y": 270
+    },
+    "facing=west,half=upper,occupied=true": {
+      "model": "crimsoncovenant:block/iron_maiden_upper_occupied",
+      "y": 270
+    }
+  }
+}

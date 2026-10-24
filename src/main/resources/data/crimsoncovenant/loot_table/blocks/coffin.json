@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "condition": {
+        "type": "minecraft:survives_explosion"
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "condition": {
+            "type": "minecraft:match_block",
+            "blocks": "crimsoncovenant:coffin",
+            "state": {
+              "part": "head"
+            }
+          },
+          "name": "crimsoncovenant:coffin"
+        }
+      ],
+      "rolls": 1
+    }
+  ],
+  "random_sequence": "crimsoncovenant:blocks/coffin"
+}

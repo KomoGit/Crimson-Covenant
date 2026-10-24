@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "N": "minecraft:iron_nugget",
+    "S": "minecraft:stick",
+    "P": "#minecraft:wooden_pressure_plates"
+  },
+  "pattern": [
+    " N ",
+    "SPS"
+  ],
+  "result": {
+    "id": "crimsoncovenant:rat_trap",
+    "count": 2
+  }
+}

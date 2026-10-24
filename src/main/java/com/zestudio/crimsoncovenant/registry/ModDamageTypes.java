@@ -22,5 +22,11 @@ public final class ModDamageTypes {
     /// Silver spikes, or a silver net
     public static final ResourceKey<DamageType> SILVER_TRAP = ResourceKey.create(Registries.DAMAGE_TYPE, CrimsonCovenant.id("silver_trap"));
 
+    /// Silver dust breathed in, by the undead
+    public static final ResourceKey<DamageType> SILVER_DUST = ResourceKey.create(Registries.DAMAGE_TYPE, CrimsonCovenant.id("silver_dust"));
+
+    /// A rat trap snapping shut
+    public static final ResourceKey<DamageType> RAT_TRAP = ResourceKey.create(Registries.DAMAGE_TYPE, CrimsonCovenant.id("rat_trap"));
+
     private ModDamageTypes() {}
 }

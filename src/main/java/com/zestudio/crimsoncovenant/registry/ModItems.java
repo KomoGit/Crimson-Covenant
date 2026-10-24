@@ -6,11 +6,16 @@ import java.util.Map;
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
 import com.zestudio.crimsoncovenant.item.BloodBottleItem;
 import com.zestudio.crimsoncovenant.item.BloodSpearItem;
+import com.zestudio.crimsoncovenant.entity.Gargoyle;
 import com.zestudio.crimsoncovenant.item.EphemeralSwordItem;
+import com.zestudio.crimsoncovenant.item.GargoyleStatueItem;
 import com.zestudio.crimsoncovenant.item.SilverArrowItem;
 import com.zestudio.crimsoncovenant.skill.AncientTomeItem;
 import com.zestudio.crimsoncovenant.skill.BloodSkill;
 import com.zestudio.crimsoncovenant.skill.SkillItem;
+import com.zestudio.crimsoncovenant.item.GhostBottleItem;
+import com.zestudio.crimsoncovenant.block.SilveredBottleBlock;
+import com.zestudio.crimsoncovenant.item.IronMaidenItem;
 
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.BlockItem;
@@ -23,6 +28,7 @@ import net.minecraft.world.item.component.Consumables;
 import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProviders;
 import net.minecraft.world.item.ToolMaterial;
 import net.minecraft.world.item.SpawnEggItem;
+import net.minecraft.world.item.component.BlockItemStateProperties;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
@@ -32,8 +38,11 @@ public final class ModItems {
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(CrimsonCovenant.MODID);
 
     /// Dropped when a player kills a vampire or a hunter: the vampires' currency, spent with the Ancient Butler and at
-    /// the Sanguine Table
+    /// the Blood Altar
     public static final DeferredItem<Item> TOKEN_OF_BLOOD = ITEMS.registerSimpleItem("token_of_blood", properties -> properties.rarity(Rarity.UNCOMMON));
+    /// Dropped when a player kills a Master Vampire or a Master Hunter: spent, with Tokens of Blood, to upgrade a
+    /// blood skill at the Blood Altar
+    public static final DeferredItem<Item> TOKEN_OF_MASTER = ITEMS.registerSimpleItem("token_of_master", properties -> properties.rarity(Rarity.RARE));
     /// Dropped by Ghosts when Holy Water banishes them
     public static final DeferredItem<Item> ECTOPLASM = ITEMS.registerSimpleItem("ectoplasm", properties -> properties.rarity(Rarity.UNCOMMON));
 
@@ -42,7 +51,7 @@ public final class ModItems {
     public static final DeferredItem<Item> SILVER_INGOT = ITEMS.registerSimpleItem("silver_ingot");
     public static final DeferredItem<Item> SILVER_NUGGET = ITEMS.registerSimpleItem("silver_nugget");
     public static final DeferredItem<Item> SILVER_DUST = ITEMS.registerSimpleItem("silver_dust");
-    /// Minted from silver ingots: the hunters' currency, spent with the Old Hunter
+    /// Minted from silver ingots: the hunters' currency, spent with the Plague Doctor
     public static final DeferredItem<Item> SILVER_COIN = ITEMS.registerSimpleItem("silver_coin");
     /// Extra damage to undead and werewolves, and slows them
     public static final DeferredItem<SilverArrowItem> SILVER_ARROW = ITEMS.registerItem("silver_arrow", SilverArrowItem::new);
@@ -63,6 +72,10 @@ public final class ModItems {
     public static final DeferredItem<EphemeralSwordItem> EPHEMERAL_SWORD = ITEMS.registerItem("ephemeral_sword", EphemeralSwordItem::new,
             properties -> properties.sword(ToolMaterial.IRON, 3.0F, -2.4F).component(DataComponents.UNBREAKABLE, Unit.INSTANCE).rarity(Rarity.UNCOMMON));
 
+    /// The burst of blood a Blood Charge drives the Crimson Shroud on with, drawn as it flies. Never held: the charge is
+    /// part of the skill (see skill.BloodSkills.bloodCharge)
+    public static final DeferredItem<Item> BLOOD_CHARGE = ITEMS.registerSimpleItem("blood_charge");
+
     // ---- Garlic: planted like a carrot, brewed into the Potion of Garlic, braided to hang up ----
     public static final DeferredItem<BlockItem> GARLIC = ITEMS.registerItem("garlic",
             properties -> new BlockItem(ModBlocks.GARLIC_CROP.get(), properties.useItemDescriptionPrefix()),
@@ -81,15 +94,35 @@ public final class ModItems {
     public static final DeferredItem<BlockItem> HUNTERS_TABLE = ITEMS.registerSimpleBlockItem(ModBlocks.HUNTERS_TABLE);
     public static final DeferredItem<BlockItem> BLOOD_ALTAR = ITEMS.registerSimpleBlockItem(ModBlocks.BLOOD_ALTAR);
     public static final DeferredItem<BlockItem> ANCIENT_TRANSLATOR = ITEMS.registerSimpleBlockItem(ModBlocks.ANCIENT_TRANSLATOR);
-    public static final DeferredItem<BlockItem> SANGUINE_TABLE = ITEMS.registerSimpleBlockItem(ModBlocks.SANGUINE_TABLE);
     public static final DeferredItem<BlockItem> GARLIC_BRAID = ITEMS.registerSimpleBlockItem(ModBlocks.GARLIC_BRAID);
     public static final DeferredItem<BlockItem> BEAR_TRAP = ITEMS.registerSimpleBlockItem(ModBlocks.BEAR_TRAP);
     public static final DeferredItem<BlockItem> SILVER_SPIKES = ITEMS.registerSimpleBlockItem(ModBlocks.SILVER_SPIKES);
+    public static final DeferredItem<BlockItem> RAT_TRAP = ITEMS.registerSimpleBlockItem(ModBlocks.RAT_TRAP);
+    public static final DeferredItem<BlockItem> SILVERED_BOTTLE = ITEMS.registerSimpleBlockItem(ModBlocks.SILVERED_BOTTLE);
+    public static final DeferredItem<BlockItem> COFFIN = ITEMS.registerSimpleBlockItem(ModBlocks.COFFIN, properties -> properties.stacksTo(1));
+    public static final DeferredItem<BlockItem> BLOOD_THRONE = ITEMS.registerSimpleBlockItem(ModBlocks.BLOOD_THRONE);
+    public static final DeferredItem<IronMaidenItem> IRON_MAIDEN = ITEMS.registerItem("iron_maiden", properties -> new IronMaidenItem(ModBlocks.IRON_MAIDEN.get(), properties),
+            properties -> properties.stacksTo(16).useBlockDescriptionPrefix());
+    /// The same bottle with a ghost in it: places the bottle with its ghost
+    public static final DeferredItem<GhostBottleItem> GHOST_IN_A_BOTTLE = ITEMS.registerItem("ghost_in_a_bottle",
+            properties -> new GhostBottleItem(ModBlocks.SILVERED_BOTTLE.get(), properties),
+            properties -> properties.stacksTo(16).component(DataComponents.BLOCK_STATE, BlockItemStateProperties.EMPTY.with(SilveredBottleBlock.GHOST, true)));
     public static final DeferredItem<BlockItem> SILVER_NET_TRAP = ITEMS.registerSimpleBlockItem(ModBlocks.SILVER_NET_TRAP);
+    /// Carved stone, waiting to be set down and woken: silver for the hunters', blood for the vampires'
+    public static final DeferredItem<GargoyleStatueItem> CATHEDRAL_GARGOYLE_STATUE = ITEMS.registerItem("cathedral_gargoyle_statue",
+            properties -> new GargoyleStatueItem(ModEntities.CATHEDRAL_GARGOYLE, Gargoyle.Side.HUNTER, properties),
+            properties -> properties.stacksTo(1).rarity(Rarity.UNCOMMON));
+    public static final DeferredItem<GargoyleStatueItem> BLOOD_GARGOYLE_STATUE = ITEMS.registerItem("blood_gargoyle_statue",
+            properties -> new GargoyleStatueItem(ModEntities.BLOOD_GARGOYLE, Gargoyle.Side.VAMPIRE, properties),
+            properties -> properties.stacksTo(1).rarity(Rarity.UNCOMMON));
 
     // Entity types are registered before items, so the hunter type is available here
     public static final DeferredItem<SpawnEggItem> HUNTER_SPAWN_EGG = ITEMS.registerItem("hunter_spawn_egg", SpawnEggItem::new,
             properties -> properties.spawnEgg(ModEntities.HUNTER.get()));
+    public static final DeferredItem<SpawnEggItem> PLAGUE_DOCTOR_SPAWN_EGG = ITEMS.registerItem("plague_doctor_spawn_egg", SpawnEggItem::new,
+            properties -> properties.spawnEgg(ModEntities.PLAGUE_DOCTOR.get()));
+    public static final DeferredItem<SpawnEggItem> RAT_SPAWN_EGG = ITEMS.registerItem("rat_spawn_egg", SpawnEggItem::new,
+            properties -> properties.spawnEgg(ModEntities.RAT.get()));
     public static final DeferredItem<SpawnEggItem> HUNTER_CHEMIST_SPAWN_EGG = ITEMS.registerItem("hunter_chemist_spawn_egg", SpawnEggItem::new,
             properties -> properties.spawnEgg(ModEntities.HUNTER_CHEMIST.get()));
     public static final DeferredItem<SpawnEggItem> MASTER_HUNTER_SPAWN_EGG = ITEMS.registerItem("master_hunter_spawn_egg", SpawnEggItem::new,

@@ -1,0 +1,34 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "condition": {
+        "type": "minecraft:survives_explosion"
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "condition": {
+            "type": "minecraft:match_block",
+            "blocks": "crimsoncovenant:iron_maiden",
+            "state": {
+              "half": "lower"
+            }
+          },
+          "modifier": [
+            {
+              "type": "minecraft:copy_components",
+              "include": [
+                "crimsoncovenant:captive"
+              ],
+              "source": "block_entity"
+            }
+          ],
+          "name": "crimsoncovenant:iron_maiden"
+        }
+      ],
+      "rolls": 1
+    }
+  ],
+  "random_sequence": "crimsoncovenant:blocks/iron_maiden"
+}

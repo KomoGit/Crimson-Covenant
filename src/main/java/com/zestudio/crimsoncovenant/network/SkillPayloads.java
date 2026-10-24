@@ -6,6 +6,7 @@ import com.zestudio.crimsoncovenant.skill.CreatureAbilities;
 import com.zestudio.crimsoncovenant.skill.Possession;
 import com.zestudio.crimsoncovenant.skill.SkillSlots;
 import com.zestudio.crimsoncovenant.skill.SkillsMenu;
+import com.zestudio.crimsoncovenant.vampirism.Vampirism;
 
 import io.netty.buffer.ByteBuf;
 
@@ -15,6 +16,7 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.ChatFormatting;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
@@ -35,6 +37,17 @@ public final class SkillPayloads {
     }
 
     /// Open the Blood Skills screen
+    /// The Crimson Shroud's right click (see BloodSkills.bloodCharge)
+    public record BloodCharge() implements CustomPacketPayload {
+        public static final Type<BloodCharge> TYPE = new Type<>(CrimsonCovenant.id("blood_charge"));
+        public static final StreamCodec<ByteBuf, BloodCharge> STREAM_CODEC = StreamCodec.unit(new BloodCharge());
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
     public record OpenSkills() implements CustomPacketPayload {
         public static final Type<OpenSkills> TYPE = new Type<>(CrimsonCovenant.id("open_skills"));
         public static final StreamCodec<ByteBuf, OpenSkills> STREAM_CODEC = StreamCodec.unit(new OpenSkills());
@@ -60,6 +73,16 @@ public final class SkillPayloads {
         }
     }
 
+    /// The skills key: opens the blood skills menu for a vampire, and only for a vampire. Returns whether it opened.
+    public static boolean tryOpenSkillsScreen(ServerPlayer player) {
+        if (!Vampirism.isVampire(player)) {
+            player.sendOverlayMessage(Component.translatable("message.crimsoncovenant.skills.not_a_vampire").withStyle(ChatFormatting.GRAY));
+            return false;
+        }
+        openSkillsScreen(player);
+        return true;
+    }
+
     public static void openSkillsScreen(ServerPlayer player) {
         player.openMenu(new SimpleMenuProvider((containerId, inventory, owner) -> new SkillsMenu(containerId, inventory, new SkillSlots.Container(owner)),
                 Component.translatable("container.crimsoncovenant.skills")));
@@ -77,9 +100,14 @@ public final class SkillPayloads {
                     BloodSkills.tryCast(player, payload.slot());
                 }
             });
+            registrar.playToServer(BloodCharge.TYPE, BloodCharge.STREAM_CODEC, (payload, context) -> {
+                if (context.player() instanceof ServerPlayer player) {
+                    BloodSkills.bloodCharge(player);
+                }
+            });
             registrar.playToServer(OpenSkills.TYPE, OpenSkills.STREAM_CODEC, (payload, context) -> {
                 if (context.player() instanceof ServerPlayer player) {
-                    openSkillsScreen(player);
+                    tryOpenSkillsScreen(player);
                 }
             });
             registrar.playToServer(PossessedAttack.TYPE, PossessedAttack.STREAM_CODEC, (payload, context) -> {

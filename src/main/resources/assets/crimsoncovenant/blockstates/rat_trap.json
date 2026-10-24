@@ -1,0 +1,64 @@
+{
+  "variants": {
+    "baited=false,facing=north,sprung=false": {
+      "model": "crimsoncovenant:block/rat_trap"
+    },
+    "baited=true,facing=north,sprung=false": {
+      "model": "crimsoncovenant:block/rat_trap_baited"
+    },
+    "baited=false,facing=north,sprung=true": {
+      "model": "crimsoncovenant:block/rat_trap_sprung"
+    },
+    "baited=true,facing=north,sprung=true": {
+      "model": "crimsoncovenant:block/rat_trap_sprung"
+    },
+    "baited=false,facing=east,sprung=false": {
+      "model": "crimsoncovenant:block/rat_trap",
+      "y": 90
+    },
+    "baited=true,facing=east,sprung=false": {
+      "model": "crimsoncovenant:block/rat_trap_baited",
+      "y": 90
+    },
+    "baited=false,facing=east,sprung=true": {
+      "model": "crimsoncovenant:block/rat_trap_sprung",
+      "y": 90
+    },
+    "baited=true,facing=east,sprung=true": {
+      "model": "crimsoncovenant:block/rat_trap_sprung",
+      "y": 90
+    },
+    "baited=false,facing=south,sprung=false": {
+      "model": "crimsoncovenant:block/rat_trap",
+      "y": 180
+    },
+    "baited=true,facing=south,sprung=false": {
+      "model": "crimsoncovenant:block/rat_trap_baited",
+      "y": 180
+    },
+    "baited=false,facing=south,sprung=true": {
+      "model": "crimsoncovenant:block/rat_trap_sprung",
+      "y": 180
+    },
+    "baited=true,facing=south,sprung=true": {
+      "model": "crimsoncovenant:block/rat_trap_sprung",
+      "y": 180
+    },
+    "baited=false,facing=west,sprung=false": {
+      "model": "crimsoncovenant:block/rat_trap",
+      "y": 270
+    },
+    "baited=true,facing=west,sprung=false": {
+      "model": "crimsoncovenant:block/rat_trap_baited",
+      "y": 270
+    },
+    "baited=false,facing=west,sprung=true": {
+      "model": "crimsoncovenant:block/rat_trap_sprung",
+      "y": 270
+    },
+    "baited=true,facing=west,sprung=true": {
+      "model": "crimsoncovenant:block/rat_trap_sprung",
+      "y": 270
+    }
+  }
+}

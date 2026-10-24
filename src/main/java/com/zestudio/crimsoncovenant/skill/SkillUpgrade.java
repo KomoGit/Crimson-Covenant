@@ -6,12 +6,12 @@ import com.zestudio.crimsoncovenant.registry.ModDataComponents;
 
 import net.minecraft.world.item.ItemStack;
 
-/// An upgrade a Sanguine Table can work into a blood skill. An upgraded skill does more, and costs more blood to
+/// An upgrade a Blood Altar can work into a blood skill. An upgraded skill does more, and costs more blood to
 /// cast. The upgrade is kept on the skill item itself (ModDataComponents.SKILL_UPGRADED), so it goes wherever the
 /// skill goes.
 public enum SkillUpgrade {
     /// Flight: twice as long in the air, and it ends in a diving slam that hurts what's below instead of the vampire
-    BLOOD_WINGS("blood_wings", BloodSkill.FLIGHT, 10),
+    CRIMSON_SHROUD("crimson_shroud", BloodSkill.FLIGHT, 10),
     /// Dash: the dash slashes every hostile it passes through
     AFTERIMAGE_STRIKE("afterimage_strike", BloodSkill.DASH, 5),
     /// Armor of Ancient: melee attackers are hurt in turn, like Black Blood

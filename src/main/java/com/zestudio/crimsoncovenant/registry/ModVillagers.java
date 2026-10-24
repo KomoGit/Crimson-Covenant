@@ -19,7 +19,8 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 /// The two faction villagers. A village can only host one faction (see FactionVillagers).
-/// The Ancient Butler sells Ancient Tomes of the purchasable blood skills; the Old Hunter has no trades yet.
+/// The Ancient Butler sells Ancient Tomes of the purchasable blood skills; the Plague Doctor sells hunting gear and
+/// Cleanse, and cures the sick (see entity.PlagueDoctor, which is also a wandering version of him).
 /// Trades are data-driven: see data/crimsoncovenant/trade_set and villager_trade.
 public final class ModVillagers {
     public static final DeferredRegister<PoiType> POI_TYPES = DeferredRegister.create(Registries.POINT_OF_INTEREST_TYPE, CrimsonCovenant.MODID);
@@ -32,13 +33,13 @@ public final class ModVillagers {
     public static final DeferredHolder<PoiType, PoiType> GARLIC_BRAID_POI = POI_TYPES.register("garlic_braid",
             () -> new PoiType(ImmutableSet.copyOf(ModBlocks.GARLIC_BRAID.get().getStateDefinition().getPossibleStates()), 0, 1));
 
-    /// Hunter faction: sells hunting gear for Silver Coins
-    public static final DeferredHolder<VillagerProfession, VillagerProfession> OLD_HUNTER = profession("old_hunter", HUNTERS_TABLE_POI.getKey(), SoundEvents.VILLAGER_WORK_FLETCHER,
+    /// Hunter faction: sells hunting gear for Silver Coins, and Cleanse and rat traps for emeralds, and cures the sick
+    public static final DeferredHolder<VillagerProfession, VillagerProfession> PLAGUE_DOCTOR = profession("plague_doctor", HUNTERS_TABLE_POI.getKey(), SoundEvents.VILLAGER_WORK_CLERIC,
             Int2ObjectMap.ofEntries(
-                    Int2ObjectMap.entry(1, tradeSet("old_hunter/level_1")),
-                    Int2ObjectMap.entry(2, tradeSet("old_hunter/level_2")),
-                    Int2ObjectMap.entry(3, tradeSet("old_hunter/level_3")),
-                    Int2ObjectMap.entry(4, tradeSet("old_hunter/level_4"))));
+                    Int2ObjectMap.entry(1, tradeSet("plague_doctor/level_1")),
+                    Int2ObjectMap.entry(2, tradeSet("plague_doctor/level_2")),
+                    Int2ObjectMap.entry(3, tradeSet("plague_doctor/level_3")),
+                    Int2ObjectMap.entry(4, tradeSet("plague_doctor/level_4"))));
     /// Vampire faction: sells tomes and blood for Tokens of Blood
     public static final DeferredHolder<VillagerProfession, VillagerProfession> ANCIENT_BUTLER = profession("ancient_butler", BLOOD_ALTAR_POI.getKey(), SoundEvents.VILLAGER_WORK_CLERIC,
             Int2ObjectMap.ofEntries(

@@ -214,11 +214,11 @@ final class WorldGameTests {
         ServerLevel level = helper.getLevel();
         BlockPos center = helper.absolutePos(new BlockPos(4, 1, 4));
         helper.assertTrue(!FactionVillagers.otherFactionNearby(level, center, FactionVillagers.Faction.VAMPIRES), Component.literal("No hunters around yet"));
-        Villager oldHunter = helper.spawnWithNoFreeWill(EntityTypes.VILLAGER, new BlockPos(2, 1, 2));
-        oldHunter.setVillagerData(oldHunter.getVillagerData().withProfession(
-                level.registryAccess().lookupOrThrow(Registries.VILLAGER_PROFESSION).getOrThrow(ModVillagers.OLD_HUNTER.getKey())));
+        Villager doctor = helper.spawnWithNoFreeWill(EntityTypes.VILLAGER, new BlockPos(2, 1, 2));
+        doctor.setVillagerData(doctor.getVillagerData().withProfession(
+                level.registryAccess().lookupOrThrow(Registries.VILLAGER_PROFESSION).getOrThrow(ModVillagers.PLAGUE_DOCTOR.getKey())));
         helper.assertTrue(FactionVillagers.otherFactionNearby(level, center, FactionVillagers.Faction.VAMPIRES),
-                Component.literal("An Old Hunter nearby should keep the vampires' Blood Altar out"));
+                Component.literal("A Plague Doctor nearby should keep the vampires' Blood Altar out"));
         helper.assertTrue(!FactionVillagers.otherFactionNearby(level, center, FactionVillagers.Faction.HUNTERS),
                 Component.literal("The hunters' own workstation is fine"));
         helper.succeed();

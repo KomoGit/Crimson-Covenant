@@ -1,5 +1,6 @@
 package com.zestudio.crimsoncovenant.skill;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.jspecify.annotations.Nullable;
@@ -22,8 +23,13 @@ import com.zestudio.crimsoncovenant.registry.ModItems;
 import com.zestudio.crimsoncovenant.vampirism.BloodPool;
 import com.zestudio.crimsoncovenant.vampirism.Vampirism;
 import com.zestudio.crimsoncovenant.registry.ModDamageTypes;
+import com.zestudio.crimsoncovenant.effect.CrimsonShroudEffect;
 
 import net.minecraft.ChatFormatting;
+import net.minecraft.world.item.component.Fireworks;
+import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.entity.projectile.FireworkRocketEntity;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.Holder;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
@@ -36,6 +42,7 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -67,6 +74,9 @@ public final class BloodSkills {
     public static final int DEFY_DEATH_COST_PER_HIT = 10;
 
     public static final double SHADOW_STEP_RANGE = 100.0;
+    // Blood Charge (the Crimson Shroud's right click)
+    public static final int BLOOD_CHARGE_COST = 5;
+    private static final int BLOOD_CHARGE_COOLDOWN = 10;
     private static final int STALKERS_GAZE_DURATION = 600;
 
     private BloodSkills() {}
@@ -78,10 +88,14 @@ public final class BloodSkills {
             refuse(player, Component.translatable("message.crimsoncovenant.skill.empty_slot"));
             return false;
         }
+        BloodSkill skill = skillItem.skill();
+        // Flight in the air already: the skill's key takes it off again, for free
+        if (skill == BloodSkill.FLIGHT && endFlight(player)) {
+            return true;
+        }
         if (player.getCooldowns().isOnCooldown(stack)) {
             return false;
         }
-        BloodSkill skill = skillItem.skill();
         boolean upgraded = SkillUpgrade.isUpgraded(stack);
         int cost = costFor(skill, player) + SkillUpgrade.extraCost(stack);
         String refusal = whyCantCast(skill, player, cost);
@@ -130,14 +144,17 @@ public final class BloodSkills {
         };
     }
 
-    /// Does what the skill does (with its Sanguine Table upgrade, if it has one). False if it couldn't (and nothing
+    /// Does what the skill does (with its Blood Altar upgrade, if it has one). False if it couldn't (and nothing
     /// should be paid), having told the player why.
     public static boolean cast(BloodSkill skill, ServerPlayer player, int bloodSpent, boolean upgraded) {
         ServerLevel level = player.level();
         switch (skill) {
             case FLIGHT -> {
-                // Blood Wings: amplifier 1 marks the upgrade (see BloodFlightEffect)
-                player.addEffect(new MobEffectInstance(ModEffects.BLOOD_FLIGHT, BloodFlightEffect.DURATION * (upgraded ? 2 : 1), upgraded ? 1 : 0));
+                if (upgraded) {
+                    wearCrimsonShroud(player);
+                    return true;
+                }
+                player.addEffect(new MobEffectInstance(ModEffects.BLOOD_FLIGHT, BloodFlightEffect.DURATION));
                 if (player.onGround()) {
                     // Off the ground first: the game drops a flying player out of flight as soon as they touch it
                     player.setDeltaMovement(player.getDeltaMovement().x, 0.6, player.getDeltaMovement().z);
@@ -225,6 +242,60 @@ public final class BloodSkills {
                 playSound(player, SoundEvents.WARDEN_HEARTBEAT, 0.6F);
             }
         }
+        return true;
+    }
+
+    // ---- Crimson Shroud ----
+
+    /// The upgraded Flight: a minute in the Crimson Shroud, a giant bat's wings that glide like an elytra, with Blood
+    /// Charges to drive them on. Thrown up into the air to start, so the wings can open straight away.
+    private static void wearCrimsonShroud(ServerPlayer player) {
+        ServerLevel level = player.level();
+        player.addEffect(new MobEffectInstance(ModEffects.CRIMSON_SHROUD, CrimsonShroudEffect.DURATION));
+        player.setDeltaMovement(player.getDeltaMovement().x, 1.1, player.getDeltaMovement().z);
+        player.syncVelocity = true;
+        player.sendOverlayMessage(Component.translatable("message.crimsoncovenant.crimson_shroud.hint").withStyle(ChatFormatting.DARK_RED));
+        burst(level, player, 60);
+        playSound(player, SoundEvents.PHANTOM_FLAP, 0.5F);
+        playSound(player, SoundEvents.ARMOR_EQUIP_ELYTRA.value(), 0.8F);
+    }
+
+    /// A Blood Charge, the Crimson Shroud's right click: while gliding, five blood burst out behind the vampire and
+    /// drive them on the way a firework drives an elytra. False if they can't (not gliding in the shroud, too soon
+    /// after the last, or short of blood).
+    public static boolean bloodCharge(ServerPlayer player) {
+        if (!CrimsonShroudEffect.isShrouded(player) || !player.isFallFlying()) {
+            return false;
+        }
+        ItemStack burst = new ItemStack(ModItems.BLOOD_CHARGE.get());
+        if (player.getCooldowns().isOnCooldown(burst)) {
+            return false;
+        }
+        if (BloodPool.get(player) < BLOOD_CHARGE_COST) {
+            refuse(player, Component.translatable("message.crimsoncovenant.skill.not_enough_blood", BloodPool.get(player), BLOOD_CHARGE_COST));
+            return false;
+        }
+        BloodPool.add(player, -BLOOD_CHARGE_COST);
+        player.getCooldowns().addCooldown(burst, BLOOD_CHARGE_COOLDOWN);
+        // A one-burst rocket with no explosions, drawn as a clot of blood
+        burst.set(DataComponents.FIREWORKS, new Fireworks(1, List.of()));
+        Projectile.spawnProjectile(new FireworkRocketEntity(player.level(), burst, player), player.level(), burst);
+        burst(player.level(), player, 20);
+        playSound(player, SoundEvents.PHANTOM_FLAP, 0.7F);
+        return true;
+    }
+
+    /// Takes off whichever Flight is on (plain flight or the Crimson Shroud), letting the vampire down gently.
+    /// False if neither was.
+    public static boolean endFlight(ServerPlayer player) {
+        if (player.removeEffect(ModEffects.CRIMSON_SHROUD)) {
+            CrimsonShroudEffect.end(player);
+        } else if (player.removeEffect(ModEffects.BLOOD_FLIGHT)) {
+            player.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 60, 0, false, false, true));
+        } else {
+            return false;
+        }
+        playSound(player, SoundEvents.PHANTOM_FLAP, 1.3F);
         return true;
     }
 
@@ -376,6 +447,10 @@ public final class BloodSkills {
     /// Holy Water washes every active blood skill off a vampire player
     public static void dispel(ServerPlayer player) {
         boolean dispelled = player.removeEffect(ModEffects.BLOOD_FLIGHT);
+        if (player.removeEffect(ModEffects.CRIMSON_SHROUD)) {
+            CrimsonShroudEffect.end(player);
+            dispelled = true;
+        }
         dispelled |= player.removeEffect(ModEffects.THORNED_SHELL);
         dispelled |= player.removeEffect(ModEffects.ANCIENT_ARMOR);
         dispelled |= player.removeEffect(ModEffects.DAYWALKER);
