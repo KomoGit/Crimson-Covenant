@@ -15,15 +15,6 @@
               "half": "lower"
             }
           },
-          "modifier": [
-            {
-              "type": "minecraft:copy_components",
-              "include": [
-                "crimsoncovenant:captive"
-              ],
-              "source": "block_entity"
-            }
-          ],
           "name": "crimsoncovenant:iron_maiden"
         }
       ],

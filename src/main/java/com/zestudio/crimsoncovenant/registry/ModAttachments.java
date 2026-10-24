@@ -1,6 +1,7 @@
 package com.zestudio.crimsoncovenant.registry;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -10,6 +11,8 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
 import com.zestudio.crimsoncovenant.skill.Enthrall;
 import com.zestudio.crimsoncovenant.skill.AfterimageStrike;
+import com.zestudio.crimsoncovenant.curse.Curse;
+import com.zestudio.crimsoncovenant.curse.Curses;
 
 import io.netty.buffer.ByteBuf;
 
@@ -199,6 +202,18 @@ public final class ModAttachments {
                 Codec.INT.fieldOf("ability_cooldown").forGetter(PossessionState::abilityCooldown),
                 Codec.INT.fieldOf("attack_cooldown").forGetter(PossessionState::attackCooldown)).apply(instance, PossessionState::new));
     }
+
+    /// The curse a hunter has let loose, while it lasts (see curse.Curses). Not saved.
+    public static final Supplier<AttachmentType<Optional<Curses.Unleashed>>> UNLEASHED_CURSE = ATTACHMENT_TYPES.register("unleashed_curse",
+            () -> AttachmentType.<Optional<Curses.Unleashed>>builder(() -> Optional.empty()).build());
+
+    /// When each curse can next be unleashed, by game time. Not saved.
+    public static final Supplier<AttachmentType<Map<Curse, Long>>> CURSE_COOLDOWNS = ATTACHMENT_TYPES.register("curse_cooldowns",
+            () -> AttachmentType.<Map<Curse, Long>>builder(() -> Map.of()).build());
+
+    /// On an arrow loosed under Wraithseeker: how keenly it seeks. Not saved.
+    public static final Supplier<AttachmentType<Integer>> SEEKING = ATTACHMENT_TYPES.register("seeking",
+            () -> AttachmentType.builder(() -> 0).build());
 
     private ModAttachments() {}
 }

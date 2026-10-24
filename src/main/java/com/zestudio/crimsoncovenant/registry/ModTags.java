@@ -15,6 +15,8 @@ public final class ModTags {
     public static final class Entities {
         /// Mobs vampires attack on sight (players are handled separately)
         public static final TagKey<EntityType<?>> VAMPIRE_PREY = TagKey.create(Registries.ENTITY_TYPE, CrimsonCovenant.id("vampire_prey"));
+        /// Who an Iron Maiden can be used on, to take them captive
+        public static final TagKey<EntityType<?>> IRON_MAIDEN_CAPTIVES = TagKey.create(Registries.ENTITY_TYPE, CrimsonCovenant.id("iron_maiden_captives"));
         /// Silver arrows hit these harder and slow them: undead and werewolves
         public static final TagKey<EntityType<?>> WEAK_TO_SILVER = TagKey.create(Registries.ENTITY_TYPE, CrimsonCovenant.id("weak_to_silver"));
         /// Too powerful for the Possess skill: bosses, minibosses and the master vampires and hunters
@@ -39,6 +41,10 @@ public final class ModTags {
         public static final TagKey<Item> RAT_BAIT = TagKey.create(Registries.ITEM, CrimsonCovenant.id("rat_bait"));
         /// What rats eat off the ground besides anything edible
         public static final TagKey<Item> RATS_SCAVENGE = TagKey.create(Registries.ITEM, CrimsonCovenant.id("rats_scavenge"));
+        /// What the melee curses can be laid on
+        public static final TagKey<Item> CURSEABLE_MELEE = TagKey.create(Registries.ITEM, CrimsonCovenant.id("curseable_melee"));
+        /// What the projectile curses can be laid on
+        public static final TagKey<Item> CURSEABLE_RANGED = TagKey.create(Registries.ITEM, CrimsonCovenant.id("curseable_ranged"));
 
         private Items() {}
     }

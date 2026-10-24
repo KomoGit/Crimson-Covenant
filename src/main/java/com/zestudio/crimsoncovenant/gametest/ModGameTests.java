@@ -136,7 +136,18 @@ public final class ModGameTests {
         test("grave_march_raises_the_fallen", SkillGameTests::graveMarchRaisesTheFallen);
         test("marked_prey_takes_more_damage", SkillGameTests::markedPreyTakesMoreDamage);
         test("skills_stay_through_death", SkillGameTests::skillsStayThroughDeath);
-        test("translator_turns_tomes_into_skills", SkillGameTests::translatorTurnsTomesIntoSkills);
+        calmTest("translator_turns_tomes_into_skills", SkillGameTests::translatorTurnsTomesIntoSkills, 100);
+        test("blood_skills_come_in_tiers", SkillGameTests::bloodSkillsComeInTiers);
+        test("curseforge_lays_and_deepens_curses", CurseGameTests::curseforgeLaysAndDeepensCurses);
+        test("a_ghost_turns_an_anvil_into_a_curseforge", CurseGameTests::aGhostTurnsAnAnvilIntoACurseforge);
+        test("unleashing_asks_rank_and_time", CurseGameTests::unleashingAsksRankAndTime);
+        test("shackles_and_gale_on_the_blow", CurseGameTests::shacklesAndGaleOnTheBlow);
+        playerTest("the_banished_cant_hurt_or_heal", CurseGameTests::theBanishedCantHurtOrHeal, DEFAULT_MAX_TICKS);
+        test("ravenous_maw_feeds_and_starves", CurseGameTests::ravenousMawFeedsAndStarves);
+        test("gravecaller_raises_the_slain", CurseGameTests::gravecallerRaisesTheSlain);
+        playerTest("revenants_grip_fights_alongside", CurseGameTests::revenantsGripFightsAlongside, DEFAULT_MAX_TICKS);
+        playerTest("wraithseeker_arrows_find_their_mark", CurseGameTests::wraithseekerArrowsFindTheirMark, DEFAULT_MAX_TICKS);
+        playerTest("twin_wyrms_tear_through_walls", CurseGameTests::twinWyrmsTearThroughWalls, DEFAULT_MAX_TICKS);
         test("broken_translator_gives_the_tome_back", SkillGameTests::brokenTranslatorGivesTheTomeBack);
         test("translator_recipe_uses_tokens_of_blood", SkillGameTests::translatorRecipeUsesTokensOfBlood);
         test("plague_doctor_trades_for_coins_and_emeralds", SkillGameTests::plagueDoctorTradesForCoinsAndEmeralds);
@@ -181,6 +192,7 @@ public final class ModGameTests {
         test("vampires_sleep_only_in_coffins", CoffinGameTests::vampiresSleepOnlyInCoffins);
         calmTest("kin_dont_keep_vampires_awake", CoffinGameTests::kinDontKeepVampiresAwake, 100);
         test("iron_maidens_take_villagers_captive", CoffinGameTests::ironMaidensTakeVillagersCaptive);
+        test("witches_and_plague_doctors_can_be_taken_too", CoffinGameTests::witchesAndPlagueDoctorsCanBeTakenToo);
         test("captives_run_dry", CoffinGameTests::captivesRunDry);
         test("vampires_feed_on_captives_in_their_sleep", CoffinGameTests::vampiresFeedOnCaptivesInTheirSleep);
         test("vampire_bats_are_undead_cave_dwellers", SilverGameTests::vampireBatsAreUndeadCaveDwellers);
@@ -221,6 +233,8 @@ public final class ModGameTests {
         test("rats_eat_any_dropped_food", RatGameTests::ratsEatAnyDroppedFood, 300);
         test("rats_are_worth_a_little_experience", RatGameTests::ratsAreWorthALittleExperience);
         calmTest("rats_turn_up_in_villages", RatGameTests::ratsTurnUpInVillages, 100);
+        calmTest("new_villages_have_rats_burrowed_in", RatGameTests::newVillagesHaveRatsBurrowedIn, 100);
+        isolatedTest("rats_shelter_from_the_rain", RatGameTests::ratsShelterFromTheRain);
         // On its own: a doctor from another test running alongside would count as one already come
         isolatedTest("plague_doctor_answers_the_call", PlagueDoctorGameTests::doctorAnswersTheCall);
         test("plague_saps_the_living_not_the_undead", RatGameTests::plagueSapsTheLivingButNotTheUndead);
@@ -277,12 +291,18 @@ public final class ModGameTests {
         modEventBus.addListener(ModGameTests::registerTests);
     }
 
+    // One for each environment: the registry won't take the same one twice
+    private static TestEnvironmentDefinition<?> clearSkies() {
+        return new TestEnvironmentDefinition.Weather(TestEnvironmentDefinition.Weather.Type.CLEAR);
+    }
+
     private static void registerTests(RegisterGameTestsEvent event) {
-        Holder<TestEnvironmentDefinition<?>> shared = event.registerEnvironment(CrimsonCovenant.id("default"));
+        // Clear skies for every test: a storm darkens noon enough to throw off the ones about daylight
+        Holder<TestEnvironmentDefinition<?>> shared = event.registerEnvironment(CrimsonCovenant.id("default"), clearSkies());
         // Tests are batched by environment, so an environment of their own keeps isolated tests apart
-        Holder<TestEnvironmentDefinition<?>> isolated = event.registerEnvironment(CrimsonCovenant.id("isolated"));
-        Holder<TestEnvironmentDefinition<?>> withPlayer = event.registerEnvironment(CrimsonCovenant.id("with_player"));
-        Holder<TestEnvironmentDefinition<?>> calm = event.registerEnvironment(CrimsonCovenant.id("calm"));
+        Holder<TestEnvironmentDefinition<?>> isolated = event.registerEnvironment(CrimsonCovenant.id("isolated"), clearSkies());
+        Holder<TestEnvironmentDefinition<?>> withPlayer = event.registerEnvironment(CrimsonCovenant.id("with_player"), clearSkies());
+        Holder<TestEnvironmentDefinition<?>> calm = event.registerEnvironment(CrimsonCovenant.id("calm"), clearSkies());
         for (TestEntry test : TESTS) {
             ResourceKey<Consumer<GameTestHelper>> key = test.function().getKey();
             Holder<TestEnvironmentDefinition<?>> environment = switch (test.batch()) {

@@ -7,6 +7,7 @@ import com.zestudio.crimsoncovenant.skill.Possession;
 import com.zestudio.crimsoncovenant.skill.SkillSlots;
 import com.zestudio.crimsoncovenant.skill.SkillsMenu;
 import com.zestudio.crimsoncovenant.vampirism.Vampirism;
+import com.zestudio.crimsoncovenant.curse.Curses;
 
 import io.netty.buffer.ByteBuf;
 
@@ -41,6 +42,17 @@ public final class SkillPayloads {
     public record BloodCharge() implements CustomPacketPayload {
         public static final Type<BloodCharge> TYPE = new Type<>(CrimsonCovenant.id("blood_charge"));
         public static final StreamCodec<ByteBuf, BloodCharge> STREAM_CODEC = StreamCodec.unit(new BloodCharge());
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
+    /// Unleash the curse on the weapon in hand (see curse.Curses)
+    public record UnleashCurse() implements CustomPacketPayload {
+        public static final Type<UnleashCurse> TYPE = new Type<>(CrimsonCovenant.id("unleash_curse"));
+        public static final StreamCodec<ByteBuf, UnleashCurse> STREAM_CODEC = StreamCodec.unit(new UnleashCurse());
 
         @Override
         public Type<? extends CustomPacketPayload> type() {
@@ -103,6 +115,11 @@ public final class SkillPayloads {
             registrar.playToServer(BloodCharge.TYPE, BloodCharge.STREAM_CODEC, (payload, context) -> {
                 if (context.player() instanceof ServerPlayer player) {
                     BloodSkills.bloodCharge(player);
+                }
+            });
+            registrar.playToServer(UnleashCurse.TYPE, UnleashCurse.STREAM_CODEC, (payload, context) -> {
+                if (context.player() instanceof ServerPlayer player) {
+                    Curses.unleash(player);
                 }
             });
             registrar.playToServer(OpenSkills.TYPE, OpenSkills.STREAM_CODEC, (payload, context) -> {

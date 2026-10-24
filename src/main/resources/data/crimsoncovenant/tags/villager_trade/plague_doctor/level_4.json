@@ -1,6 +1,10 @@
 {
   "values": [
     "crimsoncovenant:plague_doctor/4/lingering_holy_water",
-    "crimsoncovenant:plague_doctor/4/silver_potion"
+    "crimsoncovenant:plague_doctor/4/silver_potion",
+    "crimsoncovenant:plague_doctor/4/cursed_tome_spirit_hand",
+    "crimsoncovenant:plague_doctor/4/cursed_tome_enthrall",
+    "crimsoncovenant:plague_doctor/4/cursed_tome_gluttony",
+    "crimsoncovenant:plague_doctor/4/cursed_tome_dragonstrike"
   ]
 }

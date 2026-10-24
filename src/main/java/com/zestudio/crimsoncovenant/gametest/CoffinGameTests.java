@@ -1,8 +1,11 @@
 package com.zestudio.crimsoncovenant.gametest;
 
+import java.util.List;
+
 import com.zestudio.crimsoncovenant.block.BloodThroneBlock;
 import com.zestudio.crimsoncovenant.block.CoffinBlock;
 import com.zestudio.crimsoncovenant.entity.ThroneSeat;
+import com.zestudio.crimsoncovenant.entity.PlagueDoctor;
 import com.zestudio.crimsoncovenant.registry.ModEntities;
 import com.zestudio.crimsoncovenant.entity.Vampire;
 import com.zestudio.crimsoncovenant.entity.Werewolf;
@@ -27,6 +30,10 @@ import net.minecraft.world.clock.ServerClockManager;
 import net.minecraft.world.clock.WorldClock;
 import net.minecraft.world.clock.WorldClocks;
 import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.animal.cow.Cow;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.monster.zombie.ZombieVillager;
+import net.minecraft.world.entity.monster.Witch;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.entity.npc.villager.VillagerProfession;
 import net.minecraft.world.item.DyeColor;
@@ -37,6 +44,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BedPart;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.common.util.ClockAdjustment;
@@ -137,7 +145,9 @@ final class CoffinGameTests {
     static void ironMaidensTakeVillagersCaptive(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Villager villager = helper.spawnWithNoFreeWill(EntityTypes.VILLAGER, new BlockPos(4, 1, 4));
-        villager.setVillagerData(villager.getVillagerData().withProfession(level.registryAccess(), VillagerProfession.FARMER));
+        villager.setVillagerData(villager.getVillagerData().withProfession(level.registryAccess(), VillagerProfession.FARMER).withLevel(3));
+        villager.setVillagerXp(77);
+        int trades = villager.getOffers().size();
         ServerPlayer player = SkillGameTests.makePlayer(helper);
         Vec3 at = helper.absoluteVec(new Vec3(4.5, 1.0, 2.5));
         player.teleportTo(at.x, at.y, at.z);
@@ -154,16 +164,60 @@ final class CoffinGameTests {
         helper.assertBlockProperty(pos, IronMaidenBlock.OCCUPIED, true);
         helper.assertBlockProperty(pos.above(), IronMaidenBlock.OCCUPIED, true);
         helper.assertValueEqual(maiden.getCaptive().blood(), IronMaidenBlockEntity.BLOOD_IN_A_CAPTIVE, "blood in a fresh captive");
-        helper.assertTrue(Block.getDrops(helper.getBlockState(pos), level, helper.absolutePos(pos), maiden).stream()
-                        .anyMatch(stack -> stack.is(ModItems.IRON_MAIDEN.get()) && stack.has(ModDataComponents.CAPTIVE.get())),
-                Component.literal("A maiden that's picked up should keep its captive"));
 
         // And lets them go again, as they were
-        Villager freed = maiden.release();
+        Villager freed = (Villager) maiden.release();
         helper.assertTrue(freed != null && freed.isAlive() && freed.getVillagerData().profession().is(VillagerProfession.FARMER),
                 Component.literal("The captive should come out alive, still a farmer"));
+        helper.assertValueEqual(freed.getVillagerData().level(), 3, "the freed villager's level");
+        helper.assertValueEqual(freed.getVillagerXp(), 77, "the freed villager's experience");
+        helper.assertValueEqual(freed.getOffers().size(), trades, "the freed villager's trades");
         helper.assertBlockProperty(pos, IronMaidenBlock.OCCUPIED, false);
         freed.discard();
+
+        // Broken, a maiden sets her captive free, and comes away empty
+        maiden.setCaptive(full.get(ModDataComponents.CAPTIVE.get()));
+        helper.assertTrue(Block.getDrops(helper.getBlockState(pos), level, helper.absolutePos(pos), maiden).stream()
+                        .noneMatch(stack -> stack.has(ModDataComponents.CAPTIVE.get())),
+                Component.literal("A broken maiden shouldn't take her captive with her"));
+        level.destroyBlock(helper.absolutePos(pos), true);
+        List<Villager> walkedOut = level.getEntitiesOfClass(Villager.class, new AABB(helper.absolutePos(pos)).inflate(3.0), Villager::isAlive);
+        helper.assertTrue(walkedOut.size() == 1 && walkedOut.getFirst().getVillagerData().level() == 3,
+                Component.literal("Broken free, the villager should still be a level 3 farmer"));
+        helper.assertBlockNotPresent(ModBlocks.IRON_MAIDEN.get(), pos);
+        helper.assertBlockNotPresent(ModBlocks.IRON_MAIDEN.get(), pos.above());
+        walkedOut.forEach(Villager::discard);
+        helper.succeed();
+    }
+
+    static void witchesAndPlagueDoctorsCanBeTakenToo(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer player = SkillGameTests.makePlayer(helper);
+        Vec3 at = helper.absoluteVec(new Vec3(4.5, 1.0, 4.5));
+        player.teleportTo(at.x, at.y, at.z);
+        Witch witch = helper.spawnWithNoFreeWill(EntityTypes.WITCH, new BlockPos(2, 1, 4));
+        PlagueDoctor doctor = helper.spawnWithNoFreeWill(ModEntities.PLAGUE_DOCTOR.get(), new BlockPos(6, 1, 4));
+        Cow cow = helper.spawnWithNoFreeWill(EntityTypes.COW, new BlockPos(4, 1, 6));
+        for (Mob captive : List.of(witch, doctor)) {
+            player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ModItems.IRON_MAIDEN.get()));
+            player.interactOn(captive, InteractionHand.MAIN_HAND, captive.position());
+            IronMaidenBlockEntity.Captive taken = player.getMainHandItem().get(ModDataComponents.CAPTIVE.get());
+            helper.assertTrue(captive.isRemoved() && taken != null && taken.creature().type() == captive.getType(),
+                    Component.literal("An Iron Maiden should take a " + captive.getType().getDescription().getString() + " captive"));
+        }
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ModItems.IRON_MAIDEN.get()));
+        player.interactOn(cow, InteractionHand.MAIN_HAND, cow.position());
+        helper.assertTrue(!cow.isRemoved() && !player.getMainHandItem().has(ModDataComponents.CAPTIVE.get()), Component.literal("A cow shouldn't fit in an Iron Maiden"));
+        SkillGameTests.removePlayer(helper, player);
+        cow.discard();
+
+        // A captive witch comes back out a witch
+        Witch other = helper.spawnWithNoFreeWill(EntityTypes.WITCH, new BlockPos(6, 1, 6));
+        IronMaidenBlockEntity maiden = placeMaiden(helper, new BlockPos(1, 1, 1));
+        maiden.setCaptive(IronMaidenBlockEntity.Captive.of(other));
+        other.discard();
+        helper.assertTrue(maiden.release() instanceof Witch freed && freed.isAlive(), Component.literal("A freed witch should come out a witch"));
+        level.getEntitiesOfClass(Witch.class, new net.minecraft.world.phys.AABB(helper.absolutePos(BlockPos.ZERO)).inflate(12.0)).forEach(Witch::discard);
         helper.succeed();
     }
 
@@ -182,6 +236,17 @@ final class CoffinGameTests {
         helper.assertValueEqual(BloodPool.get(vampire), 10, "blood drunk from a captive with 10 left");
         helper.assertTrue(!maiden.hasCaptive(), Component.literal("Bled dry, there should be nothing left of the captive"));
         helper.assertBlockProperty(pos, IronMaidenBlock.OCCUPIED, false);
+
+        // Sometimes the dead rise again, still knowing their trade
+        Villager smith = helper.spawnWithNoFreeWill(EntityTypes.VILLAGER, new BlockPos(6, 1, 6));
+        smith.setVillagerData(smith.getVillagerData().withProfession(level.registryAccess(), VillagerProfession.TOOLSMITH).withLevel(2));
+        maiden.setCaptive(IronMaidenBlockEntity.Captive.of(smith));
+        smith.discard();
+        ZombieVillager risen = maiden.perish(true);
+        helper.assertTrue(risen != null && risen.getVillagerData().profession().is(VillagerProfession.TOOLSMITH) && risen.getVillagerData().level() == 2,
+                Component.literal("A captive who rises should be a zombie villager, still a level 2 toolsmith"));
+        helper.assertTrue(!maiden.hasCaptive(), Component.literal("The risen captive should have left the maiden"));
+        risen.discard();
 
         // A fresh one gives its share, and has that much less left
         maiden.setCaptive(fresh);

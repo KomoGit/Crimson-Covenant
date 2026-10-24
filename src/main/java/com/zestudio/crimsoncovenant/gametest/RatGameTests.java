@@ -17,6 +17,7 @@ import com.zestudio.crimsoncovenant.registry.ModBlocks;
 import com.zestudio.crimsoncovenant.registry.ModEffects;
 import com.zestudio.crimsoncovenant.registry.ModEntities;
 import com.zestudio.crimsoncovenant.world.RatSpawner;
+import com.zestudio.crimsoncovenant.world.VillageRats;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -418,6 +419,44 @@ final class RatGameTests {
         helper.assertTrue(came >= 1 && came <= 2, Component.literal("A rat or two should turn up in a village at night, not " + came));
         level.getEntitiesOfClass(Rat.class, new AABB(spot).inflate(4.0)).forEach(Rat::discard);
         level.getPoiManager().release(bell);
+        helper.succeed();
+    }
+
+    static void newVillagesHaveRatsBurrowedIn(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        for (BlockPos pos : BlockPos.betweenClosed(new BlockPos(3, 1, 3), new BlockPos(5, 1, 5))) {
+            helper.setBlock(pos, Blocks.DIRT);
+        }
+        BlockPos centre = helper.absolutePos(new BlockPos(4, 1, 4));
+        int dug = VillageRats.settle(level, centre, 1, level.getRandom());
+        helper.assertTrue(dug >= 1, Component.literal("A new village should have rats burrowed in"));
+        List<RatBurrowBlockEntity> burrows = new ArrayList<>();
+        for (BlockPos pos : BlockPos.betweenClosed(centre.offset(-5, -2, -5), centre.offset(5, 3, 5))) {
+            if (level.getBlockEntity(pos) instanceof RatBurrowBlockEntity burrow) {
+                burrows.add(burrow);
+            }
+        }
+        helper.assertTrue(!burrows.isEmpty() && burrows.stream().allMatch(burrow -> burrow.occupantCount() >= 2),
+                Component.literal("Each burrow should have a family of rats in it"));
+        helper.assertTrue(level.getEntitiesOfClass(Rat.class, new AABB(centre).inflate(8.0)).isEmpty(), Component.literal("The rats should be inside, not out"));
+        for (RatBurrowBlockEntity burrow : burrows) {
+            level.removeBlock(burrow.getBlockPos(), false);
+        }
+        level.getEntitiesOfClass(Rat.class, new AABB(centre).inflate(8.0)).forEach(Rat::discard);
+        helper.succeed();
+    }
+
+    static void ratsShelterFromTheRain(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        float rain = level.getRainLevel(1.0F);
+        try {
+            level.setRainLevel(0.0F);
+            helper.assertTrue(Rat.keepsIndoors(level) == !level.isDarkOutside(), Component.literal("In fine weather, only daylight should keep rats in"));
+            level.setRainLevel(1.0F);
+            helper.assertTrue(Rat.keepsIndoors(level), Component.literal("Rats should keep to their burrows while it rains"));
+        } finally {
+            level.setRainLevel(rain);
+        }
         helper.succeed();
     }
 

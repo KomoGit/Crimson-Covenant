@@ -16,6 +16,8 @@ import com.zestudio.crimsoncovenant.skill.SkillItem;
 import com.zestudio.crimsoncovenant.item.GhostBottleItem;
 import com.zestudio.crimsoncovenant.block.SilveredBottleBlock;
 import com.zestudio.crimsoncovenant.item.IronMaidenItem;
+import com.zestudio.crimsoncovenant.curse.Curse;
+import com.zestudio.crimsoncovenant.curse.CursedTomeItem;
 
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.BlockItem;
@@ -101,6 +103,9 @@ public final class ModItems {
     public static final DeferredItem<BlockItem> SILVERED_BOTTLE = ITEMS.registerSimpleBlockItem(ModBlocks.SILVERED_BOTTLE);
     public static final DeferredItem<BlockItem> COFFIN = ITEMS.registerSimpleBlockItem(ModBlocks.COFFIN, properties -> properties.stacksTo(1));
     public static final DeferredItem<BlockItem> BLOOD_THRONE = ITEMS.registerSimpleBlockItem(ModBlocks.BLOOD_THRONE);
+    public static final DeferredItem<BlockItem> CURSEFORGE = ITEMS.registerSimpleBlockItem(ModBlocks.CURSEFORGE);
+    /// The hunters' cursed tomes, one for each curse (see curse.Curse)
+    public static final Map<Curse, DeferredItem<CursedTomeItem>> CURSED_TOMES = registerCursedTomes();
     public static final DeferredItem<IronMaidenItem> IRON_MAIDEN = ITEMS.registerItem("iron_maiden", properties -> new IronMaidenItem(ModBlocks.IRON_MAIDEN.get(), properties),
             properties -> properties.stacksTo(16).useBlockDescriptionPrefix());
     /// The same bottle with a ghost in it: places the bottle with its ghost
@@ -141,6 +146,15 @@ public final class ModItems {
             properties -> properties.spawnEgg(ModEntities.MASTER_VAMPIRE.get()));
 
     private ModItems() {}
+
+    private static Map<Curse, DeferredItem<CursedTomeItem>> registerCursedTomes() {
+        Map<Curse, DeferredItem<CursedTomeItem>> tomes = new EnumMap<>(Curse.class);
+        for (Curse curse : Curse.values()) {
+            tomes.put(curse, ITEMS.registerItem("cursed_tome_" + curse.getSerializedName(), properties -> new CursedTomeItem(curse, properties),
+                    properties -> properties.stacksTo(1).rarity(curse == Curse.DRAGONSTRIKE ? Rarity.EPIC : Rarity.RARE)));
+        }
+        return tomes;
+    }
 
     private static Map<BloodSkill, DeferredItem<AncientTomeItem>> registerTomes() {
         Map<BloodSkill, DeferredItem<AncientTomeItem>> tomes = new EnumMap<>(BloodSkill.class);

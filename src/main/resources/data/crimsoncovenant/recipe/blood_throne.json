@@ -2,13 +2,13 @@
   "type": "minecraft:crafting_shaped",
   "category": "building",
   "key": {
-    "S": "minecraft:skeleton_skull",
+    "T": "crimsoncovenant:token_of_blood",
     "B": "crimsoncovenant:blood_bottle",
     "P": "minecraft:polished_blackstone",
     "W": "minecraft:red_wool"
   },
   "pattern": [
-    "S S",
+    "T T",
     "PWP",
     "PBP"
   ],

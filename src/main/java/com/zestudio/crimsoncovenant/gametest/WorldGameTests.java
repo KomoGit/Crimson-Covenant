@@ -180,9 +180,13 @@ final class WorldGameTests {
 
     static void silverIsCraftableAndBrewable(GameTestHelper helper) {
         var recipes = helper.getLevel().getServer().getRecipeManager();
-        for (String recipe : new String[] {"brewing/potion_water_silver_dust", "brewing/splash_potion_water_silver_ingot", "silver_ingot_from_smelting_raw_silver",
+        for (String recipe : new String[] {"brewing/potion_water_silver_dust", "brewing/splash_potion_water_silver_dust", "silver_ingot_from_smelting_raw_silver",
                 "silver_nugget", "silver_dust", "silver_arrow", "gravestone_from_stonecutting"}) {
             helper.assertTrue(recipes.byKey(ResourceKey.create(Registries.RECIPE, CrimsonCovenant.id(recipe))).isPresent(), Component.literal("Missing recipe " + recipe));
+        }
+        // Holy Water is brewed from Silver Dust only, never a whole ingot
+        for (String recipe : new String[] {"brewing/potion_water_silver_ingot", "brewing/splash_potion_water_silver_ingot", "brewing/lingering_potion_water_silver_ingot"}) {
+            helper.assertTrue(recipes.byKey(ResourceKey.create(Registries.RECIPE, CrimsonCovenant.id(recipe))).isEmpty(), Component.literal("Unexpected recipe " + recipe));
         }
         helper.succeed();
     }

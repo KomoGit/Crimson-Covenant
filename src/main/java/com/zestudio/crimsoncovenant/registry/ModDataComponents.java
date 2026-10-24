@@ -3,6 +3,7 @@ package com.zestudio.crimsoncovenant.registry;
 import com.mojang.serialization.Codec;
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
 import com.zestudio.crimsoncovenant.block.IronMaidenBlockEntity;
+import com.zestudio.crimsoncovenant.curse.WeaponCurse;
 
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
@@ -30,6 +31,10 @@ public final class ModDataComponents {
     /// The villager held captive in an Iron Maiden, carried with it (see block.IronMaidenBlockEntity)
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<IronMaidenBlockEntity.Captive>> CAPTIVE = DATA_COMPONENTS.registerComponentType("captive",
             builder -> builder.persistent(IronMaidenBlockEntity.Captive.CODEC).networkSynchronized(IronMaidenBlockEntity.Captive.STREAM_CODEC));
+
+    /// The curse laid on a weapon at a Curseforge, and how deep (see curse.WeaponCurse)
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<WeaponCurse>> CURSE = DATA_COMPONENTS.registerComponentType("curse",
+            builder -> builder.persistent(WeaponCurse.CODEC).networkSynchronized(WeaponCurse.STREAM_CODEC));
 
     private ModDataComponents() {}
 }

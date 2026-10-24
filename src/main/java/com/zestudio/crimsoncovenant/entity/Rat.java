@@ -88,7 +88,7 @@ import net.neoforged.neoforge.event.entity.living.LivingDropsEvent;
 
 /// A rat: a vermin that lives in burrows dug into the earth (see RatBurrowBlock), in forests and around villages.
 ///
-/// By day rats keep to their burrows. At night they come out and raid the fields and stores, eating crops, hay,
+/// By day (and while it rains) rats keep to their burrows. At night they come out and raid the fields and stores, eating crops, hay,
 /// pumpkins and melons down to nothing (see the crimsoncovenant:rats_eat tag), and scavenge any food lying about:
 /// anything edible that's been dropped, cake included (see isScavenge). A rat that has eaten is ready to breed, and two that meet have a litter of two, who grow up in a day. Left alone, a village's rats multiply until, past ten, a Miasma settles over
 /// it (see MiasmaCloud). Their bite can pass on the Plague.
@@ -455,13 +455,15 @@ public class Rat extends Animal {
             this.feastOn(level, animal);
         }
         if (entity instanceof Villager villager && EventHooks.canLivingConvert(villager, EntityTypes.ZOMBIE_VILLAGER, timer -> {})
-                && turnToZombie(level, villager)) {
+                && turnToZombie(level, villager) != null) {
             return false;
         }
         return perished;
     }
 
-    public static boolean turnToZombie(ServerLevel level, Villager villager) {
+    /// Turns the villager into a zombie villager, keeping their trade and standing. Returns the zombie villager, or null
+    /// if it couldn't be done.
+    public static @Nullable ZombieVillager turnToZombie(ServerLevel level, Villager villager) {
         ZombieVillager zombie = villager.convertTo(EntityTypes.ZOMBIE_VILLAGER, ConversionParams.single(villager, true, true), converted -> {
             converted.setVillagerDataFinalized(villager.getVillagerDataFinalized());
             converted.finalizeSpawn(level, level.getCurrentDifficultyAt(converted.blockPosition()), EntitySpawnReason.CONVERSION, null);
@@ -472,7 +474,7 @@ public class Rat extends Animal {
             EventHooks.onLivingConvert(villager, converted);
             level.levelEvent(null, 1026, converted.blockPosition(), 0);
         });
-        return zombie != null;
+        return zombie;
     }
 
     // Their bite can carry the Plague
@@ -880,7 +882,7 @@ public class Rat extends Animal {
 
         private boolean wantsHome() {
             return !this.rat.isAngry() && this.rat.stayOutTicks <= 0 && !this.rat.isInLove()
-                    && (!this.rat.level().isDarkOutside() || this.rat.getHealth() < this.rat.getMaxHealth() * 0.5F);
+                    && (keepsIndoors(this.rat.level()) || this.rat.getHealth() < this.rat.getMaxHealth() * 0.5F);
         }
 
         @Override
@@ -935,7 +937,7 @@ public class Rat extends Animal {
 
         @Override
         public boolean canUse() {
-            if (this.rat.homePos != null || this.rat.isBaby() || this.rat.isAngry() || this.rat.isInLove() || this.rat.level().isDarkOutside()
+            if (this.rat.homePos != null || this.rat.isBaby() || this.rat.isAngry() || this.rat.isInLove() || !keepsIndoors(this.rat.level())
                     || this.rat.getRandom().nextInt(reducedTickDelay(20)) != 0) {
                 return false;
             }
@@ -1015,6 +1017,42 @@ public class Rat extends Animal {
             }
         }
         return fromAbove && level.getBlockState(pos.above()).isAir() && level.getBlockState(pos.above(2)).isAir() ? Direction.UP : null;
+    }
+
+    /// Rats keep to their burrows by day, and while it rains
+    public static boolean keepsIndoors(Level level) {
+        return !level.isDarkOutside() || level.isRaining();
+    }
+
+    /// Digs a burrow at `spot` (if there isn't one already) and moves a family of `rats` new rats straight in, as a new
+    /// village's rats are. Returns how many went in.
+    public static int settleIn(ServerLevel level, BurrowSpot spot, int rats) {
+        makeBurrow(level, spot.pos(), spot.face());
+        if (!(level.getBlockEntity(spot.pos()) instanceof RatBurrowBlockEntity burrow)) {
+            return 0;
+        }
+        int settled = 0;
+        BlockPos door = spot.pos().relative(spot.face());
+        for (int i = 0; i < rats; i++) {
+            Rat rat = ModEntities.RAT.get().create(level, EntitySpawnReason.STRUCTURE);
+            if (rat == null) {
+                continue;
+            }
+            rat.snapTo(door.getX() + 0.5, door.getY(), door.getZ() + 0.5, level.getRandom().nextFloat() * 360.0F, 0.0F);
+            if (burrow.tryEnter(rat)) {
+                settled++;
+            }
+        }
+        return settled;
+    }
+
+    // Turns the block into a burrow, if it isn't one already: a Rat Hole if it's wood
+    private static void makeBurrow(Level level, BlockPos pos, Direction face) {
+        BlockState state = level.getBlockState(pos);
+        if (!RatBurrowBlock.isBurrow(state)) {
+            boolean wood = state.is(ModTags.Blocks.RATS_GNAW_INTO);
+            level.setBlock(pos, (wood ? ModBlocks.RAT_HOLE : ModBlocks.RAT_BURROW).get().defaultBlockState().setValue(RatBurrowBlock.FACING, face), 3);
+        }
     }
 
     /// Makes the block at `pos` a burrow (if it isn't one already: a Rat Hole if it's wood) and moves the rat in

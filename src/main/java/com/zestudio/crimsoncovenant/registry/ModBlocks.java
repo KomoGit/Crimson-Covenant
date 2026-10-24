@@ -16,6 +16,7 @@ import com.zestudio.crimsoncovenant.block.SilveredBottleBlock;
 import com.zestudio.crimsoncovenant.block.CoffinBlock;
 import com.zestudio.crimsoncovenant.block.IronMaidenBlock;
 import com.zestudio.crimsoncovenant.block.BloodThroneBlock;
+import com.zestudio.crimsoncovenant.block.CurseforgeBlock;
 
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
@@ -129,6 +130,11 @@ public final class ModBlocks {
     /// Black stone, soaked velvet and skulls; sat on, it siphons the captives in Iron Maidens nearby
     public static final DeferredBlock<BloodThroneBlock> BLOOD_THRONE = BLOCKS.registerBlock("blood_throne", BloodThroneBlock::new,
             properties -> properties.mapColor(MapColor.COLOR_BLACK).requiresCorrectToolForDrops().strength(3.0F, 6.0F).sound(SoundType.POLISHED_DEEPSLATE).noOcclusion());
+
+    /// An anvil a ghost was poured into: lays curses on weapons, and still works as an anvil, one that never wears out
+    public static final DeferredBlock<CurseforgeBlock> CURSEFORGE = BLOCKS.registerBlock("curseforge", CurseforgeBlock::new,
+            properties -> properties.mapColor(MapColor.METAL).requiresCorrectToolForDrops().strength(5.0F, 1200.0F).sound(SoundType.ANVIL).noOcclusion()
+                    .lightLevel(state -> 6));
 
     private ModBlocks() {}
 

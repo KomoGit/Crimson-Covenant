@@ -33,7 +33,7 @@ import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
 
 /// The rats living in a burrow, kept the way a beehive keeps its bees: taken out of the world while they're inside,
-/// and put back when they come out. They come out at night, once they've been in a while.
+/// and put back when they come out. They come out at night (unless it's raining), once they've been in a while.
 public class RatBurrowBlockEntity extends BlockEntity {
     private static final Logger LOGGER = LogUtils.getLogger();
     /// Room for a pair and their young
@@ -98,7 +98,8 @@ public class RatBurrowBlockEntity extends BlockEntity {
         if (burrow.occupants.isEmpty()) {
             return;
         }
-        boolean night = level.isDarkOutside();
+        // Out only at night, and not in the rain
+        boolean night = !Rat.keepsIndoors(level);
         List<Occupant> staying = new ArrayList<>();
         for (Occupant occupant : burrow.occupants) {
             int ticks = occupant.ticksInside() + 1;

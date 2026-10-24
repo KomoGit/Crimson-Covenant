@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import com.zestudio.crimsoncovenant.entity.Rat;
 import com.zestudio.crimsoncovenant.registry.ModBlockEntities;
 import com.zestudio.crimsoncovenant.registry.ModDataComponents;
 
@@ -16,6 +17,7 @@ import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -28,6 +30,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityProcessor;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.monster.zombie.ZombieVillager;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.item.component.TypedEntityData;
 import net.minecraft.world.level.Level;
@@ -38,7 +42,7 @@ import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
 
-/// The villager shut up in an Iron Maiden, taken out of the world the way a beehive takes its bees, along with how much
+/// The villager (or Plague Doctor, or witch) shut up in an Iron Maiden, taken out of the world the way a beehive takes its bees, along with how much
 /// blood is left in them. Every draw a coffin or a Blood Throne makes on them takes some; once it's all gone there's
 /// nothing left of them, and the maiden stands empty, ready for another. While there's someone inside, a thread of
 /// blood runs from the maiden to any coffin or throne nearby.
@@ -46,6 +50,8 @@ public class IronMaidenBlockEntity extends BlockEntity {
     private static final Logger LOGGER = LogUtils.getLogger();
     /// How much blood there is in a captive, all told: ten nights' feeding in a coffin
     public static final int BLOOD_IN_A_CAPTIVE = 250;
+    /// The chance a captive bled dry rises again, as a zombie villager
+    public static final float RISE_CHANCE = 0.2F;
     /// How far a coffin (or a Blood Throne) can be for the blood to reach it
     public static final int COFFIN_RANGE = 6;
     private static final int BLOOD_RED = 0x8A0B0B;
@@ -55,34 +61,41 @@ public class IronMaidenBlockEntity extends BlockEntity {
     private @Nullable BlockPos coffin;
     private int coffinCheck;
 
-    /// A villager taken captive, and the blood left in them
-    public record Captive(TypedEntityData<EntityType<?>> villager, int blood) {
+    /// Someone taken captive (a villager, a Plague Doctor, a witch: see ModTags.Entities.IRON_MAIDEN_CAPTIVES), and the
+    /// blood left in them
+    public record Captive(TypedEntityData<EntityType<?>> creature, int blood) {
+        // Saved as "villager", which is all they once could be
         public static final Codec<Captive> CODEC = RecordCodecBuilder.create(i -> i.group(
-                TypedEntityData.codec(EntityType.CODEC).fieldOf("villager").forGetter(Captive::villager),
+                TypedEntityData.codec(EntityType.CODEC).fieldOf("villager").forGetter(Captive::creature),
                 Codec.INT.optionalFieldOf("blood", BLOOD_IN_A_CAPTIVE).forGetter(Captive::blood))
                 .apply(i, Captive::new));
         public static final StreamCodec<RegistryFriendlyByteBuf, Captive> STREAM_CODEC = StreamCodec.composite(
-                TypedEntityData.streamCodec(EntityType.STREAM_CODEC), Captive::villager,
+                TypedEntityData.streamCodec(EntityType.STREAM_CODEC), Captive::creature,
                 ByteBufCodecs.VAR_INT, Captive::blood,
                 Captive::new);
 
-        public static Captive of(Villager villager) {
-            try (ProblemReporter.ScopedCollector reporter = new ProblemReporter.ScopedCollector(villager.problemPath(), LOGGER)) {
-                TagValueOutput output = TagValueOutput.createWithContext(reporter, villager.registryAccess());
-                villager.save(output);
-                return new Captive(TypedEntityData.of(villager.getType(), output.buildResult()), BLOOD_IN_A_CAPTIVE);
+        public static Captive of(Mob creature) {
+            try (ProblemReporter.ScopedCollector reporter = new ProblemReporter.ScopedCollector(creature.problemPath(), LOGGER)) {
+                TagValueOutput output = TagValueOutput.createWithContext(reporter, creature.registryAccess());
+                creature.save(output);
+                return new Captive(TypedEntityData.of(creature.getType(), output.buildResult()), BLOOD_IN_A_CAPTIVE);
             }
         }
 
         public Captive withBlood(int blood) {
-            return new Captive(this.villager, blood);
+            return new Captive(this.creature, blood);
         }
 
-        @Nullable Villager release(Level level, Vec3 at) {
-            CompoundTag tag = this.villager.copyTagWithoutId();
+        /// What they are, for telling the player ("Villager", "Witch")
+        public Component name() {
+            return this.creature.type().getDescription();
+        }
+
+        @Nullable Mob release(Level level, Vec3 at) {
+            CompoundTag tag = this.creature.copyTagWithoutId();
             tag.remove("Pos");
-            Entity entity = EntityType.loadEntityRecursive(this.villager.type(), tag, level, EntitySpawnReason.LOAD, EntityProcessor.NOP);
-            if (!(entity instanceof Villager freed)) {
+            Entity entity = EntityType.loadEntityRecursive(this.creature.type(), tag, level, EntitySpawnReason.LOAD, EntityProcessor.NOP);
+            if (!(entity instanceof Mob freed)) {
                 return null;
             }
             freed.snapTo(at.x, at.y, at.z, level.getRandom().nextFloat() * 360.0F, 0.0F);
@@ -110,20 +123,34 @@ public class IronMaidenBlockEntity extends BlockEntity {
         }
     }
 
-    /// The villager is let out, in front of the maiden
-    public @Nullable Villager release() {
+    /// The captive is let out, in front of the maiden
+    public @Nullable Mob release() {
+        Mob freed = this.letOut();
+        this.setCaptive(null);
+        return freed;
+    }
+
+    // Out in front of the maiden, leaving the block itself be
+    private @Nullable Mob letOut() {
         if (this.captive == null || !(this.level instanceof ServerLevel level)) {
             return null;
         }
         Direction front = this.getBlockState().getValue(IronMaidenBlock.FACING);
         Vec3 at = Vec3.atBottomCenterOf(this.worldPosition.relative(front));
-        Villager freed = this.captive.release(level, at);
+        Mob freed = this.captive.release(level, at);
         if (freed != null) {
             level.addFreshEntity(freed);
             level.playSound(null, this.worldPosition, SoundEvents.IRON_DOOR_OPEN, SoundSource.BLOCKS, 1.0F, 0.6F);
         }
-        this.setCaptive(null);
         return freed;
+    }
+
+    /// Broken open, the maiden sets her captive free
+    @Override
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+        super.preRemoveSideEffects(pos, state);
+        this.letOut();
+        this.captive = null;
     }
 
     /// Draws up to `amount` blood from the captive, and returns how much there was to take. Once they're bled dry,
@@ -142,14 +169,28 @@ public class IronMaidenBlockEntity extends BlockEntity {
         return taken;
     }
 
-    /// Bled dry at last: nothing left of the captive
+    /// Bled dry at last: nothing left of the captive. Now and then (see RISE_CHANCE) what's left gets up again.
     public void perish() {
+        this.perish(this.level != null && this.level.getRandom().nextFloat() < RISE_CHANCE);
+    }
+
+    /// Bled dry. If `risesAgain` and they were a villager, they step out of the maiden a zombie villager, still with
+    /// their trades and their standing, the way one killed by a zombie does. Returns the zombie villager, if they rose.
+    public @Nullable ZombieVillager perish(boolean risesAgain) {
         if (this.captive == null || !(this.level instanceof ServerLevel level)) {
-            return;
+            return null;
+        }
+        ZombieVillager risen = null;
+        if (risesAgain) {
+            Direction front = this.getBlockState().getValue(IronMaidenBlock.FACING);
+            if (this.captive.release(level, Vec3.atBottomCenterOf(this.worldPosition.relative(front))) instanceof Villager body) {
+                risen = Rat.turnToZombie(level, body);
+            }
         }
         this.setCaptive(null);
         level.playSound(null, this.worldPosition, SoundEvents.VILLAGER_DEATH, SoundSource.BLOCKS, 1.0F, 0.7F);
         level.sendParticles(ParticleTypes.SOUL, this.worldPosition.getX() + 0.5, this.worldPosition.getY() + 1.4, this.worldPosition.getZ() + 0.5, 6, 0.2, 0.4, 0.2, 0.02);
+        return risen;
     }
 
     // A thread of blood, running from the maiden to the coffin; and the captive, heard now and then
@@ -196,12 +237,14 @@ public class IronMaidenBlockEntity extends BlockEntity {
         }
     }
 
-    /// The nearest coffin or Blood Throne within reach of the maiden at `pos`, for the blood to run to
+    /// The nearest coffin, Blood Throne or working Ancient Translator within reach of the maiden at `pos`, for the blood
+    /// to run to
     public static @Nullable BlockPos findDrinker(Level level, BlockPos pos) {
         BlockPos nearest = null;
         for (BlockPos at : BlockPos.betweenClosed(pos.offset(-COFFIN_RANGE, -2, -COFFIN_RANGE), pos.offset(COFFIN_RANGE, 2, COFFIN_RANGE))) {
             BlockState state = level.getBlockState(at);
-            boolean drinker = state.getBlock() instanceof CoffinBlock || state.getBlock() instanceof BloodThroneBlock;
+            boolean drinker = state.getBlock() instanceof CoffinBlock || state.getBlock() instanceof BloodThroneBlock
+                    || (state.getBlock() instanceof AncientTranslatorBlock && AncientTranslatorBlock.isTranslating(state));
             if (drinker && (nearest == null || at.distSqr(pos) < nearest.distSqr(pos))) {
                 nearest = at.immutable();
             }

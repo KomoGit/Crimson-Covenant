@@ -34,6 +34,9 @@ import com.zestudio.crimsoncovenant.registry.ModAttachments;
 import com.zestudio.crimsoncovenant.registry.ModEntities;
 import com.zestudio.crimsoncovenant.registry.ModMenus;
 import com.zestudio.crimsoncovenant.vampirism.Vampirism;
+import com.zestudio.crimsoncovenant.client.model.SpiritHandModel;
+import com.zestudio.crimsoncovenant.client.renderer.SpiritHandRenderer;
+import com.zestudio.crimsoncovenant.client.screen.CurseforgeScreen;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.geom.builders.CubeDeformation;
@@ -95,6 +98,7 @@ public class CrimsonCovenantClient {
         event.registerLayerDefinition(ModModelLayers.WEREWOLF, WerewolfModel::createBodyLayer);
         event.registerLayerDefinition(ModModelLayers.GARGOYLE, GargoyleModel::createBodyLayer);
         event.registerLayerDefinition(ModModelLayers.BLOOD_SPEAR, BloodSpearModel::createLayer);
+        event.registerLayerDefinition(ModModelLayers.SPIRIT_HAND, SpiritHandModel::createLayer);
         event.registerLayerDefinition(ModModelLayers.RAT, RatModel::createBodyLayer);
         event.registerLayerDefinition(ModModelLayers.PLAGUE_DOCTOR, PlagueDoctorModel::createBodyLayer);
         event.registerLayerDefinition(ModModelLayers.BAT_WINGS, BatWingsModel::createLayer);
@@ -126,6 +130,8 @@ public class CrimsonCovenantClient {
         event.registerEntityRenderer(ModEntities.SILVER_ARROW.get(), SilverArrowRenderer::new);
         event.registerEntityRenderer(ModEntities.MASTER_VAMPIRE.get(), context -> new VampireRenderer(context, VampireRenderer.MASTER_VAMPIRE_TEXTURE, 1.15F));
         event.registerEntityRenderer(ModEntities.BLOOD_SPEAR.get(), BloodSpearRenderer::new);
+        event.registerEntityRenderer(ModEntities.SPIRIT_HAND.get(), SpiritHandRenderer::new);
+        event.registerEntityRenderer(ModEntities.SPIRIT_WYRMS.get(), NoopRenderer::new);
         // A big, glowing ball of blood
         event.registerEntityRenderer(ModEntities.BLOOD_ORB.get(), context -> new ThrownItemRenderer<>(context, 3.0F, true));
     }
@@ -160,6 +166,7 @@ public class CrimsonCovenantClient {
     @SubscribeEvent
     static void registerScreens(RegisterMenuScreensEvent event) {
         event.register(ModMenus.SKILLS.get(), SkillsScreen::new);
+        event.register(ModMenus.CURSEFORGE.get(), CurseforgeScreen::new);
     }
 
     // Armor of Ancient's blood shell and the Crimson Shroud's wings, on every player model

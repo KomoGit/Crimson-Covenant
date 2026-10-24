@@ -47,6 +47,9 @@ import com.zestudio.crimsoncovenant.vampirism.GarlicWard;
 import com.zestudio.crimsoncovenant.vampirism.Vampirism;
 import com.zestudio.crimsoncovenant.world.BloodMoon;
 import com.zestudio.crimsoncovenant.effect.CrimsonShroudEffect;
+import com.zestudio.crimsoncovenant.block.AncientTranslatorBlockEntity;
+import com.zestudio.crimsoncovenant.block.IronMaidenBlock;
+import com.zestudio.crimsoncovenant.block.IronMaidenBlockEntity;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -94,6 +97,7 @@ import net.minecraft.world.entity.projectile.arrow.Arrow;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.entity.projectile.FireworkRocketEntity;
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.common.damagesource.DamageContainer;
 import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
@@ -836,7 +840,20 @@ final class SkillGameTests {
 
     // ---- The Ancient Translator ----
 
+    // An Iron Maiden with a villager shut in it, to feed a translator
+    private static IronMaidenBlockEntity maidenWithCaptive(GameTestHelper helper, BlockPos pos) {
+        BlockState lower = ModBlocks.IRON_MAIDEN.get().defaultBlockState();
+        helper.setBlock(pos, lower);
+        helper.setBlock(pos.above(), lower.setValue(IronMaidenBlock.HALF, DoubleBlockHalf.UPPER));
+        IronMaidenBlockEntity maiden = (IronMaidenBlockEntity) helper.getLevel().getBlockEntity(helper.absolutePos(pos));
+        Villager villager = helper.spawnWithNoFreeWill(EntityTypes.VILLAGER, new BlockPos(4, 1, 7));
+        maiden.setCaptive(IronMaidenBlockEntity.Captive.of(villager));
+        villager.discard();
+        return maiden;
+    }
+
     static void translatorTurnsTomesIntoSkills(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
         BlockPos pos = new BlockPos(4, 1, 4);
         helper.setBlock(pos, ModBlocks.ANCIENT_TRANSLATOR.get());
         ServerPlayer player = makePlayer(helper);
@@ -845,11 +862,54 @@ final class SkillGameTests {
         helper.assertTrue(player.getMainHandItem().isEmpty(), Component.literal("The translator should take the tome"));
         helper.assertBlockProperty(pos, AncientTranslatorBlock.TOME, BloodSkill.DAYWALKER.ordinal() + 1);
         removePlayer(helper, player);
-        helper.runAfterDelay(AncientTranslatorBlock.TRANSLATION_TIME + 2, () -> {
-            helper.assertBlockProperty(pos, AncientTranslatorBlock.TOME, 0);
-            helper.assertItemEntityPresent(BloodSkill.DAYWALKER.skillItem(), pos.above(), 2.0);
-            helper.succeed();
-        });
+        BlockPos at = helper.absolutePos(pos);
+        AncientTranslatorBlockEntity translator = (AncientTranslatorBlockEntity) level.getBlockEntity(at);
+
+        // With no captives about to feed it, it doesn't get anywhere
+        for (int tick = 0; tick < 100; tick++) {
+            AncientTranslatorBlockEntity.serverTick(level, at, level.getBlockState(at), translator);
+        }
+        helper.assertValueEqual(translator.progress(), 0, "progress of a translator with no Iron Maidens feeding it");
+
+        // Two maidens read it twice as fast as one would, and each gives up some blood for it
+        IronMaidenBlockEntity first = maidenWithCaptive(helper, new BlockPos(1, 1, 1));
+        IronMaidenBlockEntity second = maidenWithCaptive(helper, new BlockPos(7, 1, 1));
+        int needed = BloodSkill.DAYWALKER.tier().translationTicks();
+        int ticks = 0;
+        while (AncientTranslatorBlock.isTranslating(level.getBlockState(at)) && ticks < needed) {
+            AncientTranslatorBlockEntity.serverTick(level, at, level.getBlockState(at), translator);
+            ticks++;
+        }
+        helper.assertTrue(!AncientTranslatorBlock.isTranslating(level.getBlockState(at)), Component.literal("Fed by two Iron Maidens, the translation should finish"));
+        helper.assertTrue(ticks <= needed / 2 + 25, Component.literal("Two Iron Maidens should halve the time, but it took " + ticks + " of " + needed + " ticks"));
+        helper.assertItemEntityPresent(BloodSkill.DAYWALKER.skillItem(), pos.above(), 2.0);
+        helper.assertTrue(first.getCaptive().blood() < IronMaidenBlockEntity.BLOOD_IN_A_CAPTIVE && second.getCaptive().blood() < IronMaidenBlockEntity.BLOOD_IN_A_CAPTIVE,
+                Component.literal("Each Iron Maiden feeding the translator should give up some blood"));
+
+        // No more than four feed one translator
+        for (BlockPos more : new BlockPos[] {new BlockPos(1, 1, 7), new BlockPos(7, 1, 7), new BlockPos(1, 1, 4), new BlockPos(7, 1, 4)}) {
+            maidenWithCaptive(helper, more);
+        }
+        helper.assertValueEqual(AncientTranslatorBlockEntity.feeders(level, at).size(), AncientTranslatorBlockEntity.MAX_MAIDENS, "Iron Maidens feeding one translator");
+        for (IronMaidenBlockEntity maiden : IronMaidenBlock.captivesAround(level, at)) {
+            maiden.setCaptive(null);
+        }
+        helper.succeed();
+    }
+
+    static void bloodSkillsComeInTiers(GameTestHelper helper) {
+        for (BloodSkill skill : new BloodSkill[] {BloodSkill.BLOOD_PARADE, BloodSkill.POSSESS}) {
+            helper.assertTrue(skill.tier() == BloodSkill.Tier.ANCIENT, Component.literal(skill + " should be an Ancient skill"));
+        }
+        for (BloodSkill skill : new BloodSkill[] {BloodSkill.BLOOD_SPEAR, BloodSkill.FLIGHT}) {
+            helper.assertTrue(skill.tier() == BloodSkill.Tier.UNUSUAL, Component.literal(skill + " should be an Unusual skill"));
+        }
+        for (BloodSkill skill : new BloodSkill[] {BloodSkill.DASH, BloodSkill.DEATH_MARCH}) {
+            helper.assertTrue(skill.tier() == BloodSkill.Tier.NEO, Component.literal(skill + " should be a Neo skill"));
+        }
+        helper.assertTrue(BloodSkill.Tier.ANCIENT.translationTicks() > BloodSkill.Tier.UNUSUAL.translationTicks()
+                && BloodSkill.Tier.UNUSUAL.translationTicks() > BloodSkill.Tier.NEO.translationTicks(), Component.literal("Higher tiers should take longer to translate"));
+        helper.succeed();
     }
 
     static void brokenTranslatorGivesTheTomeBack(GameTestHelper helper) {

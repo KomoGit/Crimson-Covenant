@@ -16,6 +16,7 @@ import com.zestudio.crimsoncovenant.effect.PlagueEffect;
 import com.zestudio.crimsoncovenant.effect.MiasmaEffect;
 import com.zestudio.crimsoncovenant.effect.CrimsonShroudEffect;
 import com.zestudio.crimsoncovenant.effect.CleanseEffect;
+import com.zestudio.crimsoncovenant.curse.Curse;
 
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.effect.MobEffect;
@@ -96,6 +97,17 @@ public final class ModEffects {
 
     /// Breathing the Miasma over a rat-infested village: a weak poison that turns the stomach
     public static final DeferredHolder<MobEffect, MiasmaEffect> MIASMA = MOB_EFFECTS.register("miasma", MiasmaEffect::new);
+
+    /// Exile's Mark (the Banish curse): can't hurt anyone, or heal (see curse.Curses)
+    public static final DeferredHolder<MobEffect, MobEffect> BANISHED = MOB_EFFECTS.register("banished",
+            () -> new MobEffect(MobEffectCategory.HARMFUL, Curse.COLOUR) {});
+
+    /// Shackles of the Damned (the Enchain curse): chained where it stands
+    public static final DeferredHolder<MobEffect, MobEffect> ENCHAINED = MOB_EFFECTS.register("enchained",
+            () -> new MobEffect(MobEffectCategory.HARMFUL, 0x4A5A6A) {}
+                    .addAttributeModifier(Attributes.MOVEMENT_SPEED, CrimsonCovenant.id("effect.enchained.speed"), -1.0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL)
+                    .addAttributeModifier(Attributes.FLYING_SPEED, CrimsonCovenant.id("effect.enchained.flying_speed"), -1.0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL)
+                    .addAttributeModifier(Attributes.JUMP_STRENGTH, CrimsonCovenant.id("effect.enchained.jump"), -1.0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 
     /// Crimson Shroud (upgraded Flight): wings of blood that glide like an elytra, boosted by Blood Charges
     public static final DeferredHolder<MobEffect, CrimsonShroudEffect> CRIMSON_SHROUD = MOB_EFFECTS.register("crimson_shroud", CrimsonShroudEffect::new);

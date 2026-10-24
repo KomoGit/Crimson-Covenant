@@ -1,0 +1,13 @@
+{
+  "wants": {
+    "id": "crimsoncovenant:silver_coin",
+    "count": 18
+  },
+  "gives": {
+    "id": "crimsoncovenant:cursed_tome_enthrall",
+    "count": 1
+  },
+  "max_uses": 3,
+  "xp": 20,
+  "reputation_discount": 0.05
+}

@@ -1,0 +1,13 @@
+{
+  "wants": {
+    "id": "crimsoncovenant:silver_coin",
+    "count": 12
+  },
+  "gives": {
+    "id": "crimsoncovenant:cursed_tome_tracing_shot",
+    "count": 1
+  },
+  "max_uses": 3,
+  "xp": 15,
+  "reputation_discount": 0.05
+}

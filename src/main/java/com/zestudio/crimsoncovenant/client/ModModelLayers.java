@@ -15,6 +15,7 @@ public final class ModModelLayers {
     public static final ModelLayerLocation RAT = new ModelLayerLocation(CrimsonCovenant.id("rat"), "main");
     public static final ModelLayerLocation RAT_BABY = new ModelLayerLocation(CrimsonCovenant.id("rat_baby"), "main");
     public static final ModelLayerLocation BLOOD_SPEAR = new ModelLayerLocation(CrimsonCovenant.id("blood_spear"), "main");
+    public static final ModelLayerLocation SPIRIT_HAND = new ModelLayerLocation(CrimsonCovenant.id("spirit_hand"), "main");
     public static final ModelLayerLocation VAMPIRE_BLOOD_ARMOR = new ModelLayerLocation(CrimsonCovenant.id("vampire"), "blood_armor");
 
     private ModModelLayers() {}

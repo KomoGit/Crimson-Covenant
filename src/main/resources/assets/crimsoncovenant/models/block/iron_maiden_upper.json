@@ -6,7 +6,8 @@
     "door": "crimsoncovenant:block/iron_maiden_door",
     "door_inside": "crimsoncovenant:block/iron_maiden_door_inside",
     "spike": "crimsoncovenant:block/iron_maiden_spike",
-    "mask": "crimsoncovenant:block/iron_maiden_mask",
+    "face": "crimsoncovenant:block/iron_maiden_face",
+    "skin": "crimsoncovenant:block/iron_maiden_skin",
     "hood_front": "crimsoncovenant:block/iron_maiden_hood",
     "particle": "crimsoncovenant:block/iron_maiden_cloak"
   },
@@ -421,59 +422,118 @@
     },
     {
       "from": [
-        5,
-        13.5,
+        4,
+        13,
         3.0
       ],
       "to": [
-        11,
+        12,
         20,
         3.5
       ],
       "faces": {
         "north": {
-          "texture": "#mask",
+          "texture": "#face",
           "uv": [
             0,
             0,
-            6,
-            6.5
+            16,
+            16
           ]
         },
         "east": {
-          "texture": "#mask",
+          "texture": "#cloak",
           "uv": [
             12.5,
             0,
             13.0,
-            6.5
+            7
           ]
         },
         "west": {
-          "texture": "#mask",
+          "texture": "#cloak",
           "uv": [
             3.0,
             0,
             3.5,
-            6.5
+            7
           ]
         },
         "up": {
-          "texture": "#mask",
+          "texture": "#cloak",
           "uv": [
-            5,
+            4,
             3.0,
-            11,
+            12,
             3.5
           ]
         },
         "down": {
-          "texture": "#mask",
+          "texture": "#cloak",
           "uv": [
-            5,
+            4,
             12.5,
-            11,
+            12,
             13.0
+          ]
+        }
+      }
+    },
+    {
+      "from": [
+        7.4,
+        15.2,
+        2.6
+      ],
+      "to": [
+        8.6,
+        17.4,
+        3.0
+      ],
+      "faces": {
+        "north": {
+          "texture": "#skin",
+          "uv": [
+            7.4,
+            0,
+            8.6,
+            2.2
+          ]
+        },
+        "east": {
+          "texture": "#skin",
+          "uv": [
+            13.0,
+            0,
+            13.4,
+            2.2
+          ]
+        },
+        "west": {
+          "texture": "#skin",
+          "uv": [
+            2.6,
+            0,
+            3.0,
+            2.2
+          ]
+        },
+        "up": {
+          "texture": "#skin",
+          "uv": [
+            7.4,
+            2.6,
+            8.6,
+            3.0
+          ]
+        },
+        "down": {
+          "texture": "#skin",
+          "uv": [
+            7.4,
+            13.0,
+            8.6,
+            13.4
           ]
         }
       }

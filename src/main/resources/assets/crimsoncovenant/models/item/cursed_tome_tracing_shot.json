@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "crimsoncovenant:item/cursed_tome_tracing_shot"
+  }
+}

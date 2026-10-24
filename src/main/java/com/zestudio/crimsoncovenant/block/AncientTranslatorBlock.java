@@ -5,6 +5,7 @@ import org.jspecify.annotations.Nullable;
 import com.zestudio.crimsoncovenant.entity.Vampire;
 import com.zestudio.crimsoncovenant.skill.AncientTomeItem;
 import com.zestudio.crimsoncovenant.skill.BloodSkill;
+import com.zestudio.crimsoncovenant.registry.ModBlockEntities;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -30,16 +31,23 @@ import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 
 /// Turns an Ancient Tome into the blood skill written in it. A skull floats over the table between four melted
-/// candles; use a tome on it and the skull takes the book in its jaws, and a few seconds later the skill pops out.
+/// candles; use a tome on it and the skull takes the book in its jaws, and when it's done reading, the skill pops out.
 ///
-/// The tome being translated is kept in the block state (no block entity needed), which also lets the block's loot
-/// table give the tome back if the translator is broken mid-translation.
-public class AncientTranslatorBlock extends Block {
+/// It reads on life: only while there are captives in Iron Maidens nearby to feed it, the more of them (up to four) the
+/// faster, and the higher the tome's tier the longer it takes (see AncientTranslatorBlockEntity, BloodSkill.Tier). Use
+/// it with an empty hand to see how it's getting on.
+///
+/// The tome being translated is kept in the block state, which lets the block's loot table give it back if the
+/// translator is broken mid-translation; how far it's got is kept in the block entity.
+public class AncientTranslatorBlock extends Block implements EntityBlock {
     /// 0 when idle, otherwise the BloodSkill being translated (its ordinal + 1)
     public static final IntegerProperty TOME = IntegerProperty.create("tome", 0, BloodSkill.values().length);
-    public static final int TRANSLATION_TIME = 100;
     private static final VoxelShape SHAPE = Block.box(0.0, 0.0, 0.0, 16.0, 12.0, 16.0);
     /// The tops of the four candle wicks, in sixteenths of a block (they match the block model)
     private static final double[][] CANDLE_WICKS = {{2, 17, 2}, {14, 15.5, 2}, {2, 16, 14}, {14, 15, 14}};
@@ -74,23 +82,35 @@ public class AncientTranslatorBlock extends Block {
         return InteractionResult.SUCCESS;
     }
 
+    /// How it's getting on: how far through, and how many Iron Maidens are feeding it (or that it needs them)
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
-        String key = isTranslating(state) ? "message.crimsoncovenant.translator.busy" : "message.crimsoncovenant.translator.hint";
-        player.sendOverlayMessage(Component.translatable(key).withStyle(ChatFormatting.GRAY));
+        BloodSkill skill = translating(state);
+        if (skill == null) {
+            player.sendOverlayMessage(Component.translatable("message.crimsoncovenant.translator.hint").withStyle(ChatFormatting.GRAY));
+        } else if (!level.isClientSide()) {
+            int feeding = AncientTranslatorBlockEntity.feeders(level, pos).size();
+            int percent = level.getBlockEntity(pos) instanceof AncientTranslatorBlockEntity translator ? (int) (translator.fractionDone() * 100) : 0;
+            Component message = feeding == 0
+                    ? Component.translatable("message.crimsoncovenant.translator.starved", skill.tier().displayName(), percent)
+                    : Component.translatable("message.crimsoncovenant.translator.reading", skill.tier().displayName(), percent, feeding,
+                            AncientTranslatorBlockEntity.MAX_MAIDENS);
+            player.sendOverlayMessage(message.copy().withStyle(ChatFormatting.GRAY));
+        }
         return InteractionResult.SUCCESS;
     }
 
     public static void startTranslating(ServerLevel level, BlockPos pos, BlockState state, BloodSkill skill) {
         level.setBlockAndUpdate(pos, state.setValue(TOME, skill.ordinal() + 1));
-        level.scheduleTick(pos, state.getBlock(), TRANSLATION_TIME);
+        if (level.getBlockEntity(pos) instanceof AncientTranslatorBlockEntity translator) {
+            translator.startOver();
+        }
         level.playSound(null, pos, SoundEvents.BOOK_PAGE_TURN, SoundSource.BLOCKS, 1.0F, 0.8F);
         level.playSound(null, pos, SoundEvents.ENCHANTMENT_TABLE_USE, SoundSource.BLOCKS, 1.0F, 0.6F);
     }
 
     /// The translation is done: the skill rises out of the book
-    @Override
-    protected void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
+    public static void finish(ServerLevel level, BlockPos pos, BlockState state) {
         BloodSkill skill = translating(state);
         if (skill == null) {
             return;
@@ -130,6 +150,21 @@ public class AncientTranslatorBlock extends Block {
         } else if (random.nextInt(6) == 0) {
             level.addParticle(ParticleTypes.ENCHANT, x, y, z, (random.nextDouble() - 0.5) * 2.0, random.nextDouble(), (random.nextDouble() - 0.5) * 2.0);
         }
+    }
+
+    @Override
+    public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+        return new AncientTranslatorBlockEntity(pos, state);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public <T extends BlockEntity> @Nullable BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
+        if (level.isClientSide() || !isTranslating(state) || type != ModBlockEntities.ANCIENT_TRANSLATOR.get()) {
+            return null;
+        }
+        BlockEntityTicker<AncientTranslatorBlockEntity> ticker = AncientTranslatorBlockEntity::serverTick;
+        return (BlockEntityTicker<T>) ticker;
     }
 
     @Override

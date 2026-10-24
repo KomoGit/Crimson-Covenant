@@ -6,7 +6,8 @@
     "door": "crimsoncovenant:block/iron_maiden_door",
     "door_inside": "crimsoncovenant:block/iron_maiden_door_inside",
     "spike": "crimsoncovenant:block/iron_maiden_spike",
-    "mask": "crimsoncovenant:block/iron_maiden_mask",
+    "face": "crimsoncovenant:block/iron_maiden_face",
+    "skin": "crimsoncovenant:block/iron_maiden_skin",
     "hood_front": "crimsoncovenant:block/iron_maiden_hood",
     "particle": "crimsoncovenant:block/iron_maiden_cloak"
   },

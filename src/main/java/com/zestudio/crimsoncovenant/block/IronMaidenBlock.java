@@ -6,6 +6,7 @@ import com.zestudio.crimsoncovenant.CrimsonCovenant;
 import com.zestudio.crimsoncovenant.registry.ModBlockEntities;
 import com.zestudio.crimsoncovenant.registry.ModDataComponents;
 import com.zestudio.crimsoncovenant.registry.ModItems;
+import com.zestudio.crimsoncovenant.registry.ModTags;
 import com.zestudio.crimsoncovenant.vampirism.BloodPool;
 import com.zestudio.crimsoncovenant.vampirism.Vampirism;
 
@@ -26,7 +27,9 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.npc.villager.Villager;
+import net.minecraft.world.entity.monster.Witch;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemUtils;
@@ -58,16 +61,17 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerWakeUpEvent;
 
-/// An Iron Maiden: a tall iron figure of a cloaked, hooded woman with a pale painted mask for a face, standing over two
-/// blocks tall, for keeping a villager captive. Empty, her double doors stand open on the spikes lining them and her
-/// back; shut on a captive, blood seeps from between them and the mask weeps. Use one (as an item) on a villager to
-/// shut them inside and set it down by your coffin: when you've slept the night (or the day) through there, you wake
-/// healed, and as a vampire having drunk deep of their life force (see CoffinBlock). A Blood Throne nearby siphons
-/// them too, for as long as you sit on it. They don't die of it outright, but there's only so much blood in them:
-/// once it's all been drawn they're gone, and you need someone new. While anyone's inside, a thread of blood runs
-/// from the maiden to the coffin or throne, and now and then you hear them: a moan, a plea, banging on the iron.
+/// An Iron Maiden: a tall iron figure of a cloaked, hooded woman, her face framed in tight curls, standing over two
+/// blocks tall, for keeping a villager, a Plague Doctor or a witch captive. Empty, her double doors stand open on the
+/// spikes lining them and her back; shut on a captive, blood seeps from between them and her face weeps. Use one (as an
+/// item) on one of them to shut them inside and set it down by your coffin: when you've slept the night (or the day)
+/// through there, you wake healed, and as a vampire having drunk deep of their life force (see CoffinBlock). A Blood
+/// Throne nearby siphons them too, for as long as you sit on it. They don't die of it outright, but there's only so
+/// much blood in them: once it's all been drawn they're gone (a villager now and then rising again as a zombie
+/// villager), and you need someone new. While anyone's inside, a thread of blood runs from the maiden to the coffin or
+/// throne, and now and then you hear them: a moan, a plea, banging on the iron.
 ///
-/// Sneak and use a maiden to open it and let its captive go. Picked up, it keeps whoever is inside.
+/// Sneak and use a maiden to open it and let its captive go; break it, and they go free too.
 @EventBusSubscriber(modid = CrimsonCovenant.MODID)
 public class IronMaidenBlock extends HorizontalDirectionalBlock implements EntityBlock {
     public static final EnumProperty<DoubleBlockHalf> HALF = BlockStateProperties.DOUBLE_BLOCK_HALF;
@@ -192,7 +196,7 @@ public class IronMaidenBlock extends HorizontalDirectionalBlock implements Entit
             if (player.isSecondaryUseActive()) {
                 maiden.release();
             } else {
-                player.sendOverlayMessage(Component.translatable("message.crimsoncovenant.iron_maiden.captive", maiden.getCaptive().blood())
+                player.sendOverlayMessage(Component.translatable("message.crimsoncovenant.iron_maiden.captive", maiden.getCaptive().name(), maiden.getCaptive().blood())
                         .withStyle(ChatFormatting.DARK_RED));
             }
         }
@@ -210,35 +214,40 @@ public class IronMaidenBlock extends HorizontalDirectionalBlock implements Entit
         }
     }
 
-    // ---- Taking villagers, and feeding on them ----
+    // ---- Taking captives, and feeding on them ----
 
-    /// An empty Iron Maiden used on a villager shuts them inside
+    /// An empty Iron Maiden used on a villager, a Plague Doctor or a witch (see ModTags.Entities.IRON_MAIDEN_CAPTIVES)
+    /// shuts them inside
     @SubscribeEvent
     static void kidnap(PlayerInteractEvent.EntityInteract event) {
         Player player = event.getEntity();
         ItemStack held = player.getItemInHand(event.getHand());
-        if (!(event.getTarget() instanceof Villager villager) || !held.is(ModItems.IRON_MAIDEN.get()) || held.has(ModDataComponents.CAPTIVE.get()) || !villager.isAlive()) {
+        if (!(event.getTarget() instanceof Mob captive) || !captive.is(ModTags.Entities.IRON_MAIDEN_CAPTIVES) || !held.is(ModItems.IRON_MAIDEN.get())
+                || held.has(ModDataComponents.CAPTIVE.get()) || !captive.isAlive()) {
             return;
         }
         event.setCanceled(true);
         event.setCancellationResult(InteractionResult.SUCCESS);
         if (!player.level().isClientSide()) {
-            kidnap(player, villager, event.getHand());
+            kidnap(player, captive, event.getHand());
         }
     }
 
-    public static void kidnap(Player player, Villager villager, InteractionHand hand) {
+    public static void kidnap(Player player, Mob captive, InteractionHand hand) {
         ItemStack held = player.getItemInHand(hand);
         ItemStack full = held.copyWithCount(1);
-        villager.stopSleeping();
-        // Their bed and workplace are free for someone else
-        for (MemoryModuleType<GlobalPos> poi : List.of(MemoryModuleType.HOME, MemoryModuleType.JOB_SITE, MemoryModuleType.POTENTIAL_JOB_SITE, MemoryModuleType.MEETING_POINT)) {
-            villager.releasePoi(poi);
+        captive.stopSleeping();
+        // A villager's bed and workplace are free for someone else
+        if (captive instanceof Villager villager) {
+            for (MemoryModuleType<GlobalPos> poi : List.of(MemoryModuleType.HOME, MemoryModuleType.JOB_SITE, MemoryModuleType.POTENTIAL_JOB_SITE, MemoryModuleType.MEETING_POINT)) {
+                villager.releasePoi(poi);
+            }
         }
-        full.set(ModDataComponents.CAPTIVE.get(), IronMaidenBlockEntity.Captive.of(villager));
-        villager.level().playSound(null, villager.getX(), villager.getY(), villager.getZ(), SoundEvents.IRON_DOOR_CLOSE, SoundSource.PLAYERS, 1.0F, 0.6F);
-        villager.level().playSound(null, villager.getX(), villager.getY(), villager.getZ(), SoundEvents.VILLAGER_HURT, SoundSource.NEUTRAL, 1.0F, 1.0F);
-        villager.discard();
+        full.set(ModDataComponents.CAPTIVE.get(), IronMaidenBlockEntity.Captive.of(captive));
+        captive.level().playSound(null, captive.getX(), captive.getY(), captive.getZ(), SoundEvents.IRON_DOOR_CLOSE, SoundSource.PLAYERS, 1.0F, 0.6F);
+        captive.level().playSound(null, captive.getX(), captive.getY(), captive.getZ(), captive instanceof Witch ? SoundEvents.WITCH_HURT : SoundEvents.VILLAGER_HURT,
+                SoundSource.NEUTRAL, 1.0F, 1.0F);
+        captive.discard();
         player.setItemInHand(hand, ItemUtils.createFilledResult(held, player, full));
     }
 

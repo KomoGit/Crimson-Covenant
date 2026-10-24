@@ -23,6 +23,8 @@ import com.zestudio.crimsoncovenant.entity.MiasmaCloud;
 import com.zestudio.crimsoncovenant.entity.PlagueDoctor;
 import com.zestudio.crimsoncovenant.entity.SilverDustCloud;
 import com.zestudio.crimsoncovenant.entity.ThroneSeat;
+import com.zestudio.crimsoncovenant.entity.SpiritHand;
+import com.zestudio.crimsoncovenant.entity.SpiritWyrms;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.BlockTags;
@@ -73,6 +75,13 @@ public final class ModEntities {
     /// The green fog over a rat-infested village. Invisible itself: it's drawn by its particles.
     public static final DeferredHolder<EntityType<?>, EntityType<MiasmaCloud>> MIASMA_CLOUD = ENTITY_TYPES.registerEntityType("miasma_cloud", MiasmaCloud::new, MobCategory.MISC,
             builder -> builder.noLootTable().sized(0.5F, 0.5F).clientTrackingRange(8).updateInterval(20).fireImmune());
+
+    /// Revenant's Grip: the ghostly hand that fights beside a hunter
+    public static final DeferredHolder<EntityType<?>, EntityType<SpiritHand>> SPIRIT_HAND = ENTITY_TYPES.registerEntityType("spirit_hand", SpiritHand::new, MobCategory.MISC,
+            builder -> builder.noLootTable().noSummon().sized(0.5F, 0.5F).clientTrackingRange(10).updateInterval(1).fireImmune());
+    /// The Wrath of the Twin Wyrms: two spirit wyrms tearing along a line
+    public static final DeferredHolder<EntityType<?>, EntityType<SpiritWyrms>> SPIRIT_WYRMS = ENTITY_TYPES.registerEntityType("spirit_wyrms", SpiritWyrms::new, MobCategory.MISC,
+            builder -> builder.noLootTable().noSummon().sized(0.5F, 0.5F).clientTrackingRange(10).updateInterval(2).fireImmune());
 
     /// The unseen seat on a Blood Throne
     public static final DeferredHolder<EntityType<?>, EntityType<ThroneSeat>> THRONE_SEAT = ENTITY_TYPES.registerEntityType("throne_seat", ThroneSeat::new, MobCategory.MISC,

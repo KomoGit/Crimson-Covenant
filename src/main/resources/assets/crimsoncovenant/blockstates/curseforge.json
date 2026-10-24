@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=east": {
+      "model": "crimsoncovenant:block/curseforge",
+      "y": 270
+    },
+    "facing=north": {
+      "model": "crimsoncovenant:block/curseforge",
+      "y": 180
+    },
+    "facing=south": {
+      "model": "crimsoncovenant:block/curseforge"
+    },
+    "facing=west": {
+      "model": "crimsoncovenant:block/curseforge",
+      "y": 90
+    }
+  }
+}
