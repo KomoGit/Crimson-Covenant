@@ -10,6 +10,7 @@ import com.zestudio.crimsoncovenant.skill.BloodSkills;
 import com.zestudio.crimsoncovenant.world.BloodMoon;
 import com.zestudio.crimsoncovenant.hunter.HunterRanks;
 import com.zestudio.crimsoncovenant.block.CoffinBlock;
+import com.zestudio.crimsoncovenant.guide.GuideBooks;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -89,15 +90,23 @@ public final class Vampirism {
         player.setData(ModAttachments.INFECTION_TICKS, 0);
         player.removeEffect(ModEffects.SANGUINE_VAMPIRIS);
         player.setData(ModAttachments.IS_VAMPIRE, true);
+        VampireAge.start(player);
         player.sendSystemMessage(Component.translatable(messageKey).withStyle(ChatFormatting.DARK_RED));
+        GuideBooks.chain(player);
         HunterRanks.castOut(player);
         player.level().playSound(null, player.blockPosition(), SoundEvents.ZOMBIE_VILLAGER_CURE, SoundSource.PLAYERS, 1.0F, 0.6F);
     }
 
     public static void cure(Player player) {
+        boolean wasVampire = isVampire(player);
         player.setData(ModAttachments.INFECTION_TICKS, 0);
         player.setData(ModAttachments.IS_VAMPIRE, false);
         player.setData(ModAttachments.BLOOD, 0);
+        VampireAge.clear(player);
+        // A vampire cured is human again: their Codex becomes a Ledger (one only infected never had a Codex)
+        if (wasVampire && player instanceof ServerPlayer serverPlayer) {
+            GuideBooks.chain(serverPlayer);
+        }
         player.removeEffect(ModEffects.SANGUINE_VAMPIRIS);
     }
 
@@ -125,7 +134,12 @@ public final class Vampirism {
 
     @SubscribeEvent
     static void onLivingDeath(LivingDeathEvent event) {
-        if (!(event.getEntity() instanceof ServerPlayer player) || isVampire(player)) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) {
+            return;
+        }
+        // A vampire who dies loses a tier of its age
+        if (isVampire(player)) {
+            VampireAge.onDeath(player);
             return;
         }
         // Dying with the curse in your blood cuts the wait short: you rise as a vampire.
@@ -195,6 +209,9 @@ public final class Vampirism {
         // with a full belly) but without saturation, which would heal them much faster.
         player.getFoodData().setFoodLevel(20);
         player.getFoodData().setSaturation(0.0F);
+        if (player.tickCount % PERK_REFRESH_INTERVAL == 0) {
+            VampireAge.tick(player);
+        }
         if (player.isCreative() || player.isSpectator()) {
             return;
         }
@@ -205,7 +222,8 @@ public final class Vampirism {
             BloodMoon.tickBloodlust(player);
             // Night vision lasts over 10 seconds so it never starts flickering, the night buffs just get topped up
             player.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 400, 0, true, false, true));
-            if (player.level().isDarkOutside()) {
+            // A young vampire is only strong by night (an older one is always, and more: see VampireAge)
+            if (player.level().isDarkOutside() && VampireAge.tier(player) == 0) {
                 player.addEffect(new MobEffectInstance(MobEffects.SPEED, PERK_REFRESH_INTERVAL * 2, 0, true, false, true));
                 player.addEffect(new MobEffectInstance(MobEffects.STRENGTH, PERK_REFRESH_INTERVAL * 2, 0, true, false, true));
             }

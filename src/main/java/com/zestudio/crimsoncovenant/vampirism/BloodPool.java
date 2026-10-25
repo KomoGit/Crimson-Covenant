@@ -4,6 +4,7 @@ import com.zestudio.crimsoncovenant.CrimsonCovenant;
 import com.zestudio.crimsoncovenant.entity.Vampire;
 import com.zestudio.crimsoncovenant.registry.ModAttachments;
 import com.zestudio.crimsoncovenant.registry.ModEffects;
+import com.zestudio.crimsoncovenant.entity.BloodOrb;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -61,9 +62,10 @@ public final class BloodPool {
     @SubscribeEvent
     static void onKill(LivingDeathEvent event) {
         LivingEntity victim = event.getEntity();
-        // getEntity() is the attacker even for projectiles (the shooter), so skill kills count too
+        // getEntity() is the attacker even for projectiles (the shooter), so skill kills count too: all but the Blood
+        // Parade's, which is the vampire's whole bar spent, and gives back health, never blood
         if (event.getSource().getEntity() instanceof ServerPlayer player && player != victim && Vampirism.isVampire(player)
-                && Vampirism.hasLivingBlood(victim) && victim.level() instanceof ServerLevel level) {
+                && Vampirism.hasLivingBlood(victim) && !(event.getSource().getDirectEntity() instanceof BloodOrb) && victim.level() instanceof ServerLevel level) {
             add(player, bloodFrom(victim));
             player.heal(KILL_HEAL);
             Vampire.streamBlood(level, victim, player);

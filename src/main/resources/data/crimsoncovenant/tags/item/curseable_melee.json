@@ -4,6 +4,7 @@
     "#minecraft:axes",
     "#minecraft:spears",
     "minecraft:mace",
-    "minecraft:trident"
+    "minecraft:trident",
+    "crimsoncovenant:whip"
   ]
 }

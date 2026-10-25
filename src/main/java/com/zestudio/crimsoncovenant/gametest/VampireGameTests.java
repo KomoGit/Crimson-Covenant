@@ -55,7 +55,15 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
+import net.minecraft.world.entity.monster.skeleton.Skeleton;
+import net.minecraft.world.entity.monster.spider.Spider;
+import net.minecraft.world.phys.Vec3;
 import com.zestudio.crimsoncovenant.registry.ModAttachments;
+import com.zestudio.crimsoncovenant.vampirism.VampireAge;
+import com.zestudio.crimsoncovenant.vampirism.BloodPool;
+import com.zestudio.crimsoncovenant.skill.BloodSkill;
+import com.zestudio.crimsoncovenant.world.BloodMoon;
+import com.zestudio.crimsoncovenant.vampirism.AncientKinship;
 
 /// GameTests for vampires and player vampirism. Registered in ModGameTests.
 final class VampireGameTests {
@@ -523,6 +531,133 @@ final class VampireGameTests {
         new ItemStack(ModItems.BLOOD_BOTTLE.get()).finishUsingItem(helper.getLevel(), player);
         helper.assertTrue(Vampirism.isInfected(player) && !Vampirism.isVampire(player), Component.literal("A human who drinks a Blood Bottle should catch Sanguine Vampiris"));
         helper.assertValueEqual(player.getData(ModAttachments.INFECTION_TICKS), Vampirism.INFECTION_DURATION, "infection after drinking a Blood Bottle");
+        SkillGameTests.removePlayer(helper, player);
+        helper.succeed();
+    }
+
+    // ---- Age ----
+
+    static void vampiresGrowStrongerWithAge(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer player = SkillGameTests.makeVampire(helper, 100);
+        double baseHealth = player.getAttributeValue(Attributes.MAX_HEALTH);
+        // Newly turned: nothing yet
+        VampireAge.start(player);
+        VampireAge.tick(player);
+        helper.assertValueEqual(VampireAge.tier(player), 0, "a new vampire's tier");
+        helper.assertValueEqual(player.getAttributeValue(Attributes.MAX_HEALTH), baseHealth, "a new vampire's max health");
+        helper.assertTrue(!player.hasEffect(MobEffects.HASTE), Component.literal("A new vampire shouldn't have Haste"));
+
+        // Day 25: the second tier
+        VampireAge.setDays(player, 25);
+        VampireAge.tick(player);
+        helper.assertValueEqual(player.getData(ModAttachments.VAMPIRE_DAYS), 25, "days sent to the client");
+        helper.assertValueEqual(player.getAttributeValue(Attributes.MAX_HEALTH), baseHealth + 7.0, "a day-25 vampire's max health");
+        assertAmplifier(helper, player, MobEffects.SPEED, 0);
+        assertAmplifier(helper, player, MobEffects.HASTE, 0);
+        assertAmplifier(helper, player, MobEffects.STRENGTH, 0);
+        helper.assertValueEqual(VampireAge.discounted(20, player), 18, "a 20-blood skill's cost at day 25");
+
+        // A hundred days on: capped at day 30, the third tier
+        player.setData(ModAttachments.VAMPIRE_SINCE, level.getGameTime() - 100L * VampireAge.TICKS_PER_DAY);
+        VampireAge.tick(player);
+        helper.assertValueEqual(VampireAge.days(player), VampireAge.MAX_DAYS, "an old vampire's days, capped");
+        helper.assertValueEqual(player.getAttributeValue(Attributes.MAX_HEALTH), baseHealth + 10.0, "an old vampire's max health: 30 in all");
+        assertAmplifier(helper, player, MobEffects.SPEED, 1);
+        assertAmplifier(helper, player, MobEffects.STRENGTH, 1);
+        // Its skills cost a fifth less: Dash, 20 blood, costs 16
+        helper.assertTrue(SkillGameTests.castSkill(player, BloodSkill.DASH), Component.literal("The old vampire should cast Dash"));
+        helper.assertValueEqual(BloodPool.get(player), 100 - 16, "blood left after an old vampire's Dash");
+
+        // Dying costs a tier, counted from the cap
+        VampireAge.onDeath(player);
+        helper.assertValueEqual(VampireAge.days(player), 20, "an old vampire's days after dying");
+
+        // Cured, the strength goes
+        Vampirism.cure(player);
+        helper.assertValueEqual(player.getAttributeValue(Attributes.MAX_HEALTH), baseHealth, "a cured vampire's max health");
+        helper.assertValueEqual(player.getData(ModAttachments.VAMPIRE_DAYS), 0, "a cured vampire's days");
+        SkillGameTests.removePlayer(helper, player);
+        helper.succeed();
+    }
+
+    static void oldVampiresMakeALastStand(GameTestHelper helper) {
+        ServerPlayer player = SkillGameTests.makeVampire(helper, 100);
+        VampireAge.setDays(player, 20);
+        VampireAge.tick(player);
+        player.setHealth(player.getMaxHealth() * 0.3F);
+        helper.assertTrue(!VampireAge.tryLastStand(player), Component.literal("Only a vampire of 30 days makes a Last Stand"));
+
+        VampireAge.setDays(player, 30);
+        VampireAge.tick(player);
+        player.setHealth(player.getMaxHealth() * 0.6F);
+        helper.assertTrue(!VampireAge.tryLastStand(player), Component.literal("No Last Stand above half health"));
+        player.setHealth(player.getMaxHealth() * 0.4F);
+        helper.assertTrue(VampireAge.tryLastStand(player), Component.literal("At under half health, the old vampire's Last Stand should rise"));
+        helper.assertTrue(player.hasEffect(ModEffects.ANCIENT_ARMOR) && player.hasEffect(MobEffects.REGENERATION),
+                Component.literal("The Last Stand should bring the Armor of the Ancient and Regeneration"));
+        player.removeEffect(ModEffects.ANCIENT_ARMOR);
+        helper.assertTrue(!VampireAge.tryLastStand(player), Component.literal("The Last Stand shouldn't rise again so soon"));
+        SkillGameTests.removePlayer(helper, player);
+        helper.succeed();
+    }
+
+    private static void assertAmplifier(GameTestHelper helper, ServerPlayer player, net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect, int amplifier) {
+        MobEffectInstance instance = player.getEffect(effect);
+        helper.assertTrue(instance != null && instance.getAmplifier() == amplifier,
+                Component.literal("Expected " + effect.getRegisteredName() + " at amplifier " + amplifier + ", got " + (instance == null ? "none" : instance.getAmplifier())));
+    }
+
+    static void ancientsAreKinToTheNight(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer player = SkillGameTests.makeVampire(helper, 0);
+        // In among them, so the spiders are near enough to hear the fight
+        Vec3 middle = helper.absoluteVec(new Vec3(4.5, 1.0, 2.5));
+        player.teleportTo(middle.x, middle.y, middle.z);
+        Zombie zombie = helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, new BlockPos(2, 1, 2));
+        Skeleton skeleton = helper.spawnWithNoFreeWill(EntityTypes.SKELETON, new BlockPos(6, 1, 2));
+        Spider spider = helper.spawnWithNoFreeWill(EntityTypes.SPIDER, new BlockPos(2, 1, 6));
+        Ghost ghost = helper.spawnWithNoFreeWill(ModEntities.GHOST.get(), new BlockPos(6, 2, 6));
+        Cow cow = helper.spawnWithNoFreeWill(EntityTypes.COW, new BlockPos(4, 1, 4));
+        List<Mob> night = List.of(zombie, skeleton, spider, ghost);
+        // (Mock players can't be targeted by mobs at all, so what each would do is asked directly)
+        // A young vampire is fair game
+        helper.assertTrue(!AncientKinship.spares(zombie, player), Component.literal("A zombie should go after a young vampire"));
+
+        // An Ancient one, none of them will go after...
+        VampireAge.setDays(player, VampireAge.MAX_DAYS);
+        for (Mob mob : night) {
+            helper.assertTrue(AncientKinship.spares(mob, player), Component.literal(mob.getType().getDescription().getString() + " shouldn't go after an Ancient vampire"));
+        }
+        // ...unless it strikes them first (but nothing sets a ghost on it)
+        zombie.hurtServer(level, level.damageSources().playerAttack(player), 1.0F);
+        helper.assertTrue(!AncientKinship.spares(zombie, player), Component.literal("A zombie the Ancient struck should fight back"));
+        helper.assertTrue(AncientKinship.spares(ghost, player), Component.literal("A ghost should never go after an Ancient vampire"));
+
+        // Spiders join its fights
+        cow.hurtServer(level, level.damageSources().playerAttack(player), 1.0F);
+        helper.assertTrue(spider.getTarget() == cow, Component.literal("A spider should join the Ancient's fight against the cow"));
+        night.forEach(Entity::discard);
+        cow.discard();
+        SkillGameTests.removePlayer(helper, player);
+        helper.succeed();
+    }
+
+    static void bloodParadeOnlyUnderABloodMoon(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer player = SkillGameTests.makePlayer(helper);
+        DamageSource slain = level.damageSources().playerAttack(player);
+        helper.assertTrue(!MasterVampire.dropsBloodParade(level, slain, 0.0F), Component.literal("No Blood Parade without a Blood Moon"));
+        BloodMoon.start(level);
+        try {
+            helper.assertTrue(!MasterVampire.dropsBloodParade(level, slain, 0.0F), Component.literal("Not for a killer who hasn't unlocked Blood Parade"));
+            player.setData(ModAttachments.UNLOCKED_SKILLS, java.util.List.of(BloodSkill.BLOOD_PARADE.getName()));
+            helper.assertTrue(MasterVampire.dropsBloodParade(level, slain, 0.05F), Component.literal("Under a Blood Moon, a Master Vampire can leave Blood Parade"));
+            helper.assertTrue(!MasterVampire.dropsBloodParade(level, slain, 0.5F), Component.literal("Blood Parade should be a rare drop"));
+            helper.assertTrue(!MasterVampire.dropsBloodParade(level, level.damageSources().generic(), 0.0F), Component.literal("Only for a player's kill"));
+        } finally {
+            BloodMoon.stop(level);
+        }
         SkillGameTests.removePlayer(helper, player);
         helper.succeed();
     }

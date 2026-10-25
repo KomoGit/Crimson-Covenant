@@ -5,6 +5,7 @@ import java.util.List;
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
 import com.zestudio.crimsoncovenant.registry.ModBlocks;
 import com.zestudio.crimsoncovenant.registry.ModStructures;
+import com.zestudio.crimsoncovenant.block.GravestoneBlock;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -57,6 +58,8 @@ public class GraveyardPiece extends StructurePiece {
     private static final int[] GRAVE_X = {2, 5, 10, 13};
     private static final int[] GRAVE_Z = {2, 6, 10};
     private static final float GRAVE_CHANCE = 0.8F;
+    /// How many of the graves have a ghost resting in the stone (see GravestoneBlock)
+    private static final float GHOST_CHANCE = 0.5F;
     private static final List<Block> HEADSTONES = List.of(ModBlocks.GRAVESTONE.get(), ModBlocks.MOSSY_GRAVESTONE.get(), ModBlocks.CRACKED_GRAVESTONE.get(),
             ModBlocks.STONE_CROSS.get(), ModBlocks.DEEPSLATE_OBELISK.get(), ModBlocks.STONE_TOMB.get());
 
@@ -200,7 +203,8 @@ public class GraveyardPiece extends StructurePiece {
 
     private void digGrave(WorldGenLevel level, RandomSource random, BoundingBox chunkBB, int x, int z) {
         Block headstone = HEADSTONES.get(random.nextInt(HEADSTONES.size()));
-        this.set(level, chunkBB, headstone.defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.SOUTH), x, 1, z);
+        GravestoneBlock.Spirit spirit = random.nextFloat() < GHOST_CHANCE ? GravestoneBlock.Spirit.RESTING : GravestoneBlock.Spirit.NONE;
+        this.set(level, chunkBB, headstone.defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.SOUTH).setValue(GravestoneBlock.SPIRIT, spirit), x, 1, z);
         for (int dz = 1; dz <= 2; dz++) {
             BlockState mound = random.nextFloat() < 0.7F ? Blocks.COARSE_DIRT.defaultBlockState() : Blocks.ROOTED_DIRT.defaultBlockState();
             this.set(level, chunkBB, mound, x, 0, z + dz);

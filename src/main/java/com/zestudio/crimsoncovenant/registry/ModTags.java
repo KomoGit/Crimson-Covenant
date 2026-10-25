@@ -15,6 +15,8 @@ public final class ModTags {
     public static final class Entities {
         /// Mobs vampires attack on sight (players are handled separately)
         public static final TagKey<EntityType<?>> VAMPIRE_PREY = TagKey.create(Registries.ENTITY_TYPE, CrimsonCovenant.id("vampire_prey"));
+        /// Creatures with an entry in the guide's bestiary, once seen (see guide.Bestiary)
+        public static final TagKey<EntityType<?>> BESTIARY = TagKey.create(Registries.ENTITY_TYPE, CrimsonCovenant.id("bestiary"));
         /// Who an Iron Maiden can be used on, to take them captive
         public static final TagKey<EntityType<?>> IRON_MAIDEN_CAPTIVES = TagKey.create(Registries.ENTITY_TYPE, CrimsonCovenant.id("iron_maiden_captives"));
         /// Silver arrows hit these harder and slow them: undead and werewolves
@@ -32,6 +34,8 @@ public final class ModTags {
         public static final TagKey<Block> RATS_GNAW_INTO = TagKey.create(Registries.BLOCK, CrimsonCovenant.id("rats_gnaw_into"));
         /// What rats eat when they raid at night: crops, and hay, pumpkins, melons, berries and the like
         public static final TagKey<Block> RATS_EAT = TagKey.create(Registries.BLOCK, CrimsonCovenant.id("rats_eat"));
+        /// Ordinary things a ghost can slip into, to set them floating about (see entity.HauntedObject)
+        public static final TagKey<Block> HAUNTABLE = TagKey.create(Registries.BLOCK, CrimsonCovenant.id("hauntable"));
 
         private Blocks() {}
     }

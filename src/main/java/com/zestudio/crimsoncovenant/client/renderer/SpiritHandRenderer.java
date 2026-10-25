@@ -2,8 +2,6 @@ package com.zestudio.crimsoncovenant.client.renderer;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
-import com.zestudio.crimsoncovenant.client.ModModelLayers;
-import com.zestudio.crimsoncovenant.client.model.SpiritHandModel;
 import com.zestudio.crimsoncovenant.entity.SpiritHand;
 
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -15,13 +13,13 @@ import net.minecraft.client.renderer.item.ItemStackRenderState;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.BlockPos;
-import net.minecraft.util.Unit;
 import net.minecraft.world.item.ItemDisplayContext;
 
-/// Revenant's Grip: the ghostly hand (see SpiritHandModel) with the weapon in its grip, glowing, swinging the weapon down
-/// when it's close enough to strike
+/// Revenant's Grip: the weapon floating on its own, blade up, swaying a little as it hangs in the air, and swinging
+/// down when it's close enough to strike. It glows: it's held by a spirit.
 public class SpiritHandRenderer extends EntityRenderer<SpiritHand, SpiritHandRenderer.State> {
-    private final SpiritHandModel model;
+    /// A little larger than life, so it's seen at a glance
+    private static final float WEAPON_SIZE = 1.4F;
     private final ItemModelResolver itemModelResolver;
 
     public static class State extends EntityRenderState {
@@ -32,7 +30,6 @@ public class SpiritHandRenderer extends EntityRenderer<SpiritHand, SpiritHandRen
 
     public SpiritHandRenderer(EntityRendererProvider.Context context) {
         super(context);
-        this.model = new SpiritHandModel(context.bakeLayer(ModModelLayers.SPIRIT_HAND));
         this.itemModelResolver = context.getItemModelResolver();
     }
 
@@ -40,24 +37,20 @@ public class SpiritHandRenderer extends EntityRenderer<SpiritHand, SpiritHandRen
     public void submit(State state, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, CameraRenderState camera) {
         poseStack.pushPose();
         poseStack.rotateDegrees(Axis.YP, 180.0F - state.yRot);
-        // Raised to strike, the blade comes down; otherwise it's held up and a little back, bobbing
-        float swing = state.striking ? -60.0F + (float) Math.sin(state.ageInTicks * 0.6F) * 50.0F : 20.0F + (float) Math.sin(state.ageInTicks * 0.1F) * 6.0F;
+        // Raised to strike, the blade comes down; otherwise it hangs upright, leaning a little back and swaying
+        float swing = state.striking ? -60.0F + (float) Math.sin(state.ageInTicks * 0.6F) * 50.0F : 15.0F + (float) Math.sin(state.ageInTicks * 0.1F) * 6.0F;
         poseStack.rotateDegrees(Axis.XP, swing);
-        poseStack.pushPose();
-        poseStack.scale(1.0F / 16.0F * 1.5F, -1.0F / 16.0F * 1.5F, -1.0F / 16.0F * 1.5F);
-        submitNodeCollector.submitModel(this.model, Unit.INSTANCE, poseStack, SpiritHandModel.TEXTURE, state.lightCoords, OverlayTexture.NO_OVERLAY, state.outlineColor);
-        poseStack.popPose();
-        // The weapon in the grip, blade up
-        poseStack.translate(0.05, 0.25, 0.0);
+        poseStack.rotateDegrees(Axis.ZP, (float) Math.sin(state.ageInTicks * 0.07F) * 5.0F);
+        // Blade up
         poseStack.rotateDegrees(Axis.YP, 90.0F);
         poseStack.rotateDegrees(Axis.ZP, -45.0F);
-        poseStack.scale(1.1F, 1.1F, 1.1F);
+        poseStack.scale(WEAPON_SIZE, WEAPON_SIZE, WEAPON_SIZE);
         state.weapon.submit(poseStack, submitNodeCollector, state.lightCoords, OverlayTexture.NO_OVERLAY, state.outlineColor);
         poseStack.popPose();
         super.submit(state, poseStack, submitNodeCollector, camera);
     }
 
-    // It glows: it's a spirit
+    // It glows: it's a spirit's
     @Override
     protected int getBlockLightLevel(SpiritHand entity, BlockPos pos) {
         return 15;

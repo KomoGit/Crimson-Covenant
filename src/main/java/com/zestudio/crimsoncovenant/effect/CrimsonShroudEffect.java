@@ -6,8 +6,6 @@ import com.zestudio.crimsoncovenant.registry.ModEffects;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
@@ -23,12 +21,12 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 /// an elytra, over whatever armor they have on (jump in mid-air to spread them; see client.renderer.CrimsonShroudLayer
 /// for how they're drawn). While gliding, a right click is a Blood Charge: five blood burst behind them to drive them
 /// on, the way a firework drives an elytra (see skill.BloodSkills.bloodCharge). No fall hurts them while it lasts. It
-/// ends when its minute is up, or when the vampire uses the skill again, and the vampire drifts down gently.
+/// ends when its minute is up, or when the vampire uses the skill again, and the vampire is caught as they near the
+/// ground and drifts down gently (see SoftLanding).
 @EventBusSubscriber(modid = CrimsonCovenant.MODID)
 public class CrimsonShroudEffect extends MobEffect {
     /// One minute
     public static final int DURATION = 1200;
-    private static final int LANDING_SLOW_FALL = 100;
 
     public CrimsonShroudEffect() {
         super(MobEffectCategory.BENEFICIAL, 0x8A0B18);
@@ -50,7 +48,7 @@ public class CrimsonShroudEffect extends MobEffect {
     }
 
     public static void end(Player player) {
-        player.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, LANDING_SLOW_FALL, 0, false, false, true));
+        SoftLanding.begin(player);
     }
 
     public static boolean isShrouded(LivingEntity entity) {

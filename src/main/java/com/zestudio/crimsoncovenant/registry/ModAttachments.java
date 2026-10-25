@@ -13,6 +13,7 @@ import com.zestudio.crimsoncovenant.skill.Enthrall;
 import com.zestudio.crimsoncovenant.skill.AfterimageStrike;
 import com.zestudio.crimsoncovenant.curse.Curse;
 import com.zestudio.crimsoncovenant.curse.Curses;
+import com.zestudio.crimsoncovenant.vampirism.VampireAge;
 
 import io.netty.buffer.ByteBuf;
 
@@ -43,6 +44,41 @@ public final class ModAttachments {
     public static final Supplier<AttachmentType<Boolean>> IS_VAMPIRE = ATTACHMENT_TYPES.register("is_vampire",
             () -> AttachmentType.builder(() -> false).serialize(Codec.BOOL.fieldOf("vampire")).copyOnDeath()
                     .sync((holder, to) -> holder == to, ByteBufCodecs.BOOL).build());
+
+    /// Blood skills (by name) a vampire has unlocked in their Codex Sanguinis, so their tomes can be found and read (see
+    /// guide.SkillLore). Saved, survives death, and sent to the player's own client for the Codex.
+    public static final Supplier<AttachmentType<List<String>>> UNLOCKED_SKILLS = ATTACHMENT_TYPES.register("unlocked_skills",
+            () -> AttachmentType.builder(() -> List.<String>of()).serialize(Codec.STRING.listOf().fieldOf("skills")).copyOnDeath()
+                    .sync((holder, to) -> holder == to, ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list())).build());
+
+    /// Blood skills (by name) whose tomes a vampire has had translated: their Codex pages are filled in
+    public static final Supplier<AttachmentType<List<String>>> TRANSLATED_SKILLS = ATTACHMENT_TYPES.register("translated_skills",
+            () -> AttachmentType.builder(() -> List.<String>of()).serialize(Codec.STRING.listOf().fieldOf("skills")).copyOnDeath()
+                    .sync((holder, to) -> holder == to, ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list())).build());
+
+    /// Creatures (by entity type id) a player has come across: their bestiary entries in the guide (see guide.Bestiary)
+    public static final Supplier<AttachmentType<List<String>>> ENCOUNTERED = ATTACHMENT_TYPES.register("encountered",
+            () -> AttachmentType.builder(() -> List.<String>of()).serialize(Codec.STRING.listOf().fieldOf("creatures")).copyOnDeath()
+                    .sync((holder, to) -> holder == to, ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list())).build());
+
+    /// Whether a player has been given their guide book on first joining (see guide.GuideBooks)
+    public static final Supplier<AttachmentType<Boolean>> GUIDE_GIVEN = ATTACHMENT_TYPES.register("guide_given",
+            () -> AttachmentType.builder(() -> false).serialize(Codec.BOOL.fieldOf("given")).copyOnDeath().build());
+
+    /// The game time a vampire player's age counts from (see vampirism.VampireAge), or VampireAge.NOT_STARTED. Survives
+    /// death (which moves it on ten days).
+    public static final Supplier<AttachmentType<Long>> VAMPIRE_SINCE = ATTACHMENT_TYPES.register("vampire_since",
+            () -> AttachmentType.builder(() -> VampireAge.NOT_STARTED).serialize(Codec.LONG.fieldOf("since")).copyOnDeath().build());
+
+    /// A vampire player's age in days, up to the cap, as last worked out: sent to their own client, for the blood bar's
+    /// day count and blood skills' costs. Survives death.
+    public static final Supplier<AttachmentType<Integer>> VAMPIRE_DAYS = ATTACHMENT_TYPES.register("vampire_days",
+            () -> AttachmentType.builder(() -> 0).serialize(Codec.INT.fieldOf("days")).copyOnDeath()
+                    .sync((holder, to) -> holder == to, ByteBufCodecs.VAR_INT).build());
+
+    /// The game time an old vampire's Last Stand can next rise (see vampirism.VampireAge). Not saved.
+    public static final Supplier<AttachmentType<Long>> LAST_STAND_READY_AT = ATTACHMENT_TYPES.register("last_stand_ready_at",
+            () -> AttachmentType.builder(() -> 0L).build());
 
     /// A player's rank in the hunters, 0 when not one of them (see hunter.HunterRanks). Survives death, and is sent to
     /// the player's own client.
@@ -80,6 +116,11 @@ public final class ModAttachments {
     /// faint (effects themselves only reach the player's own client). Not saved.
     public static final Supplier<AttachmentType<Boolean>> GHOSTLY = ATTACHMENT_TYPES.register("ghostly",
             () -> AttachmentType.builder(() -> false).sync(ByteBufCodecs.BOOL).build());
+
+    /// A player coming down from flight, to be caught near the ground (see effect.SoftLanding). Saved, so logging out
+    /// mid-fall doesn't lose it.
+    public static final Supplier<AttachmentType<Boolean>> SOFT_LANDING = ATTACHMENT_TYPES.register("soft_landing",
+            () -> AttachmentType.builder(() -> false).serialize(Codec.BOOL.fieldOf("landing")).build());
 
     /// The bear trap holding a creature fast, if one is. Sent to a player's own client, which moves them, so the
     /// trap can hold them there too. Not saved: logging out slips the trap.
@@ -147,7 +188,7 @@ public final class ModAttachments {
     public static final Supplier<AttachmentType<Optional<DeathMarch>>> DEATH_MARCH = ATTACHMENT_TYPES.register("death_march",
             () -> AttachmentType.builder(() -> Optional.<DeathMarch>empty()).build());
 
-    /// A creature a Blood Spear is driving back (see BloodSpear). Not saved.
+    /// A creature a Blood Spear (or a whip) is driving back (see BloodSpear.drive). Not saved.
     public static final Supplier<AttachmentType<Optional<SpearDrive>>> SPEAR_DRIVE = ATTACHMENT_TYPES.register("spear_drive",
             () -> AttachmentType.builder(() -> Optional.<SpearDrive>empty()).build());
 
@@ -171,8 +212,18 @@ public final class ModAttachments {
     /// `raiser`: the vampire whose Grave March raises the creature if it dies on the march
     public record DeathMarch(Vec3 direction, long until, Optional<UUID> raiser) {}
 
-    /// A creature being carried along by a Blood Spear: its speed and heading, the ticks left, and who threw it
-    public record SpearDrive(Vec3 velocity, int ticksLeft, Optional<UUID> thrower) {}
+    /// A creature being carried along by a Blood Spear or a whip: its speed and heading, the ticks left, who threw or
+    /// struck it, how hard a wall hits it, and whether that's blood magic (the spear's, which pays its blood back for
+    /// a kill) or a plain blow
+    public record SpearDrive(Vec3 velocity, int ticksLeft, Optional<UUID> thrower, float slamDamage, boolean bloodMagic) {
+        public SpearDrive next(int ticksLeft) {
+            return new SpearDrive(this.velocity, ticksLeft, this.thrower, this.slamDamage, this.bloodMagic);
+        }
+
+        public SpearDrive scaled(double share) {
+            return new SpearDrive(this.velocity.scale(share), this.ticksLeft, this.thrower, this.slamDamage, this.bloodMagic);
+        }
+    }
 
     public record ShadowAnchor(ResourceKey<Level> dimension, Vec3 position) {
         public static final Codec<ShadowAnchor> CODEC = RecordCodecBuilder.create(instance -> instance.group(
@@ -210,6 +261,38 @@ public final class ModAttachments {
     /// When each curse can next be unleashed, by game time. Not saved.
     public static final Supplier<AttachmentType<Map<Curse, Long>>> CURSE_COOLDOWNS = ATTACHMENT_TYPES.register("curse_cooldowns",
             () -> AttachmentType.<Map<Curse, Long>>builder(() -> Map.of()).build());
+
+    /// A creature under Exile's Mark, so the players about can draw it faint, as a ghost (see curse.Curses). Not saved.
+    public static final Supplier<AttachmentType<Boolean>> BANISHED_LOOK = ATTACHMENT_TYPES.register("banished_look",
+            () -> AttachmentType.builder(() -> false).sync(ByteBufCodecs.BOOL).build());
+
+    /// The game time a hunter's Ravenous Maw last fed (or was taken up), or Curses.MAW_PUT_AWAY. Not saved: logging in,
+    /// its patience starts over.
+    public static final Supplier<AttachmentType<Long>> MAW_FED = ATTACHMENT_TYPES.register("maw_fed",
+            () -> AttachmentType.builder(() -> Curses.MAW_PUT_AWAY).build());
+
+    /// A creature in the Shackles of the Damned, so the players about can draw the ghostly chains round it (see
+    /// client.renderer.SpectralChains). Not saved.
+    public static final Supplier<AttachmentType<Boolean>> ENCHAINED_LOOK = ATTACHMENT_TYPES.register("enchained_look",
+            () -> AttachmentType.builder(() -> false).sync(ByteBufCodecs.BOOL).build());
+
+    /// The game time a creature thrown down by Gravequake gets up again, or 0 if it's not down: players about see it
+    /// lying flat until then (see curse.Earthshatter)
+    public static final Supplier<AttachmentType<Long>> KNOCKED_DOWN_UNTIL = ATTACHMENT_TYPES.register("knocked_down_until",
+            () -> AttachmentType.builder(() -> 0L).sync(ByteBufCodecs.VAR_LONG).build());
+
+    /// A player being hauled in by Wraith's Tether (see curse.Grapple). Not saved.
+    public static final Supplier<AttachmentType<Optional<GrappleLine>>> GRAPPLE = ATTACHMENT_TYPES.register("grapple",
+            () -> AttachmentType.builder(() -> Optional.<GrappleLine>empty()).build());
+
+    /// Where Wraith's Tether hauls its wielder (where their feet end up), and the game time it lets go regardless
+    public record GrappleLine(Vec3 target, long until) {}
+
+    /// Wraithseeker's mark: the entity id of what the hunter's Wraithseeker arrows last struck, which every arrow after
+    /// hunts down while it lives; -1 for none. Sent to the hunter's own client, which outlines it. Not saved (ids don't
+    /// outlast the world being loaded).
+    public static final Supplier<AttachmentType<Integer>> WRAITHSEEKER_MARK = ATTACHMENT_TYPES.register("wraithseeker_mark",
+            () -> AttachmentType.builder(() -> -1).sync((holder, to) -> holder == to, ByteBufCodecs.VAR_INT).build());
 
     /// On an arrow loosed under Wraithseeker: how keenly it seeks. Not saved.
     public static final Supplier<AttachmentType<Integer>> SEEKING = ATTACHMENT_TYPES.register("seeking",

@@ -35,11 +35,6 @@
         },
         {
           "type": "minecraft:item",
-          "name": "crimsoncovenant:blood_parade_tome",
-          "weight": 6
-        },
-        {
-          "type": "minecraft:item",
           "name": "crimsoncovenant:bat_swarm_tome",
           "weight": 6
         },

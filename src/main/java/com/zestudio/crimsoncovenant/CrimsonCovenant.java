@@ -17,6 +17,7 @@ import com.zestudio.crimsoncovenant.registry.ModRecipes;
 import com.zestudio.crimsoncovenant.registry.ModStructures;
 import com.zestudio.crimsoncovenant.registry.ModVillagers;
 import com.zestudio.crimsoncovenant.registry.ModBlockEntities;
+import com.zestudio.crimsoncovenant.guide.LockedTomes;
 
 import net.minecraft.resources.Identifier;
 import net.neoforged.bus.api.IEventBus;
@@ -47,6 +48,7 @@ public class CrimsonCovenant {
         ModAttachments.ATTACHMENT_TYPES.register(modEventBus);
         ModMenus.MENUS.register(modEventBus);
         ModCreativeTabs.CREATIVE_MODE_TABS.register(modEventBus);
+        LockedTomes.LOOT_MODIFIERS.register(modEventBus);
         ModGameTests.register(modEventBus);
 
         modEventBus.addListener(this::commonSetup);

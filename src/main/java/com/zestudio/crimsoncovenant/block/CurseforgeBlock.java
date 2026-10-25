@@ -3,10 +3,10 @@ package com.zestudio.crimsoncovenant.block;
 import org.jspecify.annotations.Nullable;
 
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
-import com.zestudio.crimsoncovenant.curse.Curse;
 import com.zestudio.crimsoncovenant.curse.CurseforgeMenu;
 import com.zestudio.crimsoncovenant.registry.ModBlocks;
 import com.zestudio.crimsoncovenant.registry.ModItems;
+import com.zestudio.crimsoncovenant.guide.Souls;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -41,17 +41,25 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import net.minecraft.world.level.block.SoundType;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 
-/// A Curseforge: an anvil a ghost has been poured into, its iron split with cracks that glow a cold blue. Use a Ghost in
-/// a Bottle on any anvil to make one. Work at it to lay curses on weapons (see CurseforgeMenu); sneak, and it's an anvil
-/// still, one that never wears out. It doesn't fall, either.
+/// A Haunted Anvil (its id is still curseforge, from when hauntings were called curses): an old anvil, rusted and
+/// pitted, hung with rusty chains, that a ghost has been poured into. Its iron is split with cracks that give off a
+/// faint, pale ghost-light, and it whispers and creaks to itself. Use a Ghost in a Bottle on any anvil to make one. Work
+/// at it to lay hauntings on weapons (see CurseforgeMenu); sneak, and it's an anvil still, one that never wears out. It
+/// doesn't fall, either.
 @EventBusSubscriber(modid = CrimsonCovenant.MODID)
 public class CurseforgeBlock extends HorizontalDirectionalBlock {
     private static final Component TITLE = Component.translatable("container.crimsoncovenant.curseforge");
     private static final Component ANVIL_TITLE = Component.translatable("container.repair");
+    /// An anvil's sounds, deeper and duller: old, rusted iron
+    public static final SoundType SOUNDS = new SoundType(0.4F, 0.6F, SoundEvents.ANVIL_BREAK, SoundEvents.ANVIL_STEP, SoundEvents.ANVIL_PLACE,
+            SoundEvents.ANVIL_HIT, SoundEvents.ANVIL_FALL);
+    /// Its ghost-light: a pale, faded grey-green, nothing like the cold blue of the hauntings themselves
+    public static final int GHOST_LIGHT = 0x7FA8A2;
     // An anvil's shape: its long top runs across the way it faces
     private static final VoxelShape BASE = Block.box(2.0, 0.0, 2.0, 14.0, 4.0, 14.0);
     private static final VoxelShape X_SHAPE = Shapes.or(BASE, Block.box(3.0, 4.0, 4.0, 13.0, 5.0, 12.0), Block.box(4.0, 5.0, 6.0, 12.0, 10.0, 10.0),
@@ -79,11 +87,16 @@ public class CurseforgeBlock extends HorizontalDirectionalBlock {
         builder.add(FACING);
     }
 
-    /// Use it to lay curses; sneak and use it to work it as a plain anvil (which, unlike an anvil, it never wears out)
+    /// Use it to lay hauntings; sneak and use it to work it as a plain anvil (which, unlike an anvil, it never wears out)
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
         if (!level.isClientSide()) {
             player.openMenu(player.isSecondaryUseActive() ? anvil(level, pos) : state.getMenuProvider(level, pos));
+            // The ghost in it stirs: a groan of old chains, and a sigh
+            level.playSound(null, pos, SoundEvents.CHAIN_STEP, SoundSource.BLOCKS, 0.7F, 0.5F);
+            if (!player.isSecondaryUseActive()) {
+                level.playSound(null, pos, SoundEvents.SOUL_ESCAPE.value(), SoundSource.BLOCKS, 0.6F, 0.5F);
+            }
         }
         return InteractionResult.SUCCESS;
     }
@@ -97,7 +110,7 @@ public class CurseforgeBlock extends HorizontalDirectionalBlock {
         return new SimpleMenuProvider((id, inventory, player) -> new AsAnvil(id, inventory, ContainerLevelAccess.create(level, pos)), ANVIL_TITLE);
     }
 
-    /// The Curseforge worked as an anvil: repairing, renaming, combining enchantments, all as an anvil does. An anvil only
+    /// The Haunted Anvil worked as an anvil: repairing, renaming, combining enchantments, all as an anvil does. An anvil only
     /// wears out (chipped, damaged, then broken) if it's in the anvil tag, which the Curseforge isn't, so it never does.
     public static class AsAnvil extends AnvilMenu {
         public AsAnvil(int containerId, Inventory inventory, ContainerLevelAccess access) {
@@ -110,25 +123,36 @@ public class CurseforgeBlock extends HorizontalDirectionalBlock {
         }
     }
 
-    // The cracks breathe out a cold light
+    // The cracks breathe out a faint, pale light, now and then a wisp of the ghost slips out, and it whispers and
+    // creaks to itself
     @Override
     public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
-        if (random.nextInt(3) == 0) {
-            level.addParticle(new DustParticleOptions(Curse.COLOUR, 0.5F), pos.getX() + 0.2 + random.nextDouble() * 0.6, pos.getY() + 0.3 + random.nextDouble() * 0.7,
-                    pos.getZ() + 0.2 + random.nextDouble() * 0.6, 0.0, 0.01, 0.0);
+        if (random.nextInt(5) == 0) {
+            level.addParticle(new DustParticleOptions(GHOST_LIGHT, 0.4F), pos.getX() + 0.2 + random.nextDouble() * 0.6, pos.getY() + 0.3 + random.nextDouble() * 0.7,
+                    pos.getZ() + 0.2 + random.nextDouble() * 0.6, 0.0, 0.005, 0.0);
         }
-        if (random.nextInt(20) == 0) {
-            level.addParticle(ParticleTypes.SOUL, pos.getX() + 0.5, pos.getY() + 1.05, pos.getZ() + 0.5, 0.0, 0.02, 0.0);
+        if (random.nextInt(40) == 0) {
+            level.addParticle(ParticleTypes.SOUL, pos.getX() + 0.5, pos.getY() + 1.05, pos.getZ() + 0.5, 0.0, 0.015, 0.0);
+        }
+        if (random.nextInt(140) == 0) {
+            double x = pos.getX() + 0.5;
+            double y = pos.getY() + 0.5;
+            double z = pos.getZ() + 0.5;
+            switch (random.nextInt(3)) {
+                case 0 -> level.playLocalSound(x, y, z, SoundEvents.AMBIENT_SOUL_SAND_VALLEY_ADDITIONS.value(), SoundSource.BLOCKS, 0.5F, 0.7F + random.nextFloat() * 0.3F, false);
+                case 1 -> level.playLocalSound(x, y, z, SoundEvents.CHAIN_STEP, SoundSource.BLOCKS, 0.35F, 0.4F + random.nextFloat() * 0.2F, false);
+                default -> level.playLocalSound(x, y, z, SoundEvents.SOUL_ESCAPE.value(), SoundSource.BLOCKS, 0.3F, 0.45F + random.nextFloat() * 0.2F, false);
+            }
         }
     }
 
-    /// Pour a ghost into an anvil (any anvil, chipped or not) and it becomes a Curseforge
+    /// Pour a ghost into an anvil (any anvil, chipped or not) and it becomes a Haunted Anvil
     @SubscribeEvent
     static void pourAGhostIntoAnAnvil(PlayerInteractEvent.RightClickBlock event) {
         Player player = event.getEntity();
         ItemStack held = player.getItemInHand(event.getHand());
         BlockState anvil = event.getLevel().getBlockState(event.getPos());
-        if (!held.is(ModItems.GHOST_IN_A_BOTTLE.get()) || !anvil.is(BlockTags.ANVIL)) {
+        if (!Souls.isSoul(held) || !anvil.is(BlockTags.ANVIL)) {
             return;
         }
         event.setCanceled(true);
@@ -138,15 +162,15 @@ public class CurseforgeBlock extends HorizontalDirectionalBlock {
         }
     }
 
-    /// The ghost in the player's hand goes into the anvil at `pos`, making it a Curseforge; the empty bottle comes back
+    /// The ghost in the player's hand goes into the anvil at `pos`, making it a Haunted Anvil; the empty bottle comes back
     public static boolean pourGhost(ServerLevel level, BlockPos pos, Player player, InteractionHand hand) {
         ItemStack held = player.getItemInHand(hand);
         BlockState anvil = level.getBlockState(pos);
-        if (!held.is(ModItems.GHOST_IN_A_BOTTLE.get()) || !anvil.is(BlockTags.ANVIL)) {
+        if (!Souls.isSoul(held) || !anvil.is(BlockTags.ANVIL)) {
             return false;
         }
         forge(level, pos, anvil);
-        player.setItemInHand(hand, ItemUtils.createFilledResult(held, player, new ItemStack(ModItems.SILVERED_BOTTLE.get())));
+        player.setItemInHand(hand, ItemUtils.createFilledResult(held, player, Souls.emptyBottle(held)));
         return true;
     }
 
@@ -156,6 +180,7 @@ public class CurseforgeBlock extends HorizontalDirectionalBlock {
         level.playSound(null, pos, SoundEvents.SOUL_ESCAPE.value(), SoundSource.BLOCKS, 1.2F, 0.6F);
         level.playSound(null, pos, SoundEvents.ANVIL_LAND, SoundSource.BLOCKS, 0.6F, 0.5F);
         level.sendParticles(ParticleTypes.SOUL, pos.getX() + 0.5, pos.getY() + 1.0, pos.getZ() + 0.5, 20, 0.3, 0.3, 0.3, 0.03);
-        level.sendParticles(new DustParticleOptions(Curse.COLOUR, 1.2F), pos.getX() + 0.5, pos.getY() + 0.6, pos.getZ() + 0.5, 30, 0.4, 0.3, 0.4, 0.0);
+        level.playSound(null, pos, SoundEvents.AMBIENT_SOUL_SAND_VALLEY_ADDITIONS.value(), SoundSource.BLOCKS, 1.0F, 0.7F);
+        level.sendParticles(new DustParticleOptions(GHOST_LIGHT, 1.0F), pos.getX() + 0.5, pos.getY() + 0.6, pos.getZ() + 0.5, 30, 0.4, 0.3, 0.4, 0.0);
     }
 }

@@ -1,6 +1,7 @@
 package com.zestudio.crimsoncovenant.registry;
 
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
+import com.zestudio.crimsoncovenant.effect.EnchainedEffect;
 import com.zestudio.crimsoncovenant.effect.BlackBloodEffect;
 import com.zestudio.crimsoncovenant.effect.BloodFlightEffect;
 import com.zestudio.crimsoncovenant.effect.BloodLossEffect;
@@ -17,6 +18,7 @@ import com.zestudio.crimsoncovenant.effect.MiasmaEffect;
 import com.zestudio.crimsoncovenant.effect.CrimsonShroudEffect;
 import com.zestudio.crimsoncovenant.effect.CleanseEffect;
 import com.zestudio.crimsoncovenant.curse.Curse;
+import com.zestudio.crimsoncovenant.effect.KnockedDownEffect;
 
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.effect.MobEffect;
@@ -103,11 +105,10 @@ public final class ModEffects {
             () -> new MobEffect(MobEffectCategory.HARMFUL, Curse.COLOUR) {});
 
     /// Shackles of the Damned (the Enchain curse): chained where it stands
-    public static final DeferredHolder<MobEffect, MobEffect> ENCHAINED = MOB_EFFECTS.register("enchained",
-            () -> new MobEffect(MobEffectCategory.HARMFUL, 0x4A5A6A) {}
-                    .addAttributeModifier(Attributes.MOVEMENT_SPEED, CrimsonCovenant.id("effect.enchained.speed"), -1.0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL)
-                    .addAttributeModifier(Attributes.FLYING_SPEED, CrimsonCovenant.id("effect.enchained.flying_speed"), -1.0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL)
-                    .addAttributeModifier(Attributes.JUMP_STRENGTH, CrimsonCovenant.id("effect.enchained.jump"), -1.0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+    public static final DeferredHolder<MobEffect, EnchainedEffect> ENCHAINED = MOB_EFFECTS.register("enchained", EnchainedEffect::new);
+
+    /// Knocked Down (by Gravequake, the whip's Earthshatter haunting): flat on the ground, unable to move or fight
+    public static final DeferredHolder<MobEffect, KnockedDownEffect> KNOCKED_DOWN = MOB_EFFECTS.register("knocked_down", KnockedDownEffect::new);
 
     /// Crimson Shroud (upgraded Flight): wings of blood that glide like an elytra, boosted by Blood Charges
     public static final DeferredHolder<MobEffect, CrimsonShroudEffect> CRIMSON_SHROUD = MOB_EFFECTS.register("crimson_shroud", CrimsonShroudEffect::new);

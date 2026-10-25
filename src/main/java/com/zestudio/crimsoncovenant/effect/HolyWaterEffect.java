@@ -7,6 +7,7 @@ import com.zestudio.crimsoncovenant.registry.ModDamageTypes;
 import com.zestudio.crimsoncovenant.registry.ModEffects;
 import com.zestudio.crimsoncovenant.skill.BloodSkills;
 import com.zestudio.crimsoncovenant.vampirism.Vampirism;
+import com.zestudio.crimsoncovenant.entity.HauntedObject;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -21,7 +22,8 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 
 /// Holy Water: hurts undead creatures (and vampire players), strips away their Resistance and sets them alight
-/// with Holy Flame, which slows them and which water can't put out. Ghosts are destroyed instantly, and vampire
+/// with Holy Flame, which slows them and which water can't put out. Ghosts are destroyed instantly (and driven out of
+/// anything they've slipped into), and vampire
 /// players lose any blood skills they have active.
 /// Everything else is unaffected.
 /// Splash potions scale the effect down with distance; lingering clouds re-apply it every second.
@@ -34,7 +36,7 @@ public class HolyWaterEffect extends InstantaneousMobEffect {
     }
 
     public static boolean isAffected(LivingEntity entity) {
-        return entity.is(EntityTypeTags.UNDEAD) || (entity instanceof Player player && Vampirism.isVampire(player));
+        return entity.is(EntityTypeTags.UNDEAD) || entity instanceof HauntedObject || (entity instanceof Player player && Vampirism.isVampire(player));
     }
 
     @Override
@@ -53,8 +55,8 @@ public class HolyWaterEffect extends InstantaneousMobEffect {
             return;
         }
         DamageSource holyFire = entity.damageSources().source(ModDamageTypes.HOLY_FIRE, source, owner);
-        // Ghosts are banished outright
-        if (entity instanceof Ghost) {
+        // Ghosts are banished outright, and driven out of anything they've slipped into
+        if (entity instanceof Ghost || entity instanceof HauntedObject) {
             entity.hurtServer(level, holyFire, entity.getMaxHealth() * 10.0F);
             return;
         }

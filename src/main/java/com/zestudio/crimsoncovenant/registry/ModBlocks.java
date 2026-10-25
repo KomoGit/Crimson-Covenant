@@ -17,6 +17,8 @@ import com.zestudio.crimsoncovenant.block.CoffinBlock;
 import com.zestudio.crimsoncovenant.block.IronMaidenBlock;
 import com.zestudio.crimsoncovenant.block.BloodThroneBlock;
 import com.zestudio.crimsoncovenant.block.CurseforgeBlock;
+import com.zestudio.crimsoncovenant.block.GravestoneBlock;
+import com.zestudio.crimsoncovenant.block.TormentedSoulBlock;
 
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
@@ -39,6 +41,9 @@ public final class ModBlocks {
             .mapColor(MapColor.STONE).instrument(NoteBlockInstrument.BASEDRUM).requiresCorrectToolForDrops().strength(3.0F, 3.0F));
     public static final DeferredBlock<Block> DEEPSLATE_SILVER_ORE = BLOCKS.registerSimpleBlock("deepslate_silver_ore", properties -> properties
             .mapColor(MapColor.DEEPSLATE).instrument(NoteBlockInstrument.BASEDRUM).requiresCorrectToolForDrops().strength(4.5F, 3.0F).sound(SoundType.DEEPSLATE));
+    /// Nine silver ingots, the same as a block of iron (a beacon takes it too)
+    public static final DeferredBlock<Block> SILVER_BLOCK = BLOCKS.registerSimpleBlock("silver_block", properties -> properties
+            .mapColor(MapColor.METAL).instrument(NoteBlockInstrument.IRON_XYLOPHONE).requiresCorrectToolForDrops().strength(5.0F, 6.0F).sound(SoundType.IRON));
 
     // ---- Gravestones ----
 
@@ -51,12 +56,12 @@ public final class ModBlocks {
     private static final VoxelShape TOMB = DecorBlock.shape(
             new double[] {1, 0, 2, 15, 3, 14}, new double[] {7, 3, 4, 9, 4, 12}, new double[] {5, 3, 6, 11, 4, 8});
 
-    public static final DeferredBlock<DecorBlock> GRAVESTONE = gravestone("gravestone", HEADSTONE, MapColor.STONE);
-    public static final DeferredBlock<DecorBlock> MOSSY_GRAVESTONE = gravestone("mossy_gravestone", HEADSTONE, MapColor.STONE);
-    public static final DeferredBlock<DecorBlock> CRACKED_GRAVESTONE = gravestone("cracked_gravestone", HEADSTONE, MapColor.STONE);
-    public static final DeferredBlock<DecorBlock> STONE_CROSS = gravestone("stone_cross", CROSS, MapColor.STONE);
-    public static final DeferredBlock<DecorBlock> DEEPSLATE_OBELISK = gravestone("deepslate_obelisk", OBELISK, MapColor.DEEPSLATE);
-    public static final DeferredBlock<DecorBlock> STONE_TOMB = gravestone("stone_tomb", TOMB, MapColor.STONE);
+    public static final DeferredBlock<GravestoneBlock> GRAVESTONE = gravestone("gravestone", HEADSTONE, MapColor.STONE);
+    public static final DeferredBlock<GravestoneBlock> MOSSY_GRAVESTONE = gravestone("mossy_gravestone", HEADSTONE, MapColor.STONE);
+    public static final DeferredBlock<GravestoneBlock> CRACKED_GRAVESTONE = gravestone("cracked_gravestone", HEADSTONE, MapColor.STONE);
+    public static final DeferredBlock<GravestoneBlock> STONE_CROSS = gravestone("stone_cross", CROSS, MapColor.STONE);
+    public static final DeferredBlock<GravestoneBlock> DEEPSLATE_OBELISK = gravestone("deepslate_obelisk", OBELISK, MapColor.DEEPSLATE);
+    public static final DeferredBlock<GravestoneBlock> STONE_TOMB = gravestone("stone_tomb", TOMB, MapColor.STONE);
 
     // ---- Villager workstations ----
 
@@ -120,6 +125,11 @@ public final class ModBlocks {
             properties -> properties.mapColor(MapColor.METAL).strength(0.3F).sound(SoundType.GLASS).noOcclusion().pushReaction(PushReaction.POPPED)
                     .lightLevel(state -> state.getValue(SilveredBottleBlock.GHOST) ? SilveredBottleBlock.GHOST_LIGHT : 0));
 
+    /// A ghost crammed into a plain glass bottle, set down (see guide.Souls)
+    public static final DeferredBlock<TormentedSoulBlock> TORMENTED_SOUL = BLOCKS.registerBlock("tormented_soul", TormentedSoulBlock::new,
+            properties -> properties.mapColor(MapColor.NONE).strength(0.3F).sound(SoundType.GLASS).noOcclusion().pushReaction(PushReaction.POPPED)
+                    .lightLevel(state -> TormentedSoulBlock.LIGHT));
+
     /// Slept in like a bed, at any hour; the only bed a vampire can use
     public static final DeferredBlock<CoffinBlock> COFFIN = BLOCKS.registerBlock("coffin", CoffinBlock::new,
             properties -> properties.mapColor(MapColor.COLOR_BLACK).strength(1.5F).sound(SoundType.WOOD).noOcclusion().ignitedByLava().pushReaction(PushReaction.POPPED));
@@ -133,13 +143,13 @@ public final class ModBlocks {
 
     /// An anvil a ghost was poured into: lays curses on weapons, and still works as an anvil, one that never wears out
     public static final DeferredBlock<CurseforgeBlock> CURSEFORGE = BLOCKS.registerBlock("curseforge", CurseforgeBlock::new,
-            properties -> properties.mapColor(MapColor.METAL).requiresCorrectToolForDrops().strength(5.0F, 1200.0F).sound(SoundType.ANVIL).noOcclusion()
-                    .lightLevel(state -> 6));
+            properties -> properties.mapColor(MapColor.METAL).requiresCorrectToolForDrops().strength(5.0F, 1200.0F).sound(CurseforgeBlock.SOUNDS).noOcclusion()
+                    .lightLevel(state -> 3));
 
     private ModBlocks() {}
 
-    private static DeferredBlock<DecorBlock> gravestone(String name, VoxelShape shape, MapColor color) {
-        return BLOCKS.registerBlock(name, properties -> new DecorBlock(properties, shape),
+    private static DeferredBlock<GravestoneBlock> gravestone(String name, VoxelShape shape, MapColor color) {
+        return BLOCKS.registerBlock(name, properties -> new GravestoneBlock(properties, shape),
                 properties -> properties.mapColor(color).instrument(NoteBlockInstrument.BASEDRUM).requiresCorrectToolForDrops().strength(1.5F, 6.0F).noOcclusion());
     }
 }

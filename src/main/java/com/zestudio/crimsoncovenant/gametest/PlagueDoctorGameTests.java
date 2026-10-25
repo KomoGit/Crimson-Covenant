@@ -156,6 +156,15 @@ final class PlagueDoctorGameTests {
         player.interactOn(doctor, InteractionHand.MAIN_HAND, doctor.position());
         helper.assertTrue(!player.hasEffect(ModEffects.PLAGUE) && player.getMainHandItem().isEmpty(), Component.literal("A Plague Doctor villager should cure for emeralds"));
         helper.assertTrue(doctor.getTradingPlayer() == null, Component.literal("Curing shouldn't open his trades"));
+
+        // Sanguine Vampiris with no infection behind it yet (as from `/effect ... infinite`) is still his to cure
+        player.addEffect(new MobEffectInstance(ModEffects.SANGUINE_VAMPIRIS, MobEffectInstance.INFINITE_DURATION));
+        helper.assertTrue(!Vampirism.isInfected(player), Component.literal("The effect alone shouldn't have started an infection"));
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.EMERALD, PlagueDoctor.CURE_CURSE));
+        player.interactOn(doctor, InteractionHand.MAIN_HAND, doctor.position());
+        helper.assertTrue(!player.hasEffect(ModEffects.SANGUINE_VAMPIRIS) && player.getMainHandItem().isEmpty(),
+                Component.literal("A Plague Doctor villager should cure Sanguine Vampiris for emeralds"));
+        helper.assertTrue(doctor.getTradingPlayer() == null, Component.literal("Curing the curse shouldn't open his trades"));
         helper.assertTrue(spawnDoctor(helper, new BlockPos(1, 1, 1)).is(ModTags.Entities.VAMPIRE_PREY), Component.literal("Vampires should hunt Plague Doctors"));
         SkillGameTests.removePlayer(helper, player);
         doctor.discard();

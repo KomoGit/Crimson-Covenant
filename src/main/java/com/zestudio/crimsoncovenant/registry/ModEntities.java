@@ -25,6 +25,8 @@ import com.zestudio.crimsoncovenant.entity.SilverDustCloud;
 import com.zestudio.crimsoncovenant.entity.ThroneSeat;
 import com.zestudio.crimsoncovenant.entity.SpiritHand;
 import com.zestudio.crimsoncovenant.entity.SpiritWyrms;
+import com.zestudio.crimsoncovenant.entity.HauntedObject;
+import com.zestudio.crimsoncovenant.entity.WhipLash;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.BlockTags;
@@ -78,8 +80,11 @@ public final class ModEntities {
 
     /// Revenant's Grip: the ghostly hand that fights beside a hunter
     public static final DeferredHolder<EntityType<?>, EntityType<SpiritHand>> SPIRIT_HAND = ENTITY_TYPES.registerEntityType("spirit_hand", SpiritHand::new, MobCategory.MISC,
-            builder -> builder.noLootTable().noSummon().sized(0.5F, 0.5F).clientTrackingRange(10).updateInterval(1).fireImmune());
+            builder -> builder.noLootTable().noSummon().sized(0.8F, 0.8F).clientTrackingRange(10).updateInterval(1).fireImmune());
     /// The Wrath of the Twin Wyrms: two spirit wyrms tearing along a line
+    /// A whip's lash cracking out: only a sight and a sound
+    public static final DeferredHolder<EntityType<?>, EntityType<WhipLash>> WHIP_LASH = ENTITY_TYPES.registerEntityType("whip_lash", WhipLash::new, MobCategory.MISC,
+            builder -> builder.noLootTable().noSummon().noSave().sized(0.1F, 0.1F).clientTrackingRange(8).updateInterval(1).fireImmune());
     public static final DeferredHolder<EntityType<?>, EntityType<SpiritWyrms>> SPIRIT_WYRMS = ENTITY_TYPES.registerEntityType("spirit_wyrms", SpiritWyrms::new, MobCategory.MISC,
             builder -> builder.noLootTable().noSummon().sized(0.5F, 0.5F).clientTrackingRange(10).updateInterval(2).fireImmune());
 
@@ -97,9 +102,12 @@ public final class ModEntities {
     public static final DeferredHolder<EntityType<?>, EntityType<Werewolf>> WEREWOLF = ENTITY_TYPES.registerEntityType("werewolf", Werewolf::new, MobCategory.MONSTER,
             builder -> builder.sized(0.7F, 2.1F).eyeHeight(1.85F).clientTrackingRange(10).notInPeaceful());
 
-    // Spawned by GhostSpawner inside mineshafts and abandoned villages, not by biome
+    // Spawned by GhostSpawner inside mineshafts and abandoned villages, and risen from graveyards' gravestones, not by biome
     public static final DeferredHolder<EntityType<?>, EntityType<Ghost>> GHOST = ENTITY_TYPES.registerEntityType("ghost", Ghost::new, MobCategory.MONSTER,
             builder -> builder.sized(0.8F, 1.6F).eyeHeight(1.3F).clientTrackingRange(8).fireImmune().notInPeaceful());
+    /// Something a ghost has slipped into, floating about
+    public static final DeferredHolder<EntityType<?>, EntityType<HauntedObject>> HAUNTED_OBJECT = ENTITY_TYPES.registerEntityType("haunted_object", HauntedObject::new,
+            MobCategory.MISC, builder -> builder.noLootTable().noSummon().sized(0.9F, 0.9F).clientTrackingRange(8).fireImmune());
 
     public static final DeferredHolder<EntityType<?>, EntityType<SilverArrow>> SILVER_ARROW = ENTITY_TYPES.registerEntityType("silver_arrow", SilverArrow::new, MobCategory.MISC,
             builder -> builder.noLootTable().sized(0.5F, 0.5F).eyeHeight(0.13F).clientTrackingRange(4).updateInterval(20));
@@ -171,6 +179,7 @@ public final class ModEntities {
         event.put(SWARM_BAT.get(), Bat.createAttributes().build());
         event.put(HEADLESS_HORSEMAN.get(), HeadlessHorseman.createAttributes().build());
         event.put(GHOST.get(), Ghost.createAttributes().build());
+        event.put(HAUNTED_OBJECT.get(), HauntedObject.createAttributes().build());
         event.put(RAT.get(), Rat.createAttributes().build());
         event.put(PLAGUE_DOCTOR.get(), PlagueDoctor.createAttributes().build());
         event.put(WEREWOLF.get(), Werewolf.createAttributes().build());
@@ -189,7 +198,7 @@ public final class ModEntities {
         // Forests only, see data/crimsoncovenant/neoforge/biome_modifier/headless_horseman_spawns.json
         event.register(HEADLESS_HORSEMAN.get(), SpawnPlacementTypes.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
                 Monster::checkMonsterSpawnRules, RegisterSpawnPlacementsEvent.Operation.REPLACE);
-        // Caves only, see data/crimsoncovenant/neoforge/biome_modifier/vampire_bat_spawns.json
+        // Caves only, see data/crimsoncovenant/neoforge/biome_modifier/vampire_spawns.json
         event.register(VAMPIRE_BAT.get(), SpawnPlacementTypes.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
                 ModEntities::checkVampireBatSpawnRules, RegisterSpawnPlacementsEvent.Operation.REPLACE);
         // Forests, see data/crimsoncovenant/neoforge/biome_modifier/rat_spawns.json (villages get theirs from world.RatSpawner)

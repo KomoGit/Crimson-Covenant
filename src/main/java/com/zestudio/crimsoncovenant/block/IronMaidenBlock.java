@@ -9,6 +9,7 @@ import com.zestudio.crimsoncovenant.registry.ModItems;
 import com.zestudio.crimsoncovenant.registry.ModTags;
 import com.zestudio.crimsoncovenant.vampirism.BloodPool;
 import com.zestudio.crimsoncovenant.vampirism.Vampirism;
+import com.zestudio.crimsoncovenant.item.BloodBottleItem;
 
 import net.minecraft.ChatFormatting;
 import java.util.List;
@@ -56,6 +57,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import net.minecraft.world.item.Items;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
@@ -70,6 +72,8 @@ import net.neoforged.neoforge.event.entity.player.PlayerWakeUpEvent;
 /// much blood in them: once it's all been drawn they're gone (a villager now and then rising again as a zombie
 /// villager), and you need someone new. While anyone's inside, a thread of blood runs from the maiden to the coffin or
 /// throne, and now and then you hear them: a moan, a plea, banging on the iron.
+///
+/// Use an empty bottle on a filled maiden to draw off a Bottle of Blood, from the blood left in the captive.
 ///
 /// Sneak and use a maiden to open it and let its captive go; break it, and they go free too.
 @EventBusSubscriber(modid = CrimsonCovenant.MODID)
@@ -184,6 +188,32 @@ public class IronMaidenBlock extends HorizontalDirectionalBlock implements Entit
         }
         BlockEntityTicker<IronMaidenBlockEntity> ticker = IronMaidenBlockEntity::clientTick;
         return (BlockEntityTicker<T>) ticker;
+    }
+
+    /// An empty bottle, held to the seam between her doors, fills with the captive's blood
+    @Override
+    protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
+        if (!stack.is(Items.GLASS_BOTTLE) || !(level.getBlockEntity(lowerHalf(state, pos)) instanceof IronMaidenBlockEntity maiden) || !maiden.hasCaptive()) {
+            return InteractionResult.TRY_WITH_EMPTY_HAND;
+        }
+        if (level instanceof ServerLevel serverLevel) {
+            bottleBlood(serverLevel, maiden, player, hand);
+        }
+        return InteractionResult.SUCCESS;
+    }
+
+    /// Draws a Bottle of Blood's worth from the captive into the empty bottle in the player's hand (their last drops,
+    /// if that's all there is, bleeding them dry). Returns whether there was anyone to draw it from.
+    public static boolean bottleBlood(ServerLevel level, IronMaidenBlockEntity maiden, Player player, InteractionHand hand) {
+        ItemStack held = player.getItemInHand(hand);
+        if (!held.is(Items.GLASS_BOTTLE) || maiden.drain(BloodBottleItem.BLOOD) <= 0) {
+            return false;
+        }
+        player.setItemInHand(hand, ItemUtils.createFilledResult(held, player, new ItemStack(ModItems.BLOOD_BOTTLE.get())));
+        BlockPos pos = maiden.getBlockPos();
+        level.playSound(null, pos, SoundEvents.BOTTLE_FILL, SoundSource.BLOCKS, 1.0F, 0.8F);
+        level.sendParticles(new DustParticleOptions(BLOOD_RED, 0.8F), pos.getX() + 0.5, pos.getY() + 0.9, pos.getZ() + 0.5, 8, 0.2, 0.3, 0.2, 0.0);
+        return true;
     }
 
     /// Sneak and use it to let the captive out; otherwise it tells you how much life is left in them

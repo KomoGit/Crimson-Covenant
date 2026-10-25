@@ -1,0 +1,24 @@
+{
+  "values": [
+    "minecraft:crafting_table",
+    "minecraft:bookshelf",
+    "minecraft:carved_pumpkin",
+    "minecraft:jack_o_lantern",
+    "minecraft:pumpkin",
+    "minecraft:cauldron",
+    "minecraft:loom",
+    "minecraft:cartography_table",
+    "minecraft:fletching_table",
+    "minecraft:smithing_table",
+    "minecraft:stonecutter",
+    "minecraft:hay_block",
+    "minecraft:lantern",
+    "minecraft:soul_lantern",
+    "minecraft:flower_pot",
+    "minecraft:anvil",
+    "minecraft:chipped_anvil",
+    "minecraft:damaged_anvil",
+    "minecraft:grindstone",
+    "#minecraft:candles"
+  ]
+}

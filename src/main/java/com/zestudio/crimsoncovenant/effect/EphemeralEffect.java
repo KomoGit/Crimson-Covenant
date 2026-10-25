@@ -16,8 +16,6 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
@@ -42,7 +40,6 @@ import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 public class EphemeralEffect extends MobEffect {
     /// How far to look for open space when the effect ends inside a wall
     private static final int ESCAPE_RANGE = 8;
-    private static final int LANDING_SLOW_FALL = 100;
 
     public EphemeralEffect() {
         super(MobEffectCategory.BENEFICIAL, 0xBFE8F0);
@@ -111,9 +108,7 @@ public class EphemeralEffect extends MobEffect {
                 player.teleportTo(open.x, open.y, open.z);
             }
         }
-        if (!player.isCreative() && !player.isSpectator()) {
-            player.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, LANDING_SLOW_FALL, 0, false, false, true));
-        }
+        SoftLanding.begin(player);
         level.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.SOUL_ESCAPE.value(), SoundSource.PLAYERS, 1.0F, 1.2F);
     }
 

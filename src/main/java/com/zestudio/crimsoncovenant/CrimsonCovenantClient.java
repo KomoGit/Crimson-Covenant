@@ -34,9 +34,12 @@ import com.zestudio.crimsoncovenant.registry.ModAttachments;
 import com.zestudio.crimsoncovenant.registry.ModEntities;
 import com.zestudio.crimsoncovenant.registry.ModMenus;
 import com.zestudio.crimsoncovenant.vampirism.Vampirism;
-import com.zestudio.crimsoncovenant.client.model.SpiritHandModel;
 import com.zestudio.crimsoncovenant.client.renderer.SpiritHandRenderer;
+import com.zestudio.crimsoncovenant.client.renderer.SpiritWyrmsRenderer;
 import com.zestudio.crimsoncovenant.client.screen.CurseforgeScreen;
+import com.zestudio.crimsoncovenant.client.renderer.HauntedObjectRenderer;
+import com.zestudio.crimsoncovenant.client.renderer.WhipLashRenderer;
+import com.zestudio.crimsoncovenant.curse.Earthshatter;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.geom.builders.CubeDeformation;
@@ -48,11 +51,14 @@ import net.minecraft.client.renderer.entity.NoopRenderer;
 import net.minecraft.client.renderer.entity.ThrownItemRenderer;
 import net.minecraft.client.renderer.entity.player.AvatarRenderer;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
+import net.minecraft.client.renderer.entity.LivingEntityRenderer;
+import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.world.entity.Avatar;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.player.PlayerModelType;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -68,6 +74,7 @@ import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 import net.neoforged.neoforge.client.renderstate.AvatarRenderStateModifier;
 import net.neoforged.neoforge.client.renderstate.RegisterRenderStateModifiersEvent;
 import net.neoforged.neoforge.client.event.ViewportEvent;
+import com.google.common.reflect.TypeToken;
 
 // This class never loads on dedicated servers, so client-only code (renderers, screens, keybinds) is safe here
 @Mod(value = CrimsonCovenant.MODID, dist = Dist.CLIENT)
@@ -98,7 +105,6 @@ public class CrimsonCovenantClient {
         event.registerLayerDefinition(ModModelLayers.WEREWOLF, WerewolfModel::createBodyLayer);
         event.registerLayerDefinition(ModModelLayers.GARGOYLE, GargoyleModel::createBodyLayer);
         event.registerLayerDefinition(ModModelLayers.BLOOD_SPEAR, BloodSpearModel::createLayer);
-        event.registerLayerDefinition(ModModelLayers.SPIRIT_HAND, SpiritHandModel::createLayer);
         event.registerLayerDefinition(ModModelLayers.RAT, RatModel::createBodyLayer);
         event.registerLayerDefinition(ModModelLayers.PLAGUE_DOCTOR, PlagueDoctorModel::createBodyLayer);
         event.registerLayerDefinition(ModModelLayers.BAT_WINGS, BatWingsModel::createLayer);
@@ -131,7 +137,9 @@ public class CrimsonCovenantClient {
         event.registerEntityRenderer(ModEntities.MASTER_VAMPIRE.get(), context -> new VampireRenderer(context, VampireRenderer.MASTER_VAMPIRE_TEXTURE, 1.15F));
         event.registerEntityRenderer(ModEntities.BLOOD_SPEAR.get(), BloodSpearRenderer::new);
         event.registerEntityRenderer(ModEntities.SPIRIT_HAND.get(), SpiritHandRenderer::new);
-        event.registerEntityRenderer(ModEntities.SPIRIT_WYRMS.get(), NoopRenderer::new);
+        event.registerEntityRenderer(ModEntities.SPIRIT_WYRMS.get(), SpiritWyrmsRenderer::new);
+        event.registerEntityRenderer(ModEntities.HAUNTED_OBJECT.get(), HauntedObjectRenderer::new);
+        event.registerEntityRenderer(ModEntities.WHIP_LASH.get(), WhipLashRenderer::new);
         // A big, glowing ball of blood
         event.registerEntityRenderer(ModEntities.BLOOD_ORB.get(), context -> new ThrownItemRenderer<>(context, 3.0F, true));
     }
@@ -192,6 +200,26 @@ public class CrimsonCovenantClient {
                 if (avatar instanceof Player player && player.getData(ModAttachments.GHOSTLY)) {
                     state.isInvisible = true;
                     state.isInvisibleToPlayer = false;
+                }
+            }
+        });
+        // Under Exile's Mark, any creature is drawn faint the same way, a ghost of itself
+        event.registerEntityModifier(new TypeToken<LivingEntityRenderer<LivingEntity, LivingEntityRenderState, ?>>() {}, (LivingEntity entity, LivingEntityRenderState state) -> {
+            if (entity.getData(ModAttachments.BANISHED_LOOK)) {
+                state.isInvisible = true;
+                state.isInvisibleToPlayer = false;
+            }
+            // Thrown down by Gravequake: tipped over on its side the way a dying creature is, falling over quickly, then
+            // getting up again over its last half second
+            long until = entity.getData(ModAttachments.KNOCKED_DOWN_UNTIL);
+            if (until != 0L && state.deathTime == 0.0F) {
+                float partial = Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false);
+                float left = until - entity.level().getGameTime() - partial;
+                float down = Earthshatter.KNOCKDOWN_TICKS - left;
+                float flat = Mth.clamp(Math.min(down / 4.0F, left / 10.0F), 0.0F, 1.0F);
+                if (flat > 0.0F) {
+                    // A dying creature lies flat from a death time of about 13.5
+                    state.deathTime = 1.0F + 12.5F * flat * flat;
                 }
             }
         });

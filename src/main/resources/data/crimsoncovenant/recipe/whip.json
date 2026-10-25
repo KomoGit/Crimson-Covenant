@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "L": "minecraft:leather",
+    "S": "minecraft:string",
+    "N": "crimsoncovenant:silver_nugget"
+  },
+  "pattern": [
+    "  N",
+    " SN",
+    "LS "
+  ],
+  "result": {
+    "count": 1,
+    "id": "crimsoncovenant:whip"
+  }
+}

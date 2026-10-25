@@ -6,11 +6,15 @@ import com.zestudio.crimsoncovenant.entity.Hunter;
 import com.zestudio.crimsoncovenant.entity.MasterHunter;
 import com.zestudio.crimsoncovenant.entity.MasterVampire;
 import com.zestudio.crimsoncovenant.entity.Vampire;
+import com.zestudio.crimsoncovenant.hunter.HunterRanks;
 import com.zestudio.crimsoncovenant.registry.ModEffects;
 import com.zestudio.crimsoncovenant.registry.ModEntities;
 import com.zestudio.crimsoncovenant.registry.ModItems;
 import com.zestudio.crimsoncovenant.world.HunterPartySpawner;
+import com.zestudio.crimsoncovenant.entity.Gargoyle;
 
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
@@ -77,6 +81,13 @@ final class HunterGameTests {
         // Followers are hunters, now and then a chemist among them
         int followers = helper.getEntities(ModEntities.HUNTER.get()).size() + helper.getEntities(ModEntities.HUNTER_CHEMIST.get()).size();
         helper.assertTrue(followers == 2, Component.literal("Master Hunter should have 2 followers, has " + followers));
+        // And his gargoyle, at his side
+        List<Gargoyle> gargoyles = helper.getEntities(ModEntities.CATHEDRAL_GARGOYLE.get());
+        helper.assertTrue(gargoyles.size() == 1, Component.literal("Master Hunter should bring 1 gargoyle, brought " + gargoyles.size()));
+        Gargoyle gargoyle = gargoyles.getFirst();
+        helper.assertTrue(gargoyle.isEscort() && master.getUUID().equals(gargoyle.getOwnerUUID()) && gargoyle.isFollowing(),
+                Component.literal("The gargoyle should follow the Master Hunter"));
+        helper.assertTrue(gargoyle.isAlly(master) && !gargoyle.removeWhenFarAway(0.0), Component.literal("The gargoyle should be on his side, and stay while he's near"));
         helper.succeed();
     }
 
@@ -264,5 +275,25 @@ final class HunterGameTests {
             helper.assertTrue(hunter.getTarget() != cow && cow.getHealth() == cow.getMaxHealth(), Component.literal("Hunter should not attack animals"));
             helper.succeed();
         });
+    }
+
+    static void rankCommandsSetRanks(GameTestHelper helper) {
+        ServerPlayer player = SkillGameTests.makePlayer(helper);
+        // Run by the server (so with every permission), as the player, so @s is them
+        CommandSourceStack source = helper.getLevel().getServer().createCommandSourceStack().withEntity(player).withSuppressedOutput();
+        Commands commands = helper.getLevel().getServer().getCommands();
+        commands.performPrefixedCommand(source, "crimsoncovenant hunter @s rank slayer");
+        helper.assertValueEqual(HunterRanks.get(player), HunterRanks.SLAYER, "hunter rank after /crimsoncovenant hunter @s rank slayer");
+        commands.performPrefixedCommand(source, "crimsoncovenant hunter @s promote");
+        helper.assertValueEqual(HunterRanks.get(player), HunterRanks.WARDEN, "hunter rank after promote");
+        commands.performPrefixedCommand(source, "crimsoncovenant hunter @s rank grand_hunter");
+        commands.performPrefixedCommand(source, "crimsoncovenant hunter @s promote");
+        helper.assertValueEqual(HunterRanks.get(player), HunterRanks.GRAND_HUNTER, "hunter rank after promoting a Grand Hunter");
+        commands.performPrefixedCommand(source, "crimsoncovenant hunter @s demote");
+        helper.assertValueEqual(HunterRanks.get(player), HunterRanks.WARDEN, "hunter rank after demote");
+        commands.performPrefixedCommand(source, "crimsoncovenant hunter @s rank none");
+        helper.assertValueEqual(HunterRanks.get(player), HunterRanks.NONE, "hunter rank after rank none");
+        SkillGameTests.removePlayer(helper, player);
+        helper.succeed();
     }
 }

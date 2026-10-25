@@ -41,6 +41,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
+import com.zestudio.crimsoncovenant.guide.Souls;
 
 /// A Silvered Bottle: a glass bottle lined with silver dust, the one thing that can hold a ghost. Use an empty one on
 /// a ghost to bottle it (and a full one on thin air to let it out again). Either can be set down on a floor or a
@@ -131,8 +132,6 @@ public class SilveredBottleBlock extends Block implements EntityBlock {
     }
 
     public static void bottle(Player player, Ghost ghost, net.minecraft.world.InteractionHand hand) {
-        ghost.level().playSound(null, ghost.getX(), ghost.getY(), ghost.getZ(), SoundEvents.BOTTLE_FILL_DRAGONBREATH, SoundSource.PLAYERS, 1.0F, 0.8F);
-        ghost.discard();
-        player.setItemInHand(hand, ItemUtils.createFilledResult(player.getItemInHand(hand), player, new ItemStack(ModItems.GHOST_IN_A_BOTTLE.get())));
+        Souls.capture(player, ghost, hand, new ItemStack(ModItems.GHOST_IN_A_BOTTLE.get()));
     }
 }

@@ -1,7 +1,12 @@
 package com.zestudio.crimsoncovenant.skill;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 
+import com.zestudio.crimsoncovenant.CrimsonCovenant;
+import com.zestudio.crimsoncovenant.vampirism.VampireAge;
+import com.zestudio.crimsoncovenant.vampirism.Vampirism;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -16,10 +21,14 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.level.Level;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
 
 /// A translated blood skill. It isn't held to be used: it's worn in one of the skill slots (use it to put it on, or
 /// open the Blood Skills screen) and cast with that slot's key, paying its blood cost. Only vampires can cast.
 /// Skills stay with their owner through death (see SkillKeeper), but can be moved around and traded freely.
+@EventBusSubscriber(modid = CrimsonCovenant.MODID)
 public class SkillItem extends Item {
     private final BloodSkill skill;
 
@@ -50,24 +59,39 @@ public class SkillItem extends Item {
         return InteractionResult.SUCCESS;
     }
 
+    /// The skill's cost, right under its description: what it costs whoever's looking, cheaper for an old vampire (see
+    /// VampireAge)
+    @SubscribeEvent
+    static void describeCost(ItemTooltipEvent event) {
+        if (!(event.getItemStack().getItem() instanceof SkillItem item) || event.getToolTip().isEmpty()) {
+            return;
+        }
+        ItemStack stack = event.getItemStack();
+        Player player = event.getEntity();
+        int fullCost = item.skill.cost() + SkillUpgrade.extraCost(stack);
+        int cost = player != null && Vampirism.isVampire(player) ? VampireAge.discounted(fullCost, player) : fullCost;
+        List<Component> lines = new ArrayList<>();
+        if (item.skill.spendsAllBlood()) {
+            lines.add(Component.translatable("item.crimsoncovenant.skill.cost_all").withStyle(ChatFormatting.DARK_RED, ChatFormatting.BOLD));
+            lines.add(Component.translatable("item.crimsoncovenant.skill.cost_all.minimum", cost).withStyle(ChatFormatting.DARK_RED));
+        } else {
+            lines.add(Component.translatable("item.crimsoncovenant.skill.cost", cost).withStyle(ChatFormatting.DARK_RED));
+        }
+        if (cost < fullCost) {
+            lines.add(Component.translatable("item.crimsoncovenant.skill.cost.aged", fullCost, VampireAge.tierName(VampireAge.tier(player))).withStyle(ChatFormatting.DARK_GRAY));
+        }
+        // After the name and the description
+        // Right under its name
+        event.getToolTip().addAll(Math.min(1, event.getToolTip().size()), lines);
+    }
+
+    /// Its cost (from describeCost) and whether it's upgraded: all else about it is in the Codex Sanguinis
     @Override
     public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay display, Consumer<Component> builder, TooltipFlag flag) {
-        builder.accept(Component.translatable("item.crimsoncovenant.skill.description." + this.skill.getName()).withStyle(ChatFormatting.GRAY));
-        int baseCost = this.skill.cost() + SkillUpgrade.extraCost(stack);
-        Component cost = this.skill.spendsAllBlood()
-                ? Component.translatable("item.crimsoncovenant.skill.cost_all", baseCost)
-                : Component.translatable("item.crimsoncovenant.skill.cost", baseCost);
-        builder.accept(cost.copy().withStyle(ChatFormatting.DARK_RED));
         SkillUpgrade upgrade = SkillUpgrade.forSkill(this.skill);
-        if (upgrade != null) {
-            Component name = Component.translatable("skill_upgrade.crimsoncovenant." + upgrade.getName());
-            if (SkillUpgrade.isUpgraded(stack)) {
-                builder.accept(Component.translatable("item.crimsoncovenant.skill.upgraded", name).withStyle(ChatFormatting.RED));
-                builder.accept(Component.translatable("skill_upgrade.crimsoncovenant." + upgrade.getName() + ".description").withStyle(ChatFormatting.GRAY));
-            } else {
-                builder.accept(Component.translatable("item.crimsoncovenant.skill.upgradable", name, upgrade.extraCost()).withStyle(ChatFormatting.DARK_GRAY));
-            }
+        if (upgrade != null && SkillUpgrade.isUpgraded(stack)) {
+            builder.accept(Component.translatable("item.crimsoncovenant.skill.upgraded", Component.translatable("skill_upgrade.crimsoncovenant." + upgrade.getName()))
+                    .withStyle(ChatFormatting.RED));
         }
-        builder.accept(Component.translatable("item.crimsoncovenant.skill.vampires_only").withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
     }
 }

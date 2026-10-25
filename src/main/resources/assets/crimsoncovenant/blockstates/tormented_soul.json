@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "crimsoncovenant:block/tormented_soul"
+    },
+    "facing=east": {
+      "model": "crimsoncovenant:block/tormented_soul",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "crimsoncovenant:block/tormented_soul",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "crimsoncovenant:block/tormented_soul",
+      "y": 270
+    }
+  }
+}

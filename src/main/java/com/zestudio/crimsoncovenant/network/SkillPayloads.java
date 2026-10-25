@@ -8,6 +8,9 @@ import com.zestudio.crimsoncovenant.skill.SkillSlots;
 import com.zestudio.crimsoncovenant.skill.SkillsMenu;
 import com.zestudio.crimsoncovenant.vampirism.Vampirism;
 import com.zestudio.crimsoncovenant.curse.Curses;
+import com.zestudio.crimsoncovenant.item.WhipItem;
+import com.zestudio.crimsoncovenant.guide.SkillLore;
+import com.zestudio.crimsoncovenant.skill.BloodSkill;
 
 import io.netty.buffer.ByteBuf;
 
@@ -53,6 +56,28 @@ public final class SkillPayloads {
     public record UnleashCurse() implements CustomPacketPayload {
         public static final Type<UnleashCurse> TYPE = new Type<>(CrimsonCovenant.id("unleash_curse"));
         public static final StreamCodec<ByteBuf, UnleashCurse> STREAM_CODEC = StreamCodec.unit(new UnleashCurse());
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
+    /// The whip in hand cracked (the attack key, see client.ModKeyMappings)
+    public record WhipCrack() implements CustomPacketPayload {
+        public static final Type<WhipCrack> TYPE = new Type<>(CrimsonCovenant.id("whip_crack"));
+        public static final StreamCodec<ByteBuf, WhipCrack> STREAM_CODEC = StreamCodec.unit(new WhipCrack());
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
+    /// Unlock this blood skill (by ordinal) in the Codex Sanguinis (see guide.SkillLore)
+    public record UnlockSkill(int skill) implements CustomPacketPayload {
+        public static final Type<UnlockSkill> TYPE = new Type<>(CrimsonCovenant.id("unlock_skill"));
+        public static final StreamCodec<ByteBuf, UnlockSkill> STREAM_CODEC = ByteBufCodecs.VAR_INT.map(UnlockSkill::new, UnlockSkill::skill);
 
         @Override
         public Type<? extends CustomPacketPayload> type() {
@@ -120,6 +145,16 @@ public final class SkillPayloads {
             registrar.playToServer(UnleashCurse.TYPE, UnleashCurse.STREAM_CODEC, (payload, context) -> {
                 if (context.player() instanceof ServerPlayer player) {
                     Curses.unleash(player);
+                }
+            });
+            registrar.playToServer(WhipCrack.TYPE, WhipCrack.STREAM_CODEC, (payload, context) -> {
+                if (context.player() instanceof ServerPlayer player) {
+                    WhipItem.crack(player);
+                }
+            });
+            registrar.playToServer(UnlockSkill.TYPE, UnlockSkill.STREAM_CODEC, (payload, context) -> {
+                if (context.player() instanceof ServerPlayer player && payload.skill() >= 0 && payload.skill() < BloodSkill.values().length) {
+                    SkillLore.unlock(player, BloodSkill.values()[payload.skill()]);
                 }
             });
             registrar.playToServer(OpenSkills.TYPE, OpenSkills.STREAM_CODEC, (payload, context) -> {

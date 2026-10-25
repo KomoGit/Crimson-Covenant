@@ -7,12 +7,16 @@ import com.zestudio.crimsoncovenant.registry.ModBlockEntities;
 import com.zestudio.crimsoncovenant.skill.BloodSkill;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.entity.player.Player;
+import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 
 /// How far an Ancient Translator has got with its tome. The reading runs on life: it only goes on while there are
 /// captives in Iron Maidens near the translator to feed it, each maiden (up to MAX_MAIDENS of them) quickening it, and
@@ -28,6 +32,8 @@ public class AncientTranslatorBlockEntity extends BlockEntity {
     private int feeders;
     private int recheck;
     private int ticksReading;
+    /// Who brought the tome being read
+    private @Nullable UUID reader;
 
     public AncientTranslatorBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.ANCIENT_TRANSLATOR.get(), pos, state);
@@ -54,6 +60,15 @@ public class AncientTranslatorBlockEntity extends BlockEntity {
 
     public int progress() {
         return this.progress;
+    }
+
+    public void setReader(Player player) {
+        this.reader = player.getUUID();
+        this.setChanged();
+    }
+
+    public @Nullable UUID reader() {
+        return this.reader;
     }
 
     void startOver() {
@@ -95,6 +110,7 @@ public class AncientTranslatorBlockEntity extends BlockEntity {
         super.loadAdditional(input);
         this.progress = input.getIntOr("progress", 0);
         this.ticksReading = input.getIntOr("ticks_reading", 0);
+        this.reader = input.read("reader", UUIDUtil.CODEC).orElse(null);
     }
 
     @Override
@@ -102,5 +118,6 @@ public class AncientTranslatorBlockEntity extends BlockEntity {
         super.saveAdditional(output);
         output.putInt("progress", this.progress);
         output.putInt("ticks_reading", this.ticksReading);
+        output.storeNullable("reader", UUIDUtil.CODEC, this.reader);
     }
 }

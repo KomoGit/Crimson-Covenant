@@ -41,7 +41,8 @@
     "body": "crimsoncovenant:block/curseforge",
     "top": "crimsoncovenant:block/curseforge_top",
     "cracks": "crimsoncovenant:block/curseforge_cracks",
-    "cracks_top": "crimsoncovenant:block/curseforge_cracks_top"
+    "cracks_top": "crimsoncovenant:block/curseforge_cracks_top",
+    "chain": "crimsoncovenant:block/curseforge_chain"
   },
   "elements": [
     {
@@ -374,7 +375,7 @@
           "rotation": 270
         }
       },
-      "light_emission": 15
+      "light_emission": 5
     },
     {
       "from": [
@@ -437,7 +438,7 @@
           "rotation": 270
         }
       },
-      "light_emission": 15
+      "light_emission": 5
     },
     {
       "from": [
@@ -490,7 +491,7 @@
           "rotation": 270
         }
       },
-      "light_emission": 15
+      "light_emission": 5
     },
     {
       "from": [
@@ -563,7 +564,189 @@
           "rotation": 270
         }
       },
-      "light_emission": 15
+      "light_emission": 5
+    },
+    {
+      "from": [
+        3.0,
+        2.5,
+        1.0
+      ],
+      "to": [
+        6.0,
+        10.0,
+        1.0
+      ],
+      "shade": false,
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            3,
+            7.5
+          ],
+          "texture": "#chain"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            3,
+            7.5
+          ],
+          "texture": "#chain"
+        }
+      }
+    },
+    {
+      "from": [
+        4.5,
+        2.5,
+        -0.5
+      ],
+      "to": [
+        4.5,
+        10.0,
+        2.5
+      ],
+      "shade": false,
+      "faces": {
+        "east": {
+          "uv": [
+            0,
+            0,
+            3,
+            7.5
+          ],
+          "texture": "#chain"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            3,
+            7.5
+          ],
+          "texture": "#chain"
+        }
+      }
+    },
+    {
+      "from": [
+        10.0,
+        5.5,
+        15.0
+      ],
+      "to": [
+        13.0,
+        10.0,
+        15.0
+      ],
+      "shade": false,
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            3,
+            3,
+            7.5
+          ],
+          "texture": "#chain"
+        },
+        "south": {
+          "uv": [
+            0,
+            3,
+            3,
+            7.5
+          ],
+          "texture": "#chain"
+        }
+      }
+    },
+    {
+      "from": [
+        11.5,
+        5.5,
+        13.5
+      ],
+      "to": [
+        11.5,
+        10.0,
+        16.5
+      ],
+      "shade": false,
+      "faces": {
+        "east": {
+          "uv": [
+            0,
+            3,
+            3,
+            7.5
+          ],
+          "texture": "#chain"
+        },
+        "west": {
+          "uv": [
+            0,
+            3,
+            3,
+            7.5
+          ],
+          "texture": "#chain"
+        }
+      }
+    },
+    {
+      "from": [
+        5.6,
+        6.25,
+        3.6
+      ],
+      "to": [
+        10.4,
+        8.75,
+        12.4
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            12,
+            4.8,
+            14.5
+          ],
+          "texture": "#chain"
+        },
+        "south": {
+          "uv": [
+            0,
+            12,
+            4.8,
+            14.5
+          ],
+          "texture": "#chain"
+        },
+        "east": {
+          "uv": [
+            0,
+            12,
+            8.8,
+            14.5
+          ],
+          "texture": "#chain"
+        },
+        "west": {
+          "uv": [
+            0,
+            12,
+            8.8,
+            14.5
+          ],
+          "texture": "#chain"
+        }
+      }
     }
   ]
 }

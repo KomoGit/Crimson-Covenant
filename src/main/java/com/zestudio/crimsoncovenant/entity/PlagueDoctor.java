@@ -179,10 +179,16 @@ public class PlagueDoctor extends AbstractVillager {
         if (player.hasEffect(ModEffects.MIASMA)) {
             cost += CURE_MIASMA;
         }
-        if (Vampirism.isInfected(player) && !Vampirism.isVampire(player)) {
+        if (hasCurableCurse(player)) {
             cost += CURE_CURSE;
         }
         return cost;
+    }
+
+    /// The vampire's curse in their blood, not yet taken. The effect counts on its own (one given by `/effect`, say,
+    /// before an infection has started to match it), the same as it does when they die (see Vampirism).
+    private static boolean hasCurableCurse(Player player) {
+        return Vampirism.isTainted(player) && !Vampirism.isVampire(player);
     }
 
     @Override
@@ -237,7 +243,7 @@ public class PlagueDoctor extends AbstractVillager {
             takeEmeralds(player.getInventory(), cost);
         }
         CleanseEffect.cleanse(player);
-        if (Vampirism.isInfected(player) && !Vampirism.isVampire(player)) {
+        if (hasCurableCurse(player)) {
             Vampirism.cure(player);
         }
         player.sendOverlayMessage(Component.translatable("message.crimsoncovenant.plague_doctor.cured", cost).withStyle(ChatFormatting.GREEN));

@@ -6,6 +6,7 @@
     "BrewingStandBlockEntityMixin",
     "CrafterBlockMixin",
     "CraftingMenuMixin",
+    "EntityMixin",
     "PlayerMixin",
     "SmithingMenuMixin",
     "StructureTemplatePoolAccessor"

@@ -1,0 +1,17 @@
+{
+  "values": [
+    "crimsoncovenant:vampire",
+    "crimsoncovenant:master_vampire",
+    "crimsoncovenant:vampire_bat",
+    "crimsoncovenant:hunter",
+    "crimsoncovenant:hunter_chemist",
+    "crimsoncovenant:master_hunter",
+    "crimsoncovenant:werewolf",
+    "crimsoncovenant:ghost",
+    "crimsoncovenant:headless_horseman",
+    "crimsoncovenant:rat",
+    "crimsoncovenant:plague_doctor",
+    "crimsoncovenant:cathedral_gargoyle",
+    "crimsoncovenant:blood_gargoyle"
+  ]
+}

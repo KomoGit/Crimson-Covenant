@@ -16,7 +16,8 @@ public enum BloodSkill {
     ARMOR_OF_ANCIENT("armor_of_ancient", 50, 240, Rarity.RARE, Tier.UNUSUAL),
     BLOOD_SPEAR("blood_spear", 10, 10, Rarity.RARE, Tier.UNUSUAL),
     DAYWALKER("daywalker", 100, 40, Rarity.UNCOMMON, Tier.NEO),
-    /// Spends the whole bar, but needs at least `cost` blood to cast
+    /// Spends the whole bar, every drop, and gives none back (its kills don't feed the vampire); needs at least `cost`
+    /// blood to cast
     BLOOD_PARADE("blood_parade", 30, 100, Rarity.EPIC, Tier.ANCIENT),
     BAT_SWARM("bat_swarm", 30, 160, Rarity.UNCOMMON, Tier.NEO),
     NIGHT_OF_TERROR("night_of_terror", 60, 600, Rarity.EPIC, Tier.ANCIENT),
@@ -98,6 +99,11 @@ public enum BloodSkill {
 
     public Rarity rarity() {
         return this.rarity;
+    }
+
+    /// Its name: "Dash", "Blood Parade"
+    public Component displayName() {
+        return this.skillItem().getName(this.skillItem().getDefaultInstance());
     }
 
     public Item skillItem() {

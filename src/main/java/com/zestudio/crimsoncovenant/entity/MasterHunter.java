@@ -5,6 +5,7 @@ import org.jspecify.annotations.Nullable;
 import com.zestudio.crimsoncovenant.effect.HolyWaterEffect;
 import com.zestudio.crimsoncovenant.registry.ModDataComponents;
 import com.zestudio.crimsoncovenant.registry.ModPotions;
+import com.zestudio.crimsoncovenant.registry.ModEntities;
 
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
@@ -39,10 +40,15 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.Pose;
+import net.minecraft.world.entity.SpawnGroupData;
+import net.minecraft.world.level.ServerLevelAccessor;
 
 /// The hunters' champion, and the Master Vampire's counterpart. Always leads its party, carries a Smite axe
 /// and a shield bearing the hunters' banner (which blocks some attacks from the front), and throws
-/// splash potions of Holy Water at undead foes. Shows a boss bar to nearby players.
+/// splash potions of Holy Water at undead foes. Takes the field with a Cathedral Gargoyle at his side. Shows a boss
+/// bar to nearby players.
 public class MasterHunter extends Hunter {
     private static final float SHIELD_BLOCK_CHANCE = 0.33F;
 
@@ -82,6 +88,33 @@ public class MasterHunter extends Hunter {
                 .add(Attributes.ARMOR, 8.0)
                 .add(Attributes.KNOCKBACK_RESISTANCE, 0.5)
                 .add(Attributes.FOLLOW_RANGE, 40.0);
+    }
+
+    // Wherever he comes from (a hunting party, a spawn egg, a command), his gargoyle comes with him
+    @Override
+    public @Nullable SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty, EntitySpawnReason spawnReason,
+            @Nullable SpawnGroupData groupData) {
+        SpawnGroupData data = super.finalizeSpawn(level, difficulty, spawnReason, groupData);
+        this.bringGargoyle(level);
+        return data;
+    }
+
+    /// His Cathedral Gargoyle, set down beside him (or, with no room beside him, where he stands)
+    private void bringGargoyle(ServerLevelAccessor level) {
+        Gargoyle gargoyle = ModEntities.CATHEDRAL_GARGOYLE.get().create(level.getLevel(), EntitySpawnReason.MOB_SUMMONED);
+        if (gargoyle == null) {
+            return;
+        }
+        gargoyle.snapTo(this.getX(), this.getY(), this.getZ(), this.getYRot(), 0.0F);
+        for (Vec3 beside : new Vec3[] {new Vec3(1.5, 0.0, 0.0), new Vec3(-1.5, 0.0, 0.0), new Vec3(0.0, 0.0, 1.5), new Vec3(0.0, 0.0, -1.5)}) {
+            Vec3 at = this.position().add(beside);
+            if (level.noCollision(gargoyle, gargoyle.getDimensions(Pose.STANDING).makeBoundingBox(at))) {
+                gargoyle.snapTo(at.x, at.y, at.z, this.getYRot(), 0.0F);
+                break;
+            }
+        }
+        gargoyle.escort(this);
+        level.addFreshEntity(gargoyle);
     }
 
     // ---- Equipment ----

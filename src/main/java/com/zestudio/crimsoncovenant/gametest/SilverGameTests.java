@@ -187,6 +187,29 @@ final class SilverGameTests {
         helper.succeed();
     }
 
+    /// One ingot breaks into nuggets, four mint coins, and nine make a block, which breaks back into nine
+    static void silverIsMintedAndStored(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ItemStack ingot = new ItemStack(ModItems.SILVER_INGOT.get());
+        assertCrafts(helper, level, CraftingInput.of(1, 1, List.of(ingot)), ModItems.SILVER_NUGGET.get(), 9, "One silver ingot");
+        assertCrafts(helper, level, CraftingInput.of(2, 2, List.of(ingot, ingot, ingot, ingot)), ModItems.SILVER_COIN.get(), 8, "Four silver ingots");
+        assertCrafts(helper, level, CraftingInput.of(3, 3, java.util.Collections.nCopies(9, ingot)), ModItems.SILVER_BLOCK.get(), 1, "Nine silver ingots");
+        assertCrafts(helper, level, CraftingInput.of(1, 1, List.of(new ItemStack(ModItems.SILVER_BLOCK.get()))), ModItems.SILVER_INGOT.get(), 9, "A Block of Silver");
+
+        // Like a block of iron: a stone pickaxe or better to mine it, and a beacon will stand on it
+        BlockState block = ModBlocks.SILVER_BLOCK.get().defaultBlockState();
+        helper.assertTrue(block.is(net.minecraft.tags.BlockTags.MINEABLE_WITH_PICKAXE) && block.is(net.minecraft.tags.BlockTags.NEEDS_STONE_TOOL)
+                && block.is(net.minecraft.tags.BlockTags.BEACON_BASE_BLOCKS), Component.literal("A Block of Silver should mine and serve a beacon like a block of iron"));
+        helper.succeed();
+    }
+
+    private static void assertCrafts(GameTestHelper helper, ServerLevel level, CraftingInput input, net.minecraft.world.item.Item item, int count, String what) {
+        var recipe = level.recipeAccess().getRecipeFor(RecipeType.CRAFTING, input, level);
+        ItemStack result = recipe.map(holder -> holder.value().assemble(input)).orElse(ItemStack.EMPTY);
+        helper.assertTrue(result.is(item) && result.getCount() == count,
+                Component.literal(what + " should craft " + count + " " + item + ", not " + result));
+    }
+
     static void silverOreKicksUpDust(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         ServerPlayer player = SkillGameTests.makePlayer(helper);

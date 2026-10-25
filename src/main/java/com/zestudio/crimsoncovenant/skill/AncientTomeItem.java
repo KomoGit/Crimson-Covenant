@@ -25,6 +25,5 @@ public class AncientTomeItem extends Item {
     @Override
     public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay display, Consumer<Component> builder, TooltipFlag flag) {
         builder.accept(Component.translatable("item.crimsoncovenant.ancient_tome.tier", this.skill.tier().displayName()).withStyle(ChatFormatting.GRAY));
-        builder.accept(Component.translatable("item.crimsoncovenant.ancient_tome.hint").withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC));
     }
 }

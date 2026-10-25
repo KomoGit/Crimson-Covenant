@@ -4,11 +4,12 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.WeakHashMap;
 
 import org.jspecify.annotations.Nullable;
 
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
-import com.zestudio.crimsoncovenant.entity.SpiritHand;
+import com.zestudio.crimsoncovenant.effect.EnchainedEffect;
 import com.zestudio.crimsoncovenant.entity.SpiritWyrms;
 import com.zestudio.crimsoncovenant.hunter.HunterRanks;
 import com.zestudio.crimsoncovenant.registry.ModAttachments;
@@ -18,14 +19,17 @@ import com.zestudio.crimsoncovenant.skill.Enthrall;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.DamageTypeTags;
+import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageTypes;
+import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
@@ -35,9 +39,6 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.ClipContext;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -50,21 +51,20 @@ import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.tick.EntityTickEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
+import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
 
 /// Unleashing a weapon's curse, and what each curse does while it's loose. Press the curse key holding a cursed weapon
 /// (see ModKeyMappings) and, if you're a hunter of high enough rank and the curse has had time to stir again, it's
-/// unleashed for a short while (see Curse for how long, and how long it then needs). Only blows and arrows from the
-/// cursed weapon carry it.
+/// unleashed for a short while (see Curse for how long, and how long it then needs). The curses that never sleep
+/// (Revenant's Grip, the Ravenous Maw, Wraithseeker) need no unleashing: they're at work whenever their weapon is.
+/// Only blows and arrows from the cursed weapon carry a curse. The banished are drawn faint, like ghosts (see
+/// CrimsonCovenantClient).
 @EventBusSubscriber(modid = CrimsonCovenant.MODID)
 public final class Curses {
-    /// A curse let loose: which, how deep, the game time it's spent, and (for Gluttony) the kills made meanwhile
-    public record Unleashed(Curse curse, int level, long until, int kills) {
-        Unleashed withKill() {
-            return new Unleashed(this.curse, this.level, this.until, this.kills + 1);
-        }
-    }
+    /// A curse let loose: which, how deep, and the game time it's spent
+    public record Unleashed(Curse curse, int level, long until) {}
 
-    public enum Outcome { UNLEASHED, NO_CURSE, TOO_LOW_RANK, STIRRING, ALREADY_LOOSE }
+    public enum Outcome { UNLEASHED, NO_CURSE, TOO_LOW_RANK, STIRRING, ALREADY_LOOSE, ALWAYS_AWAKE }
 
     // ---- Tuning ----
     /// Exile's Mark: how long the banished stay banished
@@ -82,16 +82,29 @@ public final class Curses {
         return 200 + 200 * level;
     }
 
-    /// Ravenous Maw: health each kill feeds, and kills it demands before it's spent
+    /// Ravenous Maw: health each kill feeds
     public static float gluttonyHeal(int level) {
         return 4.0F + 2.0F * level;
     }
 
-    public static int gluttonyHunger(int level) {
-        return level;
+    /// Ravenous Maw: how long it can be wielded without a kill before it starts to gnaw at its wielder. Deeper curses
+    /// are hungrier.
+    public static int gluttonyPatience(int level) {
+        return 1200 - 200 * (level - 1);
     }
 
+    /// When the Maw last fed, while it's put away: never
+    public static final long MAW_PUT_AWAY = Long.MIN_VALUE;
+
     private static final double GUST_RANGE = 6.0;
+    /// Wraithseeker: how long an arrow hunts before it gives up (long enough to cross a good way), and the least speed it
+    /// hunts at
+    private static final int SEEK_TICKS = 200;
+    private static final double MIN_SEEK_SPEED = 1.0;
+    /// Wraithseeker: this few ticks from its mark, an arrow flies straight at it
+    private static final double LAST_TICKS = 4.0;
+    /// Each hunting arrow's quarry: its hunter's mark when it was loosed. Not saved.
+    private static final Map<AbstractArrow, LivingEntity> QUARRIES = new WeakHashMap<>();
     private static final double GUST_CONE = 0.45;
 
     private Curses() {}
@@ -112,8 +125,13 @@ public final class Curses {
         return player.getData(ModAttachments.UNLEASHED_CURSE);
     }
 
-    /// The level `curse` is loose at, if it is and `weapon` (what the blow or arrow came from) bears it; otherwise 0
+    /// The level `curse` is loose at, if it is and `weapon` (what the blow or arrow came from) bears it; otherwise 0. A
+    /// curse that never sleeps is loose whenever its weapon is used by a hunter of high enough rank.
     public static int looseLevel(Player player, Curse curse, @Nullable ItemStack weapon) {
+        if (curse.alwaysAwake()) {
+            int level = weapon == null ? 0 : WeaponCurse.levelOf(weapon, curse);
+            return level > 0 && HunterRanks.get(player) >= Curse.rankFor(level) ? level : 0;
+        }
         Optional<Unleashed> loose = unleashed(player);
         if (loose.isEmpty() || loose.get().curse() != curse || weapon == null || WeaponCurse.levelOf(weapon, curse) == 0) {
             return 0;
@@ -136,6 +154,8 @@ public final class Curses {
             outcome = Outcome.NO_CURSE;
         } else if (HunterRanks.get(player) < Curse.rankFor(laid.level())) {
             outcome = Outcome.TOO_LOW_RANK;
+        } else if (laid.curse().alwaysAwake()) {
+            outcome = Outcome.ALWAYS_AWAKE;
         } else if (unleashed(player).isPresent()) {
             outcome = Outcome.ALREADY_LOOSE;
         } else if (readyAt(player, laid.curse()) > now) {
@@ -148,7 +168,7 @@ public final class Curses {
             return outcome;
         }
         Curse curse = laid.curse();
-        player.setData(ModAttachments.UNLEASHED_CURSE, Optional.of(new Unleashed(curse, laid.level(), now + curse.duration(laid.level()), 0)));
+        player.setData(ModAttachments.UNLEASHED_CURSE, Optional.of(new Unleashed(curse, laid.level(), now + curse.duration(laid.level()))));
         Map<Curse, Long> cooldowns = new EnumMap<>(Curse.class);
         cooldowns.putAll(player.getData(ModAttachments.CURSE_COOLDOWNS));
         cooldowns.put(curse, now + curse.cooldown(laid.level()));
@@ -156,11 +176,12 @@ public final class Curses {
         level.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.SOUL_ESCAPE.value(), SoundSource.PLAYERS, 1.2F, 0.7F);
         level.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.WARDEN_HEARTBEAT, SoundSource.PLAYERS, 0.8F, 1.4F);
         level.sendParticles(ParticleTypes.SOUL, player.getX(), player.getY(1.0), player.getZ(), 16, 0.4, 0.4, 0.4, 0.03);
-        switch (curse) {
-            case SPIRIT_HAND -> SpiritHand.summon(level, player, weapon, laid.level(), curse.duration(laid.level()));
-            case GUST -> gust(level, player, laid.level());
-            default -> {
-            }
+        if (curse == Curse.GUST) {
+            gust(level, player, laid.level());
+        } else if (curse == Curse.EARTHSHATTER) {
+            // Brought down at once, and spent
+            Earthshatter.quake(level, player, laid.level());
+            spend(player);
         }
         return outcome;
     }
@@ -174,22 +195,14 @@ public final class Curses {
             case STIRRING -> Component.translatable("message.crimsoncovenant.curse.stirring", laid.curse().title(),
                     (readyAt(player, laid.curse()) - now + 19) / 20);
             case UNLEASHED -> Component.translatable("message.crimsoncovenant.curse.unleashed", laid.curse().titleAt(laid.level()));
+            case ALWAYS_AWAKE -> Component.translatable("message.crimsoncovenant.curse.always_awake", laid.curse().titleAt(laid.level()));
         };
         player.sendOverlayMessage(message.copy().withStyle(outcome == Outcome.UNLEASHED ? ChatFormatting.AQUA : ChatFormatting.GRAY));
     }
 
-    /// The curse is spent. Ravenous Maw takes its due from whoever didn't feed it enough.
+    /// The curse is spent
     public static void spend(Player player) {
-        Optional<Unleashed> loose = unleashed(player);
         player.setData(ModAttachments.UNLEASHED_CURSE, Optional.empty());
-        if (loose.isEmpty()) {
-            return;
-        }
-        Unleashed spent = loose.get();
-        if (spent.curse() == Curse.GLUTTONY && spent.kills() < gluttonyHunger(spent.level())) {
-            player.addEffect(new MobEffectInstance(MobEffects.WITHER, 200, spent.level() - 1));
-            player.sendOverlayMessage(Component.translatable("message.crimsoncovenant.curse.gluttony_unfed").withStyle(ChatFormatting.DARK_GRAY));
-        }
     }
 
     @SubscribeEvent
@@ -197,6 +210,10 @@ public final class Curses {
         Player player = event.getEntity();
         if (!(player.level() instanceof ServerLevel level)) {
             return;
+        }
+        gnaw(level, player);
+        if (player.tickCount % 10 == 0 && player.getData(ModAttachments.WRAITHSEEKER_MARK) >= 0 && markOf(player) == null) {
+            player.setData(ModAttachments.WRAITHSEEKER_MARK, -1);
         }
         Optional<Unleashed> loose = unleashed(player);
         if (loose.isEmpty()) {
@@ -212,6 +229,28 @@ public final class Curses {
         }
     }
 
+    /// The Ravenous Maw, held too long without a kill, gnaws at its wielder: hungry for as long as it stays unfed
+    public static void gnaw(ServerLevel level, Player player) {
+        int maw = looseLevel(player, Curse.GLUTTONY, player.getMainHandItem());
+        long now = level.getGameTime();
+        if (maw == 0) {
+            // Put away, it waits: its patience starts over when it's next taken up
+            player.removeData(ModAttachments.MAW_FED);
+            return;
+        }
+        long fed = player.getData(ModAttachments.MAW_FED);
+        if (fed == MAW_PUT_AWAY) {
+            player.setData(ModAttachments.MAW_FED, now);
+            return;
+        }
+        if (now - fed > gluttonyPatience(maw) && player.tickCount % 20 == 0) {
+            if (!player.hasEffect(MobEffects.HUNGER)) {
+                player.sendOverlayMessage(Component.translatable("message.crimsoncovenant.curse.gluttony_unfed").withStyle(ChatFormatting.DARK_GRAY));
+            }
+            player.addEffect(new MobEffectInstance(MobEffects.HUNGER, 40, maw - 1, false, false, true));
+        }
+    }
+
     /// A cursed weapon names its curse, right under its own name
     @SubscribeEvent
     static void describe(ItemTooltipEvent event) {
@@ -219,15 +258,17 @@ public final class Curses {
         if (laid != null) {
             int line = Math.min(1, event.getToolTip().size());
             event.getToolTip().add(line, laid.curse().titleAt(laid.level()));
-            event.getToolTip().add(line + 1, Component.translatable("item.crimsoncovenant.cursed_weapon.hint", laid.curse().plainName(),
-                    HunterRanks.name(Curse.rankFor(laid.level()))).withStyle(ChatFormatting.DARK_GRAY));
+            String hint = laid.curse().alwaysAwake() ? "item.crimsoncovenant.cursed_weapon.hint.always_awake" : "item.crimsoncovenant.cursed_weapon.hint";
+            event.getToolTip().add(line + 1, Component.translatable(hint, laid.curse().plainName(), HunterRanks.name(Curse.rankFor(laid.level())))
+                    .withStyle(ChatFormatting.DARK_GRAY));
         }
     }
 
     // ---- What they do ----
 
+    // Whoever's blow or arrow it was, if a player's: whether it carried a curse is up to looseLevel
     private static @Nullable Player cursedAttacker(DamageSource source) {
-        return source.getEntity() instanceof Player player && unleashed(player).isPresent() ? player : null;
+        return source.getEntity() instanceof Player player ? player : null;
     }
 
     private static boolean isMeleeBlow(DamageSource source, Player player) {
@@ -252,11 +293,18 @@ public final class Curses {
         int chain = looseLevel(player, Curse.ENCHAIN, weapon);
         if (chain > 0) {
             target.addEffect(new MobEffectInstance(ModEffects.ENCHAINED, chainTicks(chain)), player);
-            level.playSound(null, target.getX(), target.getY(), target.getZ(), SoundEvents.CHAIN_PLACE, SoundSource.PLAYERS, 1.0F, 0.7F);
+            target.setData(ModAttachments.ENCHAINED_LOOK, true);
+            level.playSound(null, target.getX(), target.getY(), target.getZ(), SoundEvents.CHAIN_PLACE, SoundSource.PLAYERS, 1.2F, 0.6F);
+            level.playSound(null, target.getX(), target.getY(), target.getZ(), SoundEvents.ANVIL_LAND, SoundSource.PLAYERS, 0.3F, 1.6F);
+            EnchainedEffect.showChains(level, target);
+        }
+        if (arrow && looseLevel(player, Curse.TRACING_SHOT, weapon) > 0) {
+            mark(player, target);
         }
         int banish = arrow ? looseLevel(player, Curse.BANISH, weapon) : 0;
         if (banish > 0) {
             target.addEffect(new MobEffectInstance(ModEffects.BANISHED, banishTicks(banish)), player);
+            target.setData(ModAttachments.BANISHED_LOOK, true);
             if (target instanceof Mob mob) {
                 mob.setTarget(null);
             }
@@ -294,7 +342,7 @@ public final class Curses {
         return struck;
     }
 
-    /// Kills by a cursed weapon, while the curse is loose
+    /// Kills by a cursed weapon, while its curse is loose
     @SubscribeEvent
     static void cursedKills(LivingDeathEvent event) {
         DamageSource source = event.getSource();
@@ -313,7 +361,8 @@ public final class Curses {
         int gluttony = melee ? looseLevel(player, Curse.GLUTTONY, weapon) : 0;
         if (gluttony > 0) {
             player.heal(gluttonyHeal(gluttony));
-            unleashed(player).ifPresent(loose -> player.setData(ModAttachments.UNLEASHED_CURSE, Optional.of(loose.withKill())));
+            player.setData(ModAttachments.MAW_FED, level.getGameTime());
+            player.removeEffect(MobEffects.HUNGER);
             level.sendParticles(new DustParticleOptions(Curse.COLOUR, 1.0F), player.getX(), player.getY(0.7), player.getZ(), 10, 0.3, 0.3, 0.3, 0.0);
             level.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.GENERIC_EAT.value(), SoundSource.PLAYERS, 0.8F, 0.6F);
         }
@@ -352,6 +401,29 @@ public final class Curses {
         }
     }
 
+    // When the banishment wears off (or is cleared), the creature is solid again; when the shackles do, the chains go
+    @SubscribeEvent
+    static void curseWearsOff(MobEffectEvent.Expired event) {
+        if (event.getEffectInstance() != null) {
+            curseLifted(event.getEntity(), event.getEffectInstance().getEffect());
+        }
+    }
+
+    @SubscribeEvent
+    static void curseCleared(MobEffectEvent.Remove event) {
+        curseLifted(event.getEntity(), event.getEffect());
+    }
+
+    private static void curseLifted(LivingEntity entity, Holder<MobEffect> effect) {
+        if (effect.is(ModEffects.BANISHED)) {
+            entity.setData(ModAttachments.BANISHED_LOOK, false);
+        } else if (effect.is(ModEffects.ENCHAINED)) {
+            entity.setData(ModAttachments.ENCHAINED_LOOK, false);
+        } else if (effect.is(ModEffects.KNOCKED_DOWN)) {
+            entity.setData(ModAttachments.KNOCKED_DOWN_UNTIL, 0L);
+        }
+    }
+
     // ---- Arrows: Wraithseeker, and the Wrath of the Twin Wyrms ----
 
     @SubscribeEvent
@@ -361,8 +433,11 @@ public final class Curses {
         }
         ItemStack bow = arrow.getWeaponItem();
         int seeking = looseLevel(player, Curse.TRACING_SHOT, bow);
-        if (seeking > 0) {
+        LivingEntity mark = seeking > 0 ? markOf(player) : null;
+        if (mark != null) {
+            // It hunts the hunter's mark; with none, it flies as any arrow does (and marks what it strikes)
             arrow.setData(ModAttachments.SEEKING, seeking);
+            QUARRIES.put(arrow, mark);
         }
         int wyrms = looseLevel(player, Curse.DRAGONSTRIKE, bow);
         if (wyrms > 0) {
@@ -373,45 +448,68 @@ public final class Curses {
         }
     }
 
-    /// Wraithseeker: the arrow bends toward the nearest creature ahead of it
+    /// Wraithseeker's mark: what the hunter's Wraithseeker arrows last struck, while it lives (and is in their world)
+    public static @Nullable LivingEntity markOf(Player player) {
+        int id = player.getData(ModAttachments.WRAITHSEEKER_MARK);
+        return id >= 0 && player.level().getEntity(id) instanceof LivingEntity mark && mark.isAlive() ? mark : null;
+    }
+
+    /// Marks `target` for the hunter's Wraithseeker arrows (never the hunter, another player, or one of their thralls)
+    public static void mark(Player player, LivingEntity target) {
+        if (target != player && !(target instanceof Player) && !Enthrall.isThrallOf(target, player)) {
+            player.setData(ModAttachments.WRAITHSEEKER_MARK, target.getId());
+        }
+    }
+
+    /// Wraithseeker: the arrow hunts down its hunter's mark, wherever it is. It flies level while it hunts, turning a
+    /// little each tick (more keenly at higher levels, and harder as it closes) so it's seen to chase, keeping its speed,
+    /// a cold trail behind it, wheeling round if it flies past. It gives up, falling as any arrow does, if its quarry dies
+    /// first, or it hasn't struck in ten seconds. Each turn is sent to the players watching at once: an arrow's own
+    /// updates come too seldom to show the chase.
     @SubscribeEvent
     static void seek(EntityTickEvent.Post event) {
-        if (!(event.getEntity() instanceof AbstractArrow arrow) || arrow.level().isClientSide()) {
+        if (!(event.getEntity() instanceof AbstractArrow arrow) || !(arrow.level() instanceof ServerLevel level)) {
             return;
         }
         int seeking = arrow.getData(ModAttachments.SEEKING);
-        // (A stuck arrow has no speed left, so it's let be below)
         if (seeking <= 0 || arrow.tickCount < 2) {
             return;
         }
         Vec3 motion = arrow.getDeltaMovement();
         double speed = motion.length();
-        if (speed < 0.2) {
+        LivingEntity quarry = QUARRIES.get(arrow);
+        // Stuck in something (no speed left), hunted long enough, or nothing left to hunt
+        if (speed < 0.2 || arrow.tickCount > SEEK_TICKS || quarry == null || !quarry.isAlive() || quarry.level() != level) {
+            arrow.setData(ModAttachments.SEEKING, 0);
+            arrow.setNoGravity(false);
+            QUARRIES.remove(arrow);
             return;
         }
-        LivingEntity quarry = quarry(arrow, motion.normalize(), 16.0 + 4.0 * seeking);
-        if (quarry == null) {
-            return;
+        arrow.setNoGravity(true);
+        level.sendParticles(new DustParticleOptions(Curse.COLOUR, 0.7F), arrow.getX(), arrow.getY(), arrow.getZ(), 2, 0.02, 0.02, 0.02, 0.0);
+        if (arrow.tickCount % 6 == 0) {
+            level.sendParticles(ParticleTypes.SOUL, arrow.getX(), arrow.getY(), arrow.getZ(), 1, 0.0, 0.0, 0.0, 0.0);
         }
-        Vec3 toward = quarry.position().add(0.0, quarry.getBbHeight() * 0.5, 0.0).subtract(arrow.position()).normalize();
-        Vec3 turned = motion.normalize().lerp(toward, 0.2 + 0.1 * seeking).normalize().scale(speed);
+        Vec3 heading = motion.scale(1.0 / speed);
+        double flight = Math.max(speed, MIN_SEEK_SPEED);
+        // Where the quarry will be when the arrow gets there, as near as it can tell: it leads a moving mark
+        Vec3 centre = quarry.position().add(0.0, quarry.getBbHeight() * 0.5, 0.0);
+        double ticksAway = centre.distanceTo(arrow.position()) / flight;
+        Vec3 aim = centre.add(quarry.getKnownMovement().scale(Math.min(ticksAway, 20.0))).subtract(arrow.position());
+        Vec3 toward = aim.lengthSqr() < 1.0E-6 ? heading : aim.normalize();
+        // Far off, it turns a share of the way each tick, keener at higher levels and the faster it's going (so even a
+        // shot loosed straight up comes round in time); heading away, it wheels hard; and in its last few ticks it flies
+        // straight at the mark, so it can't dive past into the ground beside it
+        double keenness = Math.max(0.15 + 0.1 * seeking, 2.0 / Math.max(ticksAway, 0.1));
+        if (heading.dot(toward) < 0.3) {
+            keenness = Math.max(keenness, 0.6);
+        }
+        Vec3 direction = ticksAway < LAST_TICKS || keenness >= 1.0 || heading.dot(toward) < -0.95 ? toward : heading.lerp(toward, keenness).normalize();
+        Vec3 turned = direction.scale(flight);
         arrow.setDeltaMovement(turned);
-        if (arrow.level() instanceof ServerLevel level && arrow.tickCount % 2 == 0) {
-            level.sendParticles(new DustParticleOptions(Curse.COLOUR, 0.6F), arrow.getX(), arrow.getY(), arrow.getZ(), 1, 0.0, 0.0, 0.0, 0.0);
-        }
-    }
-
-    private static boolean canSee(Entity from, Entity to) {
-        Vec3 target = to.position().add(0.0, to.getBbHeight() * 0.5, 0.0);
-        return from.level().clip(new ClipContext(from.position(), target, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, from)).getType() == HitResult.Type.MISS;
-    }
-
-    // The nearest living thing ahead of the arrow (not its shooter, nor their thralls) it can see
-    private static @Nullable LivingEntity quarry(AbstractArrow arrow, Vec3 heading, double range) {
-        Entity shooter = arrow.getOwner();
-        return arrow.level().getEntitiesOfClass(LivingEntity.class, new AABB(arrow.position(), arrow.position()).inflate(range), entity -> entity.isAlive()
-                        && entity != shooter && !(entity instanceof Player) && !Enthrall.isThrallOf(entity, shooter)
-                        && entity.position().subtract(arrow.position()).normalize().dot(heading) > 0.3 && canSee(arrow, entity))
-                .stream().min((a, b) -> Double.compare(a.distanceToSqr(arrow), b.distanceToSqr(arrow))).orElse(null);
+        arrow.setYRot((float) (Mth.atan2(turned.x, turned.z) * Mth.RAD_TO_DEG));
+        arrow.setXRot((float) (Mth.atan2(turned.y, turned.horizontalDistance()) * Mth.RAD_TO_DEG));
+        // Tell the watching players about the turn now, rather than leave them to see it fly straight on
+        arrow.needsSync = true;
     }
 }

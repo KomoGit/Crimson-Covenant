@@ -16,6 +16,7 @@ import com.zestudio.crimsoncovenant.registry.ModBlocks;
 import com.zestudio.crimsoncovenant.registry.ModDataComponents;
 import com.zestudio.crimsoncovenant.registry.ModItems;
 import com.zestudio.crimsoncovenant.vampirism.BloodPool;
+import com.zestudio.crimsoncovenant.item.BloodBottleItem;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -46,6 +47,7 @@ import net.minecraft.world.level.block.state.properties.BedPart;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.item.Items;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.common.util.ClockAdjustment;
 import net.neoforged.neoforge.event.level.SleepFinishedTimeEvent;
@@ -81,6 +83,8 @@ final class CoffinGameTests {
         long original = level.getOverworldClockTime();
         try {
             clocks.setTotalTicks(overworld, 6000L);
+            // How dark it is is otherwise only worked out at the next tick
+            level.updateSkyBrightness();
             helper.assertTrue(!level.isDarkOutside(), Component.literal("It should be noon for this test"));
             BlockPos bed = placeBed(helper, Blocks.BED.pick(DyeColor.RED), new BlockPos(2, 1, 4));
             BlockPos coffin = placeBed(helper, ModBlocks.COFFIN.get(), new BlockPos(6, 1, 4));
@@ -99,6 +103,7 @@ final class CoffinGameTests {
             SkillGameTests.removePlayer(helper, player);
         } finally {
             clocks.setTotalTicks(overworld, original);
+            level.updateSkyBrightness();
         }
         helper.succeed();
     }
@@ -262,6 +267,13 @@ final class CoffinGameTests {
         before = maiden.getCaptive().blood();
         helper.assertValueEqual(IronMaidenBlock.feedOnCaptives(vampire, helper.absolutePos(coffin)), 0, "captives drawn on by a sated vampire");
         helper.assertValueEqual(maiden.getCaptive().blood(), before, "blood left in a captive after a sated vampire's sleep");
+
+        // An empty bottle draws off a Bottle of Blood
+        before = maiden.getCaptive().blood();
+        vampire.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.GLASS_BOTTLE));
+        helper.assertTrue(IronMaidenBlock.bottleBlood(level, maiden, vampire, InteractionHand.MAIN_HAND), Component.literal("A bottle should fill from a filled maiden"));
+        helper.assertTrue(vampire.getMainHandItem().is(ModItems.BLOOD_BOTTLE.get()), Component.literal("The bottle should come back a Bottle of Blood"));
+        helper.assertValueEqual(before - maiden.getCaptive().blood(), BloodBottleItem.BLOOD, "blood drawn into a bottle");
         SkillGameTests.removePlayer(helper, vampire);
         helper.succeed();
     }

@@ -57,10 +57,6 @@
         },
         {
           "type": "minecraft:item",
-          "name": "crimsoncovenant:blood_parade_tome"
-        },
-        {
-          "type": "minecraft:item",
           "name": "crimsoncovenant:night_of_terror_tome"
         },
         {

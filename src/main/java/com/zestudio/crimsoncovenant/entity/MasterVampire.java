@@ -15,6 +15,9 @@ import com.zestudio.crimsoncovenant.registry.ModEffects;
 import com.zestudio.crimsoncovenant.registry.ModEntities;
 import com.zestudio.crimsoncovenant.registry.ModTags;
 import com.zestudio.crimsoncovenant.vampirism.Vampirism;
+import com.zestudio.crimsoncovenant.world.BloodMoon;
+import com.zestudio.crimsoncovenant.skill.BloodSkill;
+import com.zestudio.crimsoncovenant.guide.SkillLore;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.UUIDUtil;
@@ -53,6 +56,7 @@ import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.tick.EntityTickEvent;
@@ -65,6 +69,9 @@ import net.neoforged.neoforge.event.tick.EntityTickEvent;
 /// world during a blood moon. Shows a boss bar to nearby players.
 @EventBusSubscriber(modid = CrimsonCovenant.MODID)
 public class MasterVampire extends Vampire {
+    /// The chance a Master Vampire slain by a player under a Blood Moon leaves the Ancient Tome of Blood Parade, the only
+    /// way it's found
+    public static final float BLOOD_PARADE_CHANCE = 0.1F;
     // Life drain aura
     private static final double DRAIN_RANGE = 6.0;
     private static final int DRAIN_INTERVAL = 20;
@@ -575,5 +582,20 @@ public class MasterVampire extends Vampire {
         if (this.hasCustomName()) {
             this.bossEvent.setName(this.getDisplayName());
         }
+    }
+
+    // Under a Blood Moon, one slain by a player now and then leaves the Ancient Tome of Blood Parade
+    @Override
+    protected void dropCustomDeathLoot(ServerLevel level, DamageSource source, boolean killedByPlayer) {
+        super.dropCustomDeathLoot(level, source, killedByPlayer);
+        if (dropsBloodParade(level, source, this.random.nextFloat())) {
+            this.spawnAtLocation(level, new ItemStack(BloodSkill.BLOOD_PARADE.tome()));
+        }
+    }
+
+    /// Whether the Ancient Tome of Blood Parade drops, for a death by `source` and a roll of `roll` (0 to 1)
+    public static boolean dropsBloodParade(ServerLevel level, DamageSource source, float roll) {
+        return source.getEntity() instanceof Player player && SkillLore.isUnlocked(player, BloodSkill.BLOOD_PARADE) && BloodMoon.isActive(level)
+                && roll < BLOOD_PARADE_CHANCE;
     }
 }

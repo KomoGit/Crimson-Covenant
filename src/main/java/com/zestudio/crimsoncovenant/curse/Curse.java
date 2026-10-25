@@ -3,6 +3,7 @@ package com.zestudio.crimsoncovenant.curse;
 import com.mojang.serialization.Codec;
 import com.zestudio.crimsoncovenant.hunter.HunterRanks;
 import com.zestudio.crimsoncovenant.registry.ModTags;
+import com.zestudio.crimsoncovenant.item.WhipItem;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.ChatFormatting;
@@ -12,27 +13,33 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.item.ItemStack;
 
-/// The hunters' curses: old, bound things laid on a weapon at a Curseforge (see CurseforgeMenu), and unleashed with
-/// the curse key for a short while before they need time to stir again (see Curses). Each comes in three levels, each
-/// asking a higher hunter rank of whoever would unleash it.
+/// The hunters' curses: old, bound things laid on a weapon at a Curseforge (see CurseforgeMenu). Most are unleashed with
+/// the curse key for a short while before they need time to stir again (see Curses); a few never sleep, and are at
+/// work whenever the weapon is (see `alwaysAwake`). Each comes in three levels, each asking a higher hunter rank of
+/// whoever would use it.
 public enum Curse implements StringRepresentable {
-    /// A ghostly hand takes up a copy of the weapon and fights beside its owner
-    SPIRIT_HAND("spirit_hand", Weapons.MELEE, 300, 100, 1200),
+    /// Always awake: held, the weapon is taken up by a ghostly hand that fights beside its owner (see SpiritHand)
+    SPIRIT_HAND("spirit_hand", Weapons.MELEE),
     /// Arrows mark what they hit as banished: for a while it can't hurt anyone, or heal
     BANISH("banish", Weapons.RANGED, 300, 0, 900),
     /// Hits chain the target where it stands
     ENCHAIN("enchain", Weapons.EITHER, 300, 0, 900),
-    /// Arrows seek out their targets
-    TRACING_SHOT("tracing_shot", Weapons.RANGED, 300, 100, 800),
+    /// Always awake: whatever its arrows strike is marked, and every arrow after hunts the mark down while it lives
+    TRACING_SHOT("tracing_shot", Weapons.RANGED),
     /// What the weapon kills rises again to fight for its killer a while
     ENTHRALL("enthrall", Weapons.EITHER, 300, 0, 1200),
-    /// Kills feed the wielder; failing to kill enough before it ends, they wither
-    GLUTTONY("gluttony", Weapons.MELEE, 400, 200, 900),
+    /// Always awake: kills feed the wielder, but wielded too long unfed, it gnaws at them
+    GLUTTONY("gluttony", Weapons.MELEE),
     /// A gale sweeps out from the wielder, and from every blow they land
     GUST("gust", Weapons.MELEE, 200, 0, 600),
     /// The next arrow loosed becomes a pair of spirit wyrms, coiling round each other as they tear straight on through
     /// walls and everything in their way (see SpiritWyrms)
-    DRAGONSTRIKE("dragonstrike", Weapons.RANGED, 200, 0, 1800);
+    DRAGONSTRIKE("dragonstrike", Weapons.RANGED, 200, 0, 1800),
+    /// Whips only: the lash comes down on the ground, and a quake rolls out before the wielder, throwing down everything
+    /// standing in its way (see Earthshatter). It's spent at once.
+    EARTHSHATTER("earthshatter", Weapons.WHIP, 1, 0, 600),
+    /// Whips only, always awake: right-clicked at a block, the lash hooks round it and hauls its wielder in (see Grapple)
+    GRAPPLE("grapple", Weapons.WHIP);
 
     public static final int MAX_LEVEL = 3;
     public static final Codec<Curse> CODEC = StringRepresentable.fromEnum(Curse::values);
@@ -42,7 +49,7 @@ public enum Curse implements StringRepresentable {
 
     /// What a curse can be laid on
     public enum Weapons {
-        MELEE, RANGED, EITHER;
+        MELEE, RANGED, EITHER, WHIP;
 
         public boolean fits(ItemStack weapon) {
             boolean melee = weapon.is(ModTags.Items.CURSEABLE_MELEE);
@@ -51,6 +58,7 @@ public enum Curse implements StringRepresentable {
                 case MELEE -> melee;
                 case RANGED -> ranged;
                 case EITHER -> melee || ranged;
+                case WHIP -> WhipItem.isWhip(weapon);
             };
         }
     }
@@ -69,6 +77,16 @@ public enum Curse implements StringRepresentable {
         this.cooldown = cooldown;
     }
 
+    // One that never sleeps: nothing to unleash, nothing to wait for
+    Curse(String name, Weapons weapons) {
+        this(name, weapons, 0, 0, 0);
+    }
+
+    /// At work whenever the weapon is, for a hunter of high enough rank: the curse key does nothing for it
+    public boolean alwaysAwake() {
+        return this.duration == 0;
+    }
+
     @Override
     public String getSerializedName() {
         return this.name;
@@ -82,6 +100,15 @@ public enum Curse implements StringRepresentable {
         return this.weapons.fits(weapon);
     }
 
+    /// How many souls it takes to lay on a plain weapon at a Haunted Anvil (see CurseforgeMenu.soulCost)
+    public int souls() {
+        return switch (this) {
+            case TRACING_SHOT -> 5;
+            case SPIRIT_HAND, ENTHRALL, DRAGONSTRIKE, EARTHSHATTER -> 4;
+            case BANISH, ENCHAIN, GLUTTONY, GUST, GRAPPLE -> 3;
+        };
+    }
+
     /// How long it stays unleashed, in ticks
     public int duration(int level) {
         return this.duration + (level - 1) * this.durationPerLevel;
@@ -92,7 +119,7 @@ public enum Curse implements StringRepresentable {
         return this.cooldown - (level - 1) * this.cooldown / 6;
     }
 
-    /// The hunter rank needed to unleash it at this level: Initiate, then Slayer, then Grand Hunter
+    /// The hunter rank needed to use it at this level: Initiate, then Slayer, then Grand Hunter
     public static int rankFor(int level) {
         return switch (Math.max(1, Math.min(level, MAX_LEVEL))) {
             case 1 -> HunterRanks.INITIATE;

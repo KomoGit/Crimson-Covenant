@@ -25,6 +25,9 @@ import net.minecraft.world.phys.Vec3;
 public class VampireBat extends Bat implements Enemy {
     private static final int BITE_COOLDOWN = 20;
     private static final float BITE_HEAL = 1.0F;
+    /// The speeds it steers for when diving at prey, across and up or down: a little faster than a vanilla bat flies
+    private static final double CHASE_SPEED = 0.45;
+    private static final double CHASE_CLIMB = 0.525;
 
     private int biteCooldown = 0;
 
@@ -65,13 +68,14 @@ public class VampireBat extends Bat implements Enemy {
             this.biteCooldown--;
         }
 
-        // Steer towards the target's chest using the same flight model as vanilla bats, just faster
+        // Steer towards the target's chest using the same flight model as vanilla bats, a little faster
         double dx = target.getX() - this.getX();
         double dy = target.getY(0.6) - this.getY();
         double dz = target.getZ() - this.getZ();
         Vec3 movement = this.getDeltaMovement();
         Vec3 newMovement = movement.add(
-                (Math.signum(dx) * 0.6 - movement.x) * 0.15, (Math.signum(dy) * 0.7 - movement.y) * 0.15, (Math.signum(dz) * 0.6 - movement.z) * 0.15);
+                (Math.signum(dx) * CHASE_SPEED - movement.x) * 0.15, (Math.signum(dy) * CHASE_CLIMB - movement.y) * 0.15,
+                (Math.signum(dz) * CHASE_SPEED - movement.z) * 0.15);
         this.setDeltaMovement(newMovement);
         float yRotD = (float) (Mth.atan2(newMovement.z, newMovement.x) * 180.0F / (float) Math.PI) - 90.0F;
         this.setYRot(this.getYRot() + Mth.wrapDegrees(yRotD - this.getYRot()));

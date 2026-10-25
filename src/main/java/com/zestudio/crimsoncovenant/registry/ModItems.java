@@ -18,6 +18,9 @@ import com.zestudio.crimsoncovenant.block.SilveredBottleBlock;
 import com.zestudio.crimsoncovenant.item.IronMaidenItem;
 import com.zestudio.crimsoncovenant.curse.Curse;
 import com.zestudio.crimsoncovenant.curse.CursedTomeItem;
+import com.zestudio.crimsoncovenant.item.WhipItem;
+import com.zestudio.crimsoncovenant.guide.GuideBookItem;
+import com.zestudio.crimsoncovenant.guide.GuideBooks;
 
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.BlockItem;
@@ -57,6 +60,8 @@ public final class ModItems {
     public static final DeferredItem<Item> SILVER_COIN = ITEMS.registerSimpleItem("silver_coin");
     /// Extra damage to undead and werewolves, and slows them
     public static final DeferredItem<SilverArrowItem> SILVER_ARROW = ITEMS.registerItem("silver_arrow", SilverArrowItem::new);
+    /// Plaited leather tipped and studded with silver: a long reach, and a crack that drives foes back (see WhipItem)
+    public static final DeferredItem<WhipItem> WHIP = ITEMS.registerItem("whip", WhipItem::new, WhipItem::properties);
 
     // ---- Blood skills: an Ancient Tome of each, and the skill the Ancient Translator makes from it ----
     public static final Map<BloodSkill, DeferredItem<AncientTomeItem>> TOMES = registerTomes();
@@ -87,6 +92,7 @@ public final class ModItems {
     // ---- Block items ----
     public static final DeferredItem<BlockItem> SILVER_ORE = ITEMS.registerSimpleBlockItem(ModBlocks.SILVER_ORE);
     public static final DeferredItem<BlockItem> DEEPSLATE_SILVER_ORE = ITEMS.registerSimpleBlockItem(ModBlocks.DEEPSLATE_SILVER_ORE);
+    public static final DeferredItem<BlockItem> SILVER_BLOCK = ITEMS.registerSimpleBlockItem(ModBlocks.SILVER_BLOCK);
     public static final DeferredItem<BlockItem> GRAVESTONE = ITEMS.registerSimpleBlockItem(ModBlocks.GRAVESTONE);
     public static final DeferredItem<BlockItem> MOSSY_GRAVESTONE = ITEMS.registerSimpleBlockItem(ModBlocks.MOSSY_GRAVESTONE);
     public static final DeferredItem<BlockItem> CRACKED_GRAVESTONE = ITEMS.registerSimpleBlockItem(ModBlocks.CRACKED_GRAVESTONE);
@@ -112,6 +118,14 @@ public final class ModItems {
     public static final DeferredItem<GhostBottleItem> GHOST_IN_A_BOTTLE = ITEMS.registerItem("ghost_in_a_bottle",
             properties -> new GhostBottleItem(ModBlocks.SILVERED_BOTTLE.get(), properties),
             properties -> properties.stacksTo(16).component(DataComponents.BLOCK_STATE, BlockItemStateProperties.EMPTY.with(SilveredBottleBlock.GHOST, true)));
+    /// A ghost crammed into a plain glass bottle, in torment: a soul, as good as a Ghost in a Bottle (see guide.Souls)
+    public static final DeferredItem<BlockItem> TORMENTED_SOUL = ITEMS.registerItem("tormented_soul",
+            properties -> new BlockItem(ModBlocks.TORMENTED_SOUL.get(), properties), properties -> properties.stacksTo(16));
+    /// The guide every player starts with, and the vampire's own book it becomes (see guide.GuideBooks)
+    public static final DeferredItem<GuideBookItem> NIGHTS_LEDGER = ITEMS.registerItem("nights_ledger",
+            properties -> new GuideBookItem(GuideBooks.Book.LEDGER, properties), properties -> properties.stacksTo(1));
+    public static final DeferredItem<GuideBookItem> CODEX_SANGUINIS = ITEMS.registerItem("codex_sanguinis",
+            properties -> new GuideBookItem(GuideBooks.Book.CODEX, properties), properties -> properties.stacksTo(1).rarity(Rarity.UNCOMMON));
     public static final DeferredItem<BlockItem> SILVER_NET_TRAP = ITEMS.registerSimpleBlockItem(ModBlocks.SILVER_NET_TRAP);
     /// Carved stone, waiting to be set down and woken: silver for the hunters', blood for the vampires'
     public static final DeferredItem<GargoyleStatueItem> CATHEDRAL_GARGOYLE_STATUE = ITEMS.registerItem("cathedral_gargoyle_statue",

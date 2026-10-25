@@ -5,10 +5,12 @@ import com.zestudio.crimsoncovenant.CrimsonCovenant;
 import com.zestudio.crimsoncovenant.network.SkillPayloads;
 import com.zestudio.crimsoncovenant.registry.ModEffects;
 import com.zestudio.crimsoncovenant.skill.SkillSlots;
+import com.zestudio.crimsoncovenant.item.WhipItem;
 
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.phys.HitResult;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -56,6 +58,26 @@ public final class ModKeyMappings {
             if (event.getHand() == InteractionHand.MAIN_HAND) {
                 ClientPacketDistributor.sendToServer(new SkillPayloads.BloodCharge());
             }
+        }
+    }
+
+    /// With a whip, the attack key cracks it: its lash lands the blow (see entity.WhipLash), so the plain attack is left
+    /// out. Until the whip's swung back round and its last lash is drawn in, it does nothing at all. Aimed at a block,
+    /// it's left to break the block as anything would.
+    @SubscribeEvent
+    static void crackTheWhip(InputEvent.InteractionKeyMappingTriggered event) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (!event.isAttack() || event.isCanceled() || minecraft.player == null || !WhipItem.isWhip(minecraft.player.getMainHandItem())
+                || (minecraft.hitResult != null && minecraft.hitResult.getType() == HitResult.Type.BLOCK)) {
+            return;
+        }
+        event.setCanceled(true);
+        if (WhipItem.isReady(minecraft.player)) {
+            event.setSwingHand(true);
+            minecraft.player.resetAttackStrengthTicker();
+            ClientPacketDistributor.sendToServer(new SkillPayloads.WhipCrack());
+        } else {
+            event.setSwingHand(false);
         }
     }
 

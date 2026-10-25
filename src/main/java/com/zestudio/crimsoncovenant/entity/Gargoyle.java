@@ -79,6 +79,9 @@ import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 /// Its maker can right-click it to have it follow them or guard where it stands, and sneak-right-click to take it
 /// back as a statue. A gargoyle never turns on its maker, unless its maker turns: a hunter who catches the curse,
 /// or a vampire who loses it, is no longer its master.
+///
+/// A Master Hunter takes the field with a Cathedral Gargoyle of his own (see MasterHunter): it follows him, fights
+/// at his side, and answers to no player.
 @EventBusSubscriber(modid = CrimsonCovenant.MODID)
 public class Gargoyle extends PathfinderMob {
     private static final EntityDataAccessor<Boolean> STONE = SynchedEntityData.defineId(Gargoyle.class, EntityDataSerializers.BOOLEAN);
@@ -107,6 +110,8 @@ public class Gargoyle extends PathfinderMob {
     private final Side side;
     private @Nullable UUID owner;
     private boolean following = false;
+    /// Woken by a Master Hunter (its owner), not a player: it goes where he goes, despawning with his party
+    private boolean escort = false;
 
     public Gargoyle(EntityType<? extends Gargoyle> type, Level level, Side side) {
         super(type, level);
@@ -217,14 +222,31 @@ public class Gargoyle extends PathfinderMob {
         return this.owner;
     }
 
+    /// Sworn to a Master Hunter: follows him and fights at his side
+    public void escort(MasterHunter master) {
+        this.owner = master.getUUID();
+        this.escort = true;
+        this.follow();
+    }
+
+    public boolean isEscort() {
+        return this.escort;
+    }
+
     /// The player who woke this gargoyle, as long as they're still fit to command it
     public boolean isMaker(Player player) {
         return player.getUUID().equals(this.owner) && canCommand(this.side, player);
     }
 
-    private @Nullable Player getMaker() {
+    /// Whoever this gargoyle follows and defends: the player who woke it (while still fit to command it), or the
+    /// Master Hunter it escorts (while he lives)
+    private @Nullable LivingEntity getMaker() {
         if (this.owner == null) {
             return null;
+        }
+        if (this.escort) {
+            return this.level() instanceof ServerLevel level && level.getEntity(this.owner) instanceof MasterHunter master && master.isAlive()
+                    ? master : null;
         }
         Player player = this.level().getPlayerByUUID(this.owner);
         return player != null && this.isMaker(player) ? player : null;
@@ -392,10 +414,10 @@ public class Gargoyle extends PathfinderMob {
 
     // ---- Saving ----
 
-    // Made by hand, so never despawns
+    // Made by hand, so never despawns; a Master Hunter's goes when his party would (see Hunter)
     @Override
     public boolean removeWhenFarAway(double distSqr) {
-        return false;
+        return this.escort && distSqr > 16384.0;
     }
 
     @Override
@@ -403,6 +425,7 @@ public class Gargoyle extends PathfinderMob {
         super.addAdditionalSaveData(output);
         output.storeNullable("Owner", UUIDUtil.CODEC, this.owner);
         output.putBoolean("Following", this.following);
+        output.putBoolean("Escort", this.escort);
         output.putBoolean("Stone", this.isStone());
     }
 
@@ -411,6 +434,7 @@ public class Gargoyle extends PathfinderMob {
         super.readAdditionalSaveData(input);
         this.owner = input.read("Owner", UUIDUtil.CODEC).orElse(null);
         this.following = input.getBooleanOr("Following", false);
+        this.escort = input.getBooleanOr("Escort", false);
         this.entityData.set(STONE, input.getBooleanOr("Stone", false));
     }
 
@@ -457,7 +481,7 @@ public class Gargoyle extends PathfinderMob {
 
     /// Keeps a following gargoyle at its maker's side, and brings it along when they get too far ahead
     private class FollowMakerGoal extends Goal {
-        private @Nullable Player maker;
+        private @Nullable LivingEntity maker;
 
         FollowMakerGoal() {
             this.setFlags(EnumSet.of(Goal.Flag.MOVE, Goal.Flag.LOOK));
@@ -513,7 +537,7 @@ public class Gargoyle extends PathfinderMob {
 
         @Override
         public boolean canUse() {
-            Player maker = Gargoyle.this.getMaker();
+            LivingEntity maker = Gargoyle.this.getMaker();
             if (maker == null || Gargoyle.this.distanceTo(maker) > DEFEND_RANGE) {
                 return false;
             }

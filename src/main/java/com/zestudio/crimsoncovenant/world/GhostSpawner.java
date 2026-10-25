@@ -6,7 +6,6 @@ import java.util.List;
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
 import com.zestudio.crimsoncovenant.entity.Ghost;
 import com.zestudio.crimsoncovenant.registry.ModEntities;
-import com.zestudio.crimsoncovenant.registry.ModStructures;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -32,9 +31,10 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 
-/// Ghosts only haunt old mineshafts, abandoned (zombie) villages and graveyards. Vanilla's biome-based spawning can't
-/// target structures like that, so this places them directly: every 10 seconds, each player has a chance of a
-/// ghost appearing 8-24 blocks away, but only inside one of those structures, and never more than 3 nearby.
+/// Ghosts haunt old mineshafts and abandoned (zombie) villages. Vanilla's biome-based spawning can't target structures
+/// like that, so this places them directly: every 10 seconds, each player has a chance of a ghost appearing 8-24 blocks
+/// away, but only inside one of those structures, and never more than 3 nearby. Graveyards have their own ghosts,
+/// each bound to a gravestone (see GravestoneBlock), and no more: there's no farming them.
 @EventBusSubscriber(modid = CrimsonCovenant.MODID)
 public final class GhostSpawner {
     private static final int ATTEMPT_INTERVAL = 200;
@@ -99,7 +99,7 @@ public final class GhostSpawner {
         }
     }
 
-    /// The pieces of every mineshaft, abandoned village and graveyard within reach of the player
+    /// The pieces of every mineshaft and abandoned village within reach of the player
     public static List<BoundingBox> hauntedPiecesNear(ServerLevel level, BlockPos center) {
         Registry<Structure> structures = level.registryAccess().lookupOrThrow(Registries.STRUCTURE);
         BoundingBox reach = new BoundingBox(center).inflatedBy(MAX_DISTANCE);
@@ -120,7 +120,7 @@ public final class GhostSpawner {
     }
 
     public static boolean isHauntedKind(Holder<Structure> structure) {
-        return structure.is(StructureTags.MINESHAFT) || structure.is(StructureTags.VILLAGE) || structure.is(ModStructures.GRAVEYARD_STRUCTURE);
+        return structure.is(StructureTags.MINESHAFT) || structure.is(StructureTags.VILLAGE);
     }
 
     // Abandoned villages use the same structures as normal ones, but are built from the "zombie" template pools

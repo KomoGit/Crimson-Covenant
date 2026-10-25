@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "group": "silver_ingot",
+  "ingredients": [
+    "crimsoncovenant:silver_block"
+  ],
+  "result": {
+    "count": 9,
+    "id": "crimsoncovenant:silver_ingot"
+  }
+}

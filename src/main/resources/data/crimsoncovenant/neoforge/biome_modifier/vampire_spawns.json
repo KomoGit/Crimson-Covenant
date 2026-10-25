@@ -24,6 +24,15 @@
       "type": "crimsoncovenant:master_vampire",
       "weight": 2,
       "count": 1
+    },
+    {
+      "type": "crimsoncovenant:vampire_bat",
+      "weight": 20,
+      "count": {
+        "type": "minecraft:uniform",
+        "min_inclusive": 2,
+        "max_inclusive": 4
+      }
     }
   ]
 }

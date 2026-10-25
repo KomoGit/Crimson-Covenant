@@ -24,6 +24,7 @@ import com.zestudio.crimsoncovenant.vampirism.BloodPool;
 import com.zestudio.crimsoncovenant.vampirism.Vampirism;
 import com.zestudio.crimsoncovenant.registry.ModDamageTypes;
 import com.zestudio.crimsoncovenant.effect.CrimsonShroudEffect;
+import com.zestudio.crimsoncovenant.vampirism.VampireAge;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.world.item.component.Fireworks;
@@ -97,7 +98,7 @@ public final class BloodSkills {
             return false;
         }
         boolean upgraded = SkillUpgrade.isUpgraded(stack);
-        int cost = costFor(skill, player) + SkillUpgrade.extraCost(stack);
+        int cost = VampireAge.discounted(costFor(skill, player) + SkillUpgrade.extraCost(stack), player);
         String refusal = whyCantCast(skill, player, cost);
         if (refusal != null) {
             refuse(player, Component.translatable(refusal, BloodPool.get(player), cost));
@@ -271,11 +272,12 @@ public final class BloodSkills {
         if (player.getCooldowns().isOnCooldown(burst)) {
             return false;
         }
-        if (BloodPool.get(player) < BLOOD_CHARGE_COST) {
-            refuse(player, Component.translatable("message.crimsoncovenant.skill.not_enough_blood", BloodPool.get(player), BLOOD_CHARGE_COST));
+        int chargeCost = VampireAge.discounted(BLOOD_CHARGE_COST, player);
+        if (BloodPool.get(player) < chargeCost) {
+            refuse(player, Component.translatable("message.crimsoncovenant.skill.not_enough_blood", BloodPool.get(player), chargeCost));
             return false;
         }
-        BloodPool.add(player, -BLOOD_CHARGE_COST);
+        BloodPool.add(player, -chargeCost);
         player.getCooldowns().addCooldown(burst, BLOOD_CHARGE_COOLDOWN);
         // A one-burst rocket with no explosions, drawn as a clot of blood
         burst.set(DataComponents.FIREWORKS, new Fireworks(1, List.of()));
@@ -432,11 +434,11 @@ public final class BloodSkills {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     static void defyDeath(LivingDeathEvent event) {
         if (event.getEntity() instanceof ServerPlayer player && player.hasEffect(ModEffects.DEFY_DEATH)
-                && !event.getSource().is(DamageTypeTags.BYPASSES_INVULNERABILITY) && BloodPool.get(player) >= DEFY_DEATH_COST_PER_HIT) {
+                && !event.getSource().is(DamageTypeTags.BYPASSES_INVULNERABILITY) && BloodPool.get(player) >= VampireAge.discounted(DEFY_DEATH_COST_PER_HIT, player)) {
             event.setCanceled(true);
             player.setHealth(1.0F);
             UpgradeEffects.defiedDeath(player, player.getEffect(ModEffects.DEFY_DEATH));
-            BloodPool.set(player, BloodPool.get(player) - DEFY_DEATH_COST_PER_HIT);
+            BloodPool.set(player, BloodPool.get(player) - VampireAge.discounted(DEFY_DEATH_COST_PER_HIT, player));
             burst(player.level(), player, 40);
             playSound(player, SoundEvents.TOTEM_USE, 1.4F);
         }

@@ -2,6 +2,7 @@ package com.zestudio.crimsoncovenant.client.hud;
 
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
 import com.zestudio.crimsoncovenant.vampirism.BloodPool;
+import com.zestudio.crimsoncovenant.vampirism.VampireAge;
 import com.zestudio.crimsoncovenant.vampirism.Vampirism;
 
 import net.minecraft.client.DeltaTracker;
@@ -9,13 +10,15 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.Hud;
 import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.client.gui.GuiLayer;
 
 /// The vampire's blood bar: a row of ten drops in the hunger bar's place (vampires have none), each drop worth 10
-/// blood (half a drop is 5). Only drawn for vampire players, and only when the hunger bar would be (not in
-/// creative or spectator).
+/// blood (half a drop is 5), with the vampire's age above it once it's past its first ten days: Neo, Unusual or
+/// Ancient (see VampireAge). Only drawn for vampire players, and only when the hunger bar would be (not in creative or
+/// spectator).
 public class BloodBarLayer implements GuiLayer {
     public static final Identifier ID = CrimsonCovenant.id("blood_bar");
     private static final Identifier FULL = CrimsonCovenant.id("hud/blood_full");
@@ -23,6 +26,7 @@ public class BloodBarLayer implements GuiLayer {
     private static final Identifier EMPTY = CrimsonCovenant.id("hud/blood_empty");
     private static final int DROPS = 10;
     private static final int BLOOD_PER_DROP = BloodPool.MAX_BLOOD / DROPS;
+    private static final int AGE_COLOR = 0xFFC8303C;
 
     @Override
     public void render(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
@@ -47,5 +51,12 @@ public class BloodBarLayer implements GuiLayer {
             }
         }
         hud.rightHeight += 10;
+        // The vampire's age, right-aligned over the drops
+        int tier = VampireAge.tier(player);
+        if (tier > 0) {
+            Component age = VampireAge.tierName(tier);
+            graphics.text(minecraft.font, age, xRight - minecraft.font.width(age), graphics.guiHeight() - hud.rightHeight, AGE_COLOR, true);
+            hud.rightHeight += 10;
+        }
     }
 }

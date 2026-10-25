@@ -25,6 +25,7 @@ import com.zestudio.crimsoncovenant.item.BloodSpearItem;
 import com.zestudio.crimsoncovenant.registry.ModAttachments;
 import com.zestudio.crimsoncovenant.registry.ModAttachments.PossessionState;
 import com.zestudio.crimsoncovenant.registry.ModBlocks;
+import com.zestudio.crimsoncovenant.registry.ModDamageTypes;
 import com.zestudio.crimsoncovenant.registry.ModDataComponents;
 import com.zestudio.crimsoncovenant.registry.ModEffects;
 import com.zestudio.crimsoncovenant.registry.ModEntities;
@@ -50,6 +51,9 @@ import com.zestudio.crimsoncovenant.effect.CrimsonShroudEffect;
 import com.zestudio.crimsoncovenant.block.AncientTranslatorBlockEntity;
 import com.zestudio.crimsoncovenant.block.IronMaidenBlock;
 import com.zestudio.crimsoncovenant.block.IronMaidenBlockEntity;
+import com.zestudio.crimsoncovenant.entity.WhipLash;
+import com.zestudio.crimsoncovenant.item.WhipItem;
+import com.zestudio.crimsoncovenant.item.Silvering;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -98,6 +102,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.entity.projectile.FireworkRocketEntity;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
+import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.common.damagesource.DamageContainer;
 import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
@@ -131,7 +136,7 @@ final class SkillGameTests {
     }
 
     /// Wears the skill in the first slot and presses its key
-    private static boolean castSkill(ServerPlayer player, BloodSkill skill) {
+    static boolean castSkill(ServerPlayer player, BloodSkill skill) {
         ItemStack stack = new ItemStack(skill.skillItem());
         SkillSlots.set(player, 0, stack);
         player.getCooldowns().removeCooldown(player.getCooldowns().getCooldownGroup(stack));
@@ -335,6 +340,126 @@ final class SkillGameTests {
         });
     }
 
+    static void bloodSpearPiercesThrough(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer player = makeVampire(helper, 0);
+        // Two zombies in a row, three blocks apart: the spear runs through the first and on into the second
+        Zombie first = spawnSturdyZombie(helper, new BlockPos(1, 1, 4));
+        Zombie second = spawnSturdyZombie(helper, new BlockPos(4, 1, 4));
+        first.removeFreeWill();
+        second.removeFreeWill();
+        throwSpearAt(level, player, first, new Vec3(1.0, 0.0, 0.0));
+        removePlayer(helper, player);
+        helper.assertTrue(first.getHealth() < first.getMaxHealth(), Component.literal("The spear should strike the first zombie"));
+        helper.assertTrue(second.getHealth() < second.getMaxHealth(), Component.literal("The spear should run through it into the second"));
+        first.discard();
+        second.discard();
+        helper.succeed();
+    }
+
+    static void whipsReachFarAndSlam(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ItemStack whip = new ItemStack(ModItems.WHIP.get());
+        helper.assertTrue(Silvering.isSilvered(whip), Component.literal("A whip is silvered by its making"));
+        double reach = whip.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS, ItemAttributeModifiers.EMPTY)
+                .compute(Attributes.ENTITY_INTERACTION_RANGE, 3.0, EquipmentSlot.MAINHAND);
+        helper.assertValueEqual(reach, 6.0, "a whip's reach");
+
+        for (int z = 3; z <= 5; z++) {
+            for (int y = 1; y <= 2; y++) {
+                helper.setBlock(new BlockPos(5, y, z), Blocks.STONE);
+            }
+        }
+        ServerPlayer player = makePlayer(helper);
+        Vec3 stand = helper.absoluteVec(new Vec3(1.5, 1.0, 4.5));
+        player.teleportTo(stand.x, stand.y, stand.z);
+        player.setItemInHand(InteractionHand.MAIN_HAND, whip);
+        Zombie zombie = spawnSturdyZombie(helper, new BlockPos(3, 1, 4));
+        float blow = 2.0F;
+        zombie.hurtServer(level, level.damageSources().playerAttack(player), blow);
+        // The lash cracks out with the swing, but not twice at once
+        WhipLash lash = WhipLash.crack(player);
+        helper.assertTrue(lash != null && WhipLash.crack(player) == null, Component.literal("A swing should crack one lash out"));
+        float[] slammed = new float[1];
+        helper.startSequence()
+                .thenExecuteAfter(WhipItem.DRIVE_TICKS + 4, () -> {
+                    helper.assertTrue(zombie.getMaxHealth() - zombie.getHealth() > blow + 1.0F,
+                            Component.literal("Cracked back into the wall, the zombie should be slammed against it"));
+                    helper.assertTrue(BloodSpear.isStaggered(zombie), Component.literal("The slammed zombie should be staggered"));
+                    slammed[0] = zombie.getHealth();
+                })
+                // Once, not over and over: the slam is the wielder's blow too, and mustn't drive it back into the wall
+                .thenExecuteAfter(20, () -> helper.assertValueEqual(zombie.getHealth(), slammed[0], "the zombie's health a second after its one slam"))
+                .thenExecute(() -> {
+                    removePlayer(helper, player);
+                    zombie.discard();
+                })
+                .thenSucceed();
+    }
+
+    static void whipLashLandsTheBlow(GameTestHelper helper) {
+        ServerPlayer player = makePlayer(helper);
+        // Facing east, down the test, at a zombie four blocks off: beyond an arm's reach, within the whip's
+        Vec3 stand = helper.absoluteVec(new Vec3(1.5, 1.0, 4.5));
+        player.snapTo(stand.x, stand.y, stand.z, -90.0F, 0.0F);
+        player.teleportTo(stand.x, stand.y, stand.z);
+        player.setYRot(-90.0F);
+        player.setYHeadRot(-90.0F);
+        player.setXRot(0.0F);
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ModItems.WHIP.get()));
+        Zombie zombie = spawnSturdyZombie(helper, new BlockPos(4, 1, 4));
+        zombie.removeFreeWill();
+        float health = zombie.getHealth();
+        // And one beyond it, still within the whip's reach: the lash cuts through to it
+        Zombie beyond = spawnSturdyZombie(helper, new BlockPos(6, 1, 4));
+        beyond.removeFreeWill();
+        WhipLash lash = WhipLash.crack(player);
+        helper.assertTrue(lash != null, Component.literal("The whip should crack"));
+        helper.assertTrue(WhipLash.isLashing(player) && WhipLash.crack(player) == null, Component.literal("No second lash while the first is out"));
+        helper.startSequence()
+                .thenExecuteAfter(WhipLash.CRACK_TICK + 2, () -> {
+                    helper.assertTrue(zombie.getHealth() < health, Component.literal("The crack should land on the zombie the lash reaches"));
+                    helper.assertTrue(beyond.getHealth() < beyond.getMaxHealth(), Component.literal("The lash should cut through to the zombie beyond"));
+                })
+                .thenWaitUntil(() -> helper.assertTrue(!WhipLash.isLashing(player), Component.literal("The lash should be drawn back in")))
+                .thenExecute(() -> {
+                    removePlayer(helper, player);
+                    zombie.discard();
+                    beyond.discard();
+                })
+                .thenSucceed();
+    }
+
+    static void whipPullsCreaturesIn(GameTestHelper helper) {
+        ServerPlayer player = makePlayer(helper);
+        // Facing east, at a zombie five blocks off
+        Vec3 stand = helper.absoluteVec(new Vec3(1.5, 1.0, 4.5));
+        player.snapTo(stand.x, stand.y, stand.z, -90.0F, 0.0F);
+        player.teleportTo(stand.x, stand.y, stand.z);
+        player.setYRot(-90.0F);
+        player.setYHeadRot(-90.0F);
+        player.setXRot(0.0F);
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ModItems.WHIP.get()));
+        Zombie zombie = spawnSturdyZombie(helper, new BlockPos(6, 1, 4));
+        // Held still by its own will, so only the lash moves it
+        zombie.removeFreeWill();
+        float health = zombie.getHealth();
+        double startDistance = zombie.distanceTo(player);
+        helper.assertTrue(WhipLash.crack(player, WhipLash.Kind.PULL, null, WhipLash.LASH_TICKS) != null, Component.literal("The whip should crack"));
+        helper.startSequence()
+                .thenExecuteAfter(WhipLash.CRACK_TICK + 15, () -> {
+                    double distance = zombie.distanceTo(player);
+                    helper.assertTrue(distance < startDistance - 1.5, Component.literal("The lash should yank the zombie in: from " + startDistance + " to " + distance));
+                    helper.assertTrue(distance > 1.0, Component.literal("The zombie should land short of the wielder, not on them: " + distance));
+                    helper.assertValueEqual(zombie.getHealth(), health, "the pulled zombie's health (a pull isn't a blow)");
+                })
+                .thenExecute(() -> {
+                    removePlayer(helper, player);
+                    zombie.discard();
+                })
+                .thenSucceed();
+    }
+
     /// A spear thrown from just in front of the zombie, so it hits on its first tick or two
     private static void throwSpearAt(ServerLevel level, ServerPlayer thrower, Zombie zombie, Vec3 direction) {
         throwSpearAt(level, thrower, zombie, direction, false);
@@ -349,6 +474,8 @@ final class SkillGameTests {
         for (int i = 0; i < 5 && spear.isAlive(); i++) {
             spear.tick();
         }
+        // It flies on through what it hits: not off into the neighbouring tests
+        spear.discard();
     }
 
     /// A zombie that doesn't burn in the test's noon sun or shrug off knockback
@@ -365,6 +492,11 @@ final class SkillGameTests {
         ServerPlayer player = makeVampire(helper, 100);
         helper.assertTrue(castSkill(player, BloodSkill.BLOOD_PARADE), Component.literal("Blood Parade should cast"));
         helper.assertValueEqual(BloodPool.get(player), 0, "Blood Parade spends the whole bar");
+        // ...and what its orb kills doesn't put any back
+        BloodOrb paradeOrb = new BloodOrb(level, player, Vec3.ZERO, 0);
+        Villager victim = helper.spawnWithNoFreeWill(EntityTypes.VILLAGER, new BlockPos(7, 1, 1));
+        victim.hurtServer(level, level.damageSources().source(ModDamageTypes.BLOOD_MAGIC, paradeOrb, player), 1000.0F);
+        helper.assertValueEqual(BloodPool.get(player), 0, "blood after the Blood Parade's orb kills a villager");
         // That orb was cast from wherever the mock player stands, outside the test: get rid of it
         level.getEntitiesOfClass(BloodOrb.class, player.getBoundingBox().inflate(4.0)).forEach(BloodOrb::discard);
         removePlayer(helper, player);
@@ -858,6 +990,10 @@ final class SkillGameTests {
         helper.setBlock(pos, ModBlocks.ANCIENT_TRANSLATOR.get());
         ServerPlayer player = makePlayer(helper);
         player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(BloodSkill.DAYWALKER.tome()));
+        // It won't read a tome whose skill its reader hasn't unlocked in their Codex
+        helper.useBlock(pos, player);
+        helper.assertBlockProperty(pos, AncientTranslatorBlock.TOME, 0);
+        player.setData(ModAttachments.UNLOCKED_SKILLS, List.of(BloodSkill.DAYWALKER.getName()));
         helper.useBlock(pos, player);
         helper.assertTrue(player.getMainHandItem().isEmpty(), Component.literal("The translator should take the tome"));
         helper.assertBlockProperty(pos, AncientTranslatorBlock.TOME, BloodSkill.DAYWALKER.ordinal() + 1);
@@ -959,7 +1095,11 @@ final class SkillGameTests {
         ServerLevel level = helper.getLevel();
         LootTable library = level.getServer().reloadableRegistries().getLootTable(
                 ResourceKey.create(Registries.LOOT_TABLE, net.minecraft.resources.Identifier.withDefaultNamespace("chests/stronghold_library")));
-        LootParams params = new LootParams.Builder(level).withParameter(LootContextParams.ORIGIN, helper.absoluteVec(Vec3.ZERO)).create(LootContextParamSets.CHEST);
+        // Opened by a vampire who's unlocked every skill (tomes don't turn up for anyone else: see guide.LockedTomes)
+        ServerPlayer opener = makeVampire(helper, 0);
+        opener.setData(ModAttachments.UNLOCKED_SKILLS, java.util.Arrays.stream(BloodSkill.values()).map(BloodSkill::getName).toList());
+        LootParams params = new LootParams.Builder(level).withParameter(LootContextParams.ORIGIN, helper.absoluteVec(Vec3.ZERO))
+                .withParameter(LootContextParams.THIS_ENTITY, opener).create(LootContextParamSets.CHEST);
         int tomes = 0;
         for (int i = 0; i < 200; i++) {
             for (ItemStack stack : library.getRandomItems(params)) {
@@ -970,6 +1110,7 @@ final class SkillGameTests {
         }
         // 44% a chest: about 90 in 200
         helper.assertTrue(tomes > 40 && tomes < 140, Component.literal("Expected about 90 tomes in 200 stronghold libraries, got " + tomes));
+        removePlayer(helper, opener);
         helper.succeed();
     }
 
@@ -1266,6 +1407,8 @@ final class SkillGameTests {
     static void masterVampiresDropRareTomes(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         ServerPlayer player = makeVampire(helper, 0);
+        // A killer who's unlocked every skill (tomes don't drop for anyone else: see guide.LockedTomes)
+        player.setData(ModAttachments.UNLOCKED_SKILLS, java.util.Arrays.stream(BloodSkill.values()).map(BloodSkill::getName).toList());
         MasterVampire master = helper.spawnWithNoFreeWill(ModEntities.MASTER_VAMPIRE.get(), new BlockPos(4, 1, 4));
         LootTable loot = level.getServer().reloadableRegistries().getLootTable(master.getLootTable().orElseThrow());
         LootParams params = new LootParams.Builder(level)
@@ -1413,6 +1556,25 @@ final class SkillGameTests {
         human.setItemInHand(InteractionHand.MAIN_HAND, PotionContents.createItemStack(Items.POTION, ModPotions.BLACK_BLOOD));
         human.getMainHandItem().use(level, human, InteractionHand.MAIN_HAND);
         helper.assertTrue(human.isUsingItem(), Component.literal("A human can drink Black Blood"));
+        removePlayer(helper, vampire);
+        removePlayer(helper, human);
+        helper.succeed();
+    }
+
+    static void vampiresRefuseGarlic(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer vampire = makeVampire(helper, 0);
+        vampire.getFoodData().setFoodLevel(10);
+        for (ItemStack garlic : List.of(PotionContents.createItemStack(Items.POTION, ModPotions.GARLIC), new ItemStack(ModItems.GARLIC.get()))) {
+            vampire.setItemInHand(InteractionHand.MAIN_HAND, garlic);
+            vampire.getMainHandItem().use(level, vampire, InteractionHand.MAIN_HAND);
+            helper.assertTrue(!vampire.isUsingItem(), Component.literal("A vampire shouldn't be able to drink or eat " + garlic.getHoverName().getString()));
+        }
+
+        ServerPlayer human = makePlayer(helper);
+        human.setItemInHand(InteractionHand.MAIN_HAND, PotionContents.createItemStack(Items.POTION, ModPotions.GARLIC));
+        human.getMainHandItem().use(level, human, InteractionHand.MAIN_HAND);
+        helper.assertTrue(human.isUsingItem(), Component.literal("A human can drink a Potion of Garlic"));
         removePlayer(helper, vampire);
         removePlayer(helper, human);
         helper.succeed();

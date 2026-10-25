@@ -55,6 +55,11 @@ public final class HunterRanks {
         return get(player) >= INITIATE;
     }
 
+    /// The rank's id, as in commands: none, initiate, tracker, slayer, warden, grand_hunter
+    public static String id(int rank) {
+        return NAMES[Math.clamp(rank, NONE, MAX_RANK)];
+    }
+
     public static Component name(int rank) {
         return Component.translatable("hunter_rank." + CrimsonCovenant.MODID + "." + NAMES[Math.clamp(rank, NONE, MAX_RANK)]);
     }

@@ -35,6 +35,7 @@ public final class ModGameTests {
         isolatedTest("hunter_spawner_knows_when_its_night", HunterGameTests::spawnerKnowsWhenItsNight);
         test("hunter_targets_undead", HunterGameTests::targetsUndead);
         test("hunter_ignores_animals", HunterGameTests::ignoresAnimals);
+        playerTest("hunter_rank_commands_set_ranks", HunterGameTests::rankCommandsSetRanks, DEFAULT_MAX_TICKS);
         test("hunter_crossbow_shoots", HunterGameTests::crossbowShoots);
         test("hunter_targets_vampire", HunterGameTests::targetsVampire);
         test("hunter_drops_token_of_blood", HunterGameTests::dropsTokenOfBloodWhenKilledByPlayer);
@@ -54,6 +55,10 @@ public final class ModGameTests {
         test("master_hunter_drinks_regeneration_after_battle", HunterGameTests::masterHunterDrinksRegenerationAfterBattle, 400);
         test("master_hunter_throws_lingering_at_groups", HunterGameTests::masterHunterThrowsLingeringAtGroups, 400);
 
+        playerTest("vampires_grow_stronger_with_age", VampireGameTests::vampiresGrowStrongerWithAge, DEFAULT_MAX_TICKS);
+        playerTest("old_vampires_make_a_last_stand", VampireGameTests::oldVampiresMakeALastStand, DEFAULT_MAX_TICKS);
+        playerTest("ancients_are_kin_to_the_night", VampireGameTests::ancientsAreKinToTheNight, DEFAULT_MAX_TICKS);
+        isolatedTest("blood_parade_only_under_a_blood_moon", VampireGameTests::bloodParadeOnlyUnderABloodMoon);
         test("holy_water_burns_only_undead", VampireGameTests::holyWaterBurnsOnlyUndead);
         test("holy_water_slows_and_strips_resistance", VampireGameTests::holyWaterSlowsAndStripsResistance);
         test("lingering_holy_water_burns_undead", VampireGameTests::lingeringHolyWaterBurnsUndead);
@@ -117,6 +122,10 @@ public final class ModGameTests {
         test("blood_spear_refunds_on_kill", SkillGameTests::bloodSpearRefundsOnKill);
         test("blood_spear_is_thrown_like_a_trident", SkillGameTests::bloodSpearIsThrownLikeATrident);
         test("blood_spear_drives_and_slams", SkillGameTests::bloodSpearDrivesAndSlams);
+        test("blood_spear_pierces_through", SkillGameTests::bloodSpearPiercesThrough);
+        playerTest("whips_reach_far_and_slam", SkillGameTests::whipsReachFarAndSlam, DEFAULT_MAX_TICKS);
+        playerTest("whip_lash_lands_the_blow", SkillGameTests::whipLashLandsTheBlow, DEFAULT_MAX_TICKS);
+        playerTest("whip_pulls_creatures_in", SkillGameTests::whipPullsCreaturesIn, DEFAULT_MAX_TICKS);
         test("blood_parade_drains_hostiles", SkillGameTests::bloodParadeDrainsHostiles, 400);
         test("blood_parade_bounces_off_walls", SkillGameTests::bloodParadeBouncesOffWalls);
         test("blood_altar_upgrades_skills", SkillGameTests::bloodAltarUpgradesSkills);
@@ -147,7 +156,13 @@ public final class ModGameTests {
         test("gravecaller_raises_the_slain", CurseGameTests::gravecallerRaisesTheSlain);
         playerTest("revenants_grip_fights_alongside", CurseGameTests::revenantsGripFightsAlongside, DEFAULT_MAX_TICKS);
         playerTest("wraithseeker_arrows_find_their_mark", CurseGameTests::wraithseekerArrowsFindTheirMark, DEFAULT_MAX_TICKS);
+        playerTest("wraithseeker_trick_shots_come_round", CurseGameTests::wraithseekerTrickShotsComeRound, DEFAULT_MAX_TICKS);
         playerTest("twin_wyrms_tear_through_walls", CurseGameTests::twinWyrmsTearThroughWalls, DEFAULT_MAX_TICKS);
+        playerTest("haunted_weapons_cant_be_mended", CurseGameTests::hauntedWeaponsCantBeMended, DEFAULT_MAX_TICKS);
+        playerTest("gravequake_throws_them_down", CurseGameTests::gravequakeThrowsThemDown, DEFAULT_MAX_TICKS);
+        playerTest("wraiths_tether_hauls_you_in", CurseGameTests::wraithsTetherHaulsYouIn, DEFAULT_MAX_TICKS);
+        playerTest("hauntings_cost_souls", CurseGameTests::hauntingsCostSouls, DEFAULT_MAX_TICKS);
+        playerTest("the_fallen_can_be_struck_where_they_lie", CurseGameTests::theFallenCanBeStruckWhereTheyLie, DEFAULT_MAX_TICKS);
         test("broken_translator_gives_the_tome_back", SkillGameTests::brokenTranslatorGivesTheTomeBack);
         test("translator_recipe_uses_tokens_of_blood", SkillGameTests::translatorRecipeUsesTokensOfBlood);
         test("plague_doctor_trades_for_coins_and_emeralds", SkillGameTests::plagueDoctorTradesForCoinsAndEmeralds);
@@ -175,6 +190,7 @@ public final class ModGameTests {
         test("hunters_drink_black_blood_for_a_fight", SkillGameTests::huntersDrinkBlackBloodForAFight);
         test("black_blood_burns_undead_biters", SkillGameTests::blackBloodBurnsUndeadBiters);
         test("vampires_refuse_black_blood", SkillGameTests::vampiresRefuseBlackBlood);
+        test("vampires_refuse_garlic", SkillGameTests::vampiresRefuseGarlic);
         test("stalkers_gaze_lasts_and_washes_off", SkillGameTests::stalkersGazeLastsAndWashesOff);
         test("garlic_braid_repels_undead", SkillGameTests::garlicBraidRepelsUndead);
         test("garlic_weakens_undead", SkillGameTests::garlicWeakensUndead);
@@ -188,6 +204,7 @@ public final class ModGameTests {
         test("plague_doctor_refuses_vampires", SilverGameTests::plagueDoctorRefusesVampires);
         test("silvered_bottles_hold_ghosts", SilverGameTests::silveredBottlesHoldGhosts);
         test("silver_ore_kicks_up_dust", SilverGameTests::silverOreKicksUpDust);
+        test("silver_is_minted_and_stored", SilverGameTests::silverIsMintedAndStored);
         isolatedTest("coffins_let_you_sleep_by_day", CoffinGameTests::coffinsLetYouSleepByDay);
         test("vampires_sleep_only_in_coffins", CoffinGameTests::vampiresSleepOnlyInCoffins);
         calmTest("kin_dont_keep_vampires_awake", CoffinGameTests::kinDontKeepVampiresAwake, 100);
@@ -199,6 +216,15 @@ public final class ModGameTests {
         test("orphaned_minions_crumble", SkillGameTests::orphanedMinionsCrumble);
         test("graveyard_is_built", GraveyardGameTests::graveyardIsBuilt);
         test("graveyards_are_haunted", GraveyardGameTests::graveyardsAreHaunted);
+        playerTest("souls_unlock_skills", GuideGameTests::soulsUnlockSkills, DEFAULT_MAX_TICKS);
+        playerTest("translations_fill_the_codex", GuideGameTests::translationsFillTheCodex, DEFAULT_MAX_TICKS);
+        playerTest("locked_tomes_stay_hidden", GuideGameTests::lockedTomesStayHidden, DEFAULT_MAX_TICKS);
+        playerTest("glass_bottles_torment_ghosts", GuideGameTests::glassBottlesTormentGhosts, DEFAULT_MAX_TICKS);
+        playerTest("guide_books_chain", GuideGameTests::guideBooksChain, DEFAULT_MAX_TICKS);
+        playerTest("guides_are_kept_on_death", GuideGameTests::guidesAreKeptOnDeath, DEFAULT_MAX_TICKS);
+        playerTest("bestiary_fills_as_you_see", GuideGameTests::bestiaryFillsAsYouSee, DEFAULT_MAX_TICKS);
+        test("graveyard_ghosts_rest_in_their_graves", GraveyardGameTests::graveyardGhostsRestInTheirGraves);
+        test("ghosts_set_things_floating", GraveyardGameTests::ghostsSetThingsFloating);
         test("hunter_cabin_is_built", HunterCabinGameTests::cabinIsBuilt);
         test("rats_eat_crops_and_have_litters", RatGameTests::ratsEatCropsAndHaveLitters, 600);
         test("rats_eat_rotten_flesh", RatGameTests::ratsEatRottenFlesh);

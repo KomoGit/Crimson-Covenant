@@ -6,6 +6,7 @@ import com.zestudio.crimsoncovenant.entity.Vampire;
 import com.zestudio.crimsoncovenant.skill.AncientTomeItem;
 import com.zestudio.crimsoncovenant.skill.BloodSkill;
 import com.zestudio.crimsoncovenant.registry.ModBlockEntities;
+import com.zestudio.crimsoncovenant.guide.SkillLore;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -75,8 +76,16 @@ public class AncientTranslatorBlock extends Block implements EntityBlock {
             player.sendOverlayMessage(Component.translatable("message.crimsoncovenant.translator.busy").withStyle(ChatFormatting.GRAY));
             return InteractionResult.FAIL;
         }
+        // Its script means nothing to anyone who hasn't unlocked the skill in their Codex
+        if (!SkillLore.isUnlocked(player, tome.skill())) {
+            player.sendOverlayMessage(Component.translatable("message.crimsoncovenant.translator.locked", tome.skill().displayName()).withStyle(ChatFormatting.GRAY));
+            return InteractionResult.FAIL;
+        }
         if (level instanceof ServerLevel serverLevel) {
             startTranslating(serverLevel, pos, state, tome.skill());
+            if (level.getBlockEntity(pos) instanceof AncientTranslatorBlockEntity translator) {
+                translator.setReader(player);
+            }
             stack.consume(1, player);
         }
         return InteractionResult.SUCCESS;
@@ -116,6 +125,11 @@ public class AncientTranslatorBlock extends Block implements EntityBlock {
             return;
         }
         level.setBlockAndUpdate(pos, state.setValue(TOME, 0));
+        // Whoever brought the tome has its page in their Codex filled in
+        if (level.getBlockEntity(pos) instanceof AncientTranslatorBlockEntity translator && translator.reader() != null
+                && level.getPlayerByUUID(translator.reader()) instanceof Player reader) {
+            SkillLore.markTranslated(reader, skill);
+        }
         ItemEntity result = new ItemEntity(level, pos.getX() + 0.5, pos.getY() + 1.0, pos.getZ() + 0.5, new ItemStack(skill.skillItem()), 0.0, 0.2, 0.0);
         result.setDefaultPickUpDelay();
         level.addFreshEntity(result);
