@@ -312,7 +312,7 @@ public class IronMaidenBlock extends HorizontalDirectionalBlock implements Entit
     public static int bloodWanted(Player drinker, int bloodEach, float healthEach) {
         float missingHealth = drinker.getMaxHealth() - drinker.getHealth();
         int forHealth = missingHealth <= 0.0F ? 0 : Mth.ceil(missingHealth * bloodEach / healthEach);
-        int forBlood = Vampirism.isVampire(drinker) ? BloodPool.MAX_BLOOD - BloodPool.get(drinker) : 0;
+        int forBlood = Vampirism.isVampire(drinker) ? BloodPool.max(drinker) - BloodPool.get(drinker) : 0;
         return Math.max(forHealth, forBlood);
     }
 

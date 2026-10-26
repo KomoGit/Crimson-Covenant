@@ -259,7 +259,7 @@ final class CoffinGameTests {
         helper.assertValueEqual(maiden.getCaptive().blood(), IronMaidenBlockEntity.BLOOD_IN_A_CAPTIVE - IronMaidenBlock.BLOOD_PER_CAPTIVE, "blood left after a night's feeding");
 
         // Only what's wanted is taken: a vampire nearly full takes just enough to top up...
-        BloodPool.set(vampire, BloodPool.MAX_BLOOD - 5);
+        BloodPool.set(vampire, BloodPool.max(vampire) - 5);
         int before = maiden.getCaptive().blood();
         IronMaidenBlock.feedOnCaptives(vampire, helper.absolutePos(coffin));
         helper.assertValueEqual(before - maiden.getCaptive().blood(), 5, "blood taken by a vampire 5 short of full");

@@ -69,6 +69,7 @@ public final class ModGameTests {
         test("headless_horseman_hunts_hunters", VampireGameTests::headlessHorsemanHuntsHunters);
         test("holy_flame_looks_like_fire", WorldGameTests::holyFlameLooksLikeFire);
         test("horseman_dies_with_horse", WorldGameTests::horsemanDiesWithHorse);
+        test("horseman_drops_his_glowing_head", WorldGameTests::horsemanDropsHisGlowingHead);
         test("vampire_seeks_shelter_at_dawn", WorldGameTests::vampireSeeksShelterAtDawn, 400);
         test("master_vampire_cant_drain_under_holy_flame", WorldGameTests::masterVampireCantDrainUnderHolyFlame);
         test("blood_moon_timing", WorldGameTests::bloodMoonTiming);
@@ -114,6 +115,7 @@ public final class ModGameTests {
 
         test("kills_fill_the_blood_bar", SkillGameTests::killsFillTheBloodBar);
         test("blood_refills_slowly", SkillGameTests::bloodRefillsSlowly);
+        test("older_vampires_hold_more_blood", SkillGameTests::olderVampiresHoldMoreBlood);
         test("skills_cost_blood_and_need_a_vampire", SkillGameTests::skillsCostBloodAndNeedAVampire);
         test("dash_launches_the_player", SkillGameTests::dashLaunchesThePlayer);
         test("armor_of_ancient_matches_diamond", SkillGameTests::armorOfAncientMatchesDiamond);
@@ -127,6 +129,7 @@ public final class ModGameTests {
         playerTest("whip_lash_lands_the_blow", SkillGameTests::whipLashLandsTheBlow, DEFAULT_MAX_TICKS);
         playerTest("whip_pulls_creatures_in", SkillGameTests::whipPullsCreaturesIn, DEFAULT_MAX_TICKS);
         test("blood_parade_drains_hostiles", SkillGameTests::bloodParadeDrainsHostiles, 400);
+        test("blood_bats_chain_until_their_reach_runs_out", SkillGameTests::bloodBatsChainUntilTheirReachRunsOut, 200);
         test("blood_parade_bounces_off_walls", SkillGameTests::bloodParadeBouncesOffWalls);
         test("blood_altar_upgrades_skills", SkillGameTests::bloodAltarUpgradesSkills);
         test("crimson_lightning_strikes_spear_victims", SkillGameTests::crimsonLightningStrikesSpearVictims);
@@ -243,6 +246,9 @@ public final class ModGameTests {
         test("rats_gnaw_into_wood_from_the_side", RatGameTests::ratsGnawIntoWoodFromTheSide);
         test("cleanse_cures_the_sick", PlagueDoctorGameTests::cleanseCuresTheSick);
         test("thrown_cleanse_clears_the_miasma", PlagueDoctorGameTests::thrownCleanseClearsTheMiasma);
+        test("drunk_cleanse_cures_the_curse", PlagueDoctorGameTests::drunkCleanseCuresTheCurse);
+        test("vampires_dont_feel_the_cold", VampireGameTests::vampiresDontFeelTheCold);
+        test("vampires_toggle_night_vision", VampireGameTests::vampiresToggleNightVision);
         test("plague_doctor_cures_for_emeralds", PlagueDoctorGameTests::doctorCuresForEmeralds);
         test("plague_doctor_sells_cleanse", PlagueDoctorGameTests::doctorSellsCleanse);
         test("plague_doctor_villagers_cure_too", PlagueDoctorGameTests::doctorVillagersCureToo);

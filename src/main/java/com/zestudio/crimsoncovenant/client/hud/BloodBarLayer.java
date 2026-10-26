@@ -15,17 +15,16 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.client.gui.GuiLayer;
 
-/// The vampire's blood bar: a row of ten drops in the hunger bar's place (vampires have none), each drop worth 10
-/// blood (half a drop is 5), with the vampire's age above it once it's past its first ten days: Neo, Unusual or
-/// Ancient (see VampireAge). Only drawn for vampire players, and only when the hunger bar would be (not in creative or
-/// spectator).
+/// The vampire's blood bar: a row of ten drops in the hunger bar's place (vampires have none), each drop a tenth of
+/// what the vampire can hold (10 blood for a young one, 20 for an Ancient), with the vampire's age above it once it's
+/// past its first ten days: Neo, Unusual or Ancient (see VampireAge). Only drawn for vampire players, and only when the
+/// hunger bar would be (not in creative or spectator).
 public class BloodBarLayer implements GuiLayer {
     public static final Identifier ID = CrimsonCovenant.id("blood_bar");
     private static final Identifier FULL = CrimsonCovenant.id("hud/blood_full");
     private static final Identifier HALF = CrimsonCovenant.id("hud/blood_half");
     private static final Identifier EMPTY = CrimsonCovenant.id("hud/blood_empty");
     private static final int DROPS = 10;
-    private static final int BLOOD_PER_DROP = BloodPool.MAX_BLOOD / DROPS;
     private static final int AGE_COLOR = 0xFFC8303C;
 
     @Override
@@ -37,16 +36,17 @@ public class BloodBarLayer implements GuiLayer {
             return;
         }
         int blood = BloodPool.get(player);
+        int perDrop = BloodPool.max(player) / DROPS;
         int xRight = graphics.guiWidth() / 2 + 91;
         int y = graphics.guiHeight() - hud.rightHeight;
         // Same layout as the hunger bar: filled from the right
         for (int i = 0; i < DROPS; i++) {
             int x = xRight - i * 8 - 9;
-            int dropBlood = blood - i * BLOOD_PER_DROP;
+            int dropBlood = blood - i * perDrop;
             graphics.blitSprite(RenderPipelines.GUI_TEXTURED, EMPTY, x, y, 9, 9);
-            if (dropBlood >= BLOOD_PER_DROP) {
+            if (dropBlood >= perDrop) {
                 graphics.blitSprite(RenderPipelines.GUI_TEXTURED, FULL, x, y, 9, 9);
-            } else if (dropBlood >= BLOOD_PER_DROP / 2) {
+            } else if (dropBlood >= perDrop / 2) {
                 graphics.blitSprite(RenderPipelines.GUI_TEXTURED, HALF, x, y, 9, 9);
             }
         }

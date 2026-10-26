@@ -219,7 +219,7 @@ public class GuideScreen extends Screen {
         if (SkillLore.isTranslated(player, skill)) {
             w.para(Component.translatable("item.crimsoncovenant.skill.description." + skill.getName()));
             int cost = VampireAge.discounted(skill.cost(), player);
-            w.para(skill.spendsAllBlood() ? key("codex.skill.cost_all", cost) : key("codex.skill.cost", cost));
+            w.para(key("codex.skill.cost", cost));
             w.para(key("codex.skill.cooldown", String.format("%.1f", skill.cooldown() / 20.0)));
             SkillUpgrade upgrade = SkillUpgrade.forSkill(skill);
             if (upgrade != null) {

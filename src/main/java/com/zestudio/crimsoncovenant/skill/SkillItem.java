@@ -71,12 +71,7 @@ public class SkillItem extends Item {
         int fullCost = item.skill.cost() + SkillUpgrade.extraCost(stack);
         int cost = player != null && Vampirism.isVampire(player) ? VampireAge.discounted(fullCost, player) : fullCost;
         List<Component> lines = new ArrayList<>();
-        if (item.skill.spendsAllBlood()) {
-            lines.add(Component.translatable("item.crimsoncovenant.skill.cost_all").withStyle(ChatFormatting.DARK_RED, ChatFormatting.BOLD));
-            lines.add(Component.translatable("item.crimsoncovenant.skill.cost_all.minimum", cost).withStyle(ChatFormatting.DARK_RED));
-        } else {
-            lines.add(Component.translatable("item.crimsoncovenant.skill.cost", cost).withStyle(ChatFormatting.DARK_RED));
-        }
+        lines.add(Component.translatable("item.crimsoncovenant.skill.cost", cost).withStyle(ChatFormatting.DARK_RED));
         if (cost < fullCost) {
             lines.add(Component.translatable("item.crimsoncovenant.skill.cost.aged", fullCost, VampireAge.tierName(VampireAge.tier(player))).withStyle(ChatFormatting.DARK_GRAY));
         }

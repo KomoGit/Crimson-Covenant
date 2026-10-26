@@ -4,7 +4,9 @@ import com.zestudio.crimsoncovenant.CrimsonCovenant;
 import com.zestudio.crimsoncovenant.client.ModKeyMappings;
 import com.zestudio.crimsoncovenant.skill.SkillSlots;
 import com.zestudio.crimsoncovenant.skill.SkillsMenu;
+import com.zestudio.crimsoncovenant.vampirism.VampireAge;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.renderer.RenderPipelines;
@@ -12,10 +14,13 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 
-/// The Blood Skills screen: four skill slots over the player's inventory, each labelled with its key
+/// The Blood Skills screen: four skill slots over the player's inventory, each labelled with its key, and how old a
+/// vampire the player is (see VampireAge) across from the title
 public class SkillsScreen extends AbstractContainerScreen<SkillsMenu> {
     private static final Identifier TEXTURE = CrimsonCovenant.id("textures/gui/container/skills.png");
     private static final int KEY_LABEL_COLOR = 0xFF8A1020;
+    /// Fledgling, Neo, Unusual, Ancient
+    private static final ChatFormatting[] AGE_COLORS = {ChatFormatting.GRAY, ChatFormatting.AQUA, ChatFormatting.GOLD, ChatFormatting.DARK_RED};
 
     public SkillsScreen(SkillsMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title, 176, 133);
@@ -33,6 +38,9 @@ public class SkillsScreen extends AbstractContainerScreen<SkillsMenu> {
     @Override
     protected void extractLabels(GuiGraphicsExtractor graphics, int xm, int ym) {
         super.extractLabels(graphics, xm, ym);
+        int tier = VampireAge.tier(this.minecraft.player);
+        Component age = VampireAge.tierName(tier).copy().withStyle(AGE_COLORS[tier]);
+        graphics.text(this.font, age, this.imageWidth - 8 - this.font.width(age), this.titleLabelY, -1, false);
         // Each slot's key, just under it
         for (int i = 0; i < SkillSlots.SLOTS; i++) {
             String key = ModKeyMappings.CAST_SKILL[i].getTranslatedKeyMessage().getString();

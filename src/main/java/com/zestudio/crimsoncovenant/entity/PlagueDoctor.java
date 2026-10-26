@@ -74,8 +74,8 @@ import net.minecraft.world.phys.Vec3;
 /// MiasmaCloud) and stays a couple of days after it's gone.
 ///
 /// - He cures, for emeralds: use him with an emerald in hand and he takes what's owed from your purse and cures the
-///   Plague, the Miasma's sickness, and even a vampire's curse that hasn't yet taken (Sanguine Vampiris). A full
-///   vampire is past his help.
+///   Plague and the Miasma's sickness. A vampire's curse that hasn't yet taken (Sanguine Vampiris) he leaves to a
+///   drunk Potion of Cleanse (see CleanseEffect); a full vampire is past his help.
 /// - Otherwise he trades: Potions of Cleanse, rat traps, and ferns for his brewing. Vampires he won't deal with.
 /// - He clears the Miasma himself, throwing Cleanse into the cloud, and at anyone sick with it or the Plague.
 /// - He carries silver for the undead: any that comes after him gets a splash Potion of Silver and runs from it.
@@ -92,7 +92,6 @@ public class PlagueDoctor extends AbstractVillager {
     private static final double CALL_RANGE = 128.0;
     public static final int CURE_PLAGUE = 3;
     public static final int CURE_MIASMA = 1;
-    public static final int CURE_CURSE = 10;
 
     private int despawnDelay = STAY_TICKS;
 
@@ -179,16 +178,7 @@ public class PlagueDoctor extends AbstractVillager {
         if (player.hasEffect(ModEffects.MIASMA)) {
             cost += CURE_MIASMA;
         }
-        if (hasCurableCurse(player)) {
-            cost += CURE_CURSE;
-        }
         return cost;
-    }
-
-    /// The vampire's curse in their blood, not yet taken. The effect counts on its own (one given by `/effect`, say,
-    /// before an infection has started to match it), the same as it does when they die (see Vampirism).
-    private static boolean hasCurableCurse(Player player) {
-        return Vampirism.isTainted(player) && !Vampirism.isVampire(player);
     }
 
     @Override
@@ -243,9 +233,6 @@ public class PlagueDoctor extends AbstractVillager {
             takeEmeralds(player.getInventory(), cost);
         }
         CleanseEffect.cleanse(player);
-        if (hasCurableCurse(player)) {
-            Vampirism.cure(player);
-        }
         player.sendOverlayMessage(Component.translatable("message.crimsoncovenant.plague_doctor.cured", cost).withStyle(ChatFormatting.GREEN));
         if (doctor.level() instanceof ServerLevel level) {
             level.sendParticles(ParticleTypes.HAPPY_VILLAGER, player.getX(), player.getY(1.0), player.getZ(), 12, 0.4, 0.4, 0.4, 0.0);

@@ -1,6 +1,7 @@
 package com.zestudio.crimsoncovenant.registry;
 
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
+import com.zestudio.crimsoncovenant.entity.BloodBat;
 import com.zestudio.crimsoncovenant.entity.BloodOrb;
 import com.zestudio.crimsoncovenant.entity.BloodSpear;
 import com.zestudio.crimsoncovenant.entity.CrimsonLightning;
@@ -117,6 +118,9 @@ public final class ModEntities {
             builder -> builder.noLootTable().sized(0.5F, 0.5F).eyeHeight(0.13F).clientTrackingRange(4).updateInterval(20));
     public static final DeferredHolder<EntityType<?>, EntityType<BloodOrb>> BLOOD_ORB = ENTITY_TYPES.registerEntityType("blood_orb", BloodOrb::new, MobCategory.MISC,
             builder -> builder.noLootTable().sized(1.5F, 1.5F).clientTrackingRange(6).updateInterval(2));
+    /// A Blood Parade kill's bat of blood, chaining from body to body (see BloodBat)
+    public static final DeferredHolder<EntityType<?>, EntityType<BloodBat>> BLOOD_BAT = ENTITY_TYPES.registerEntityType("blood_bat", BloodBat::new, MobCategory.MISC,
+            builder -> builder.noLootTable().sized(0.5F, 0.5F).clientTrackingRange(6).updateInterval(1));
 
     // The Master Vampire's bat swarm attack. Short-lived and never saved.
     // The Boiling Hemorrhage skill's patch of boiling blood. Invisible itself: it's drawn by its particles.

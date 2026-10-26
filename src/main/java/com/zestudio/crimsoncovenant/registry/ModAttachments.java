@@ -80,6 +80,10 @@ public final class ModAttachments {
     public static final Supplier<AttachmentType<Long>> LAST_STAND_READY_AT = ATTACHMENT_TYPES.register("last_stand_ready_at",
             () -> AttachmentType.builder(() -> 0L).build());
 
+    /// Whether a vampire player has turned their night vision off (see Vampirism.toggleNightVision). Survives death.
+    public static final Supplier<AttachmentType<Boolean>> NIGHT_VISION_OFF = ATTACHMENT_TYPES.register("night_vision_off",
+            () -> AttachmentType.builder(() -> false).serialize(Codec.BOOL.fieldOf("off")).copyOnDeath().build());
+
     /// A player's rank in the hunters, 0 when not one of them (see hunter.HunterRanks). Survives death, and is sent to
     /// the player's own client.
     public static final Supplier<AttachmentType<Integer>> HUNTER_RANK = ATTACHMENT_TYPES.register("hunter_rank",

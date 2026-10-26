@@ -4,6 +4,7 @@ import com.zestudio.crimsoncovenant.CrimsonCovenant;
 import com.zestudio.crimsoncovenant.entity.Vampire;
 import com.zestudio.crimsoncovenant.registry.ModAttachments;
 import com.zestudio.crimsoncovenant.registry.ModEffects;
+import com.zestudio.crimsoncovenant.entity.BloodBat;
 import com.zestudio.crimsoncovenant.entity.BloodOrb;
 
 import net.minecraft.server.level.ServerLevel;
@@ -17,12 +18,12 @@ import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 
 /// A vampire player's blood: the "mana" blood skills are paid with, shown as a bar of drops where the hunger bar
 /// would be (vampires don't hunger).
-/// It refills slowly on its own, and much faster by killing living things: like a vampire mob feeding, the
-/// victim's blood streams into the player. Undead have no blood to give.
+/// It refills slowly on its own, but only up to 3 drops; past that, and much faster, by killing living things: like a
+/// vampire mob feeding, the victim's blood streams into the player. Undead have no blood to give.
+/// Older vampires hold more, and more of it comes back on its own (see VampireAge).
 @EventBusSubscriber(modid = CrimsonCovenant.MODID)
 public final class BloodPool {
-    public static final int MAX_BLOOD = 100;
-    /// One point every this many ticks: an empty bar refills in a little over 3 minutes
+    /// One point every this many ticks: 3 drops come back in a minute
     private static final int REGEN_INTERVAL = 40;
     private static final float BLOOD_PER_VICTIM_HEALTH = 0.5F;
     private static final int MIN_KILL_BLOOD = 2;
@@ -36,8 +37,12 @@ public final class BloodPool {
         return player.getData(ModAttachments.BLOOD);
     }
 
+    public static int max(Player player) {
+        return VampireAge.maxBlood(player);
+    }
+
     public static void set(Player player, int blood) {
-        int clamped = Mth.clamp(blood, 0, MAX_BLOOD);
+        int clamped = Mth.clamp(blood, 0, max(player));
         if (clamped != get(player)) {
             player.setData(ModAttachments.BLOOD, clamped);
         }
@@ -49,7 +54,7 @@ public final class BloodPool {
 
     /// Called every tick for vampire players. A Silver Wound stops the blood coming back.
     public static void tick(ServerPlayer player) {
-        if (player.tickCount % REGEN_INTERVAL == 0 && !player.hasEffect(ModEffects.SILVER_WOUND)) {
+        if (player.tickCount % REGEN_INTERVAL == 0 && get(player) < VampireAge.naturalBlood(player) && !player.hasEffect(ModEffects.SILVER_WOUND)) {
             add(player, 1);
         }
     }
@@ -63,9 +68,10 @@ public final class BloodPool {
     static void onKill(LivingDeathEvent event) {
         LivingEntity victim = event.getEntity();
         // getEntity() is the attacker even for projectiles (the shooter), so skill kills count too: all but the Blood
-        // Parade's, which is the vampire's whole bar spent, and gives back health, never blood
+        // Parade's (its orb's and its bats'), which give back health and more bats, never blood
         if (event.getSource().getEntity() instanceof ServerPlayer player && player != victim && Vampirism.isVampire(player)
-                && Vampirism.hasLivingBlood(victim) && !(event.getSource().getDirectEntity() instanceof BloodOrb) && victim.level() instanceof ServerLevel level) {
+                && Vampirism.hasLivingBlood(victim) && !(event.getSource().getDirectEntity() instanceof BloodOrb)
+                && !(event.getSource().getDirectEntity() instanceof BloodBat) && victim.level() instanceof ServerLevel level) {
             add(player, bloodFrom(victim));
             player.heal(KILL_HEAL);
             Vampire.streamBlood(level, victim, player);

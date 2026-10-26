@@ -1,6 +1,7 @@
 package com.zestudio.crimsoncovenant.registry;
 
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
@@ -22,7 +23,9 @@ import com.zestudio.crimsoncovenant.item.WhipItem;
 import com.zestudio.crimsoncovenant.guide.GuideBookItem;
 import com.zestudio.crimsoncovenant.guide.GuideBooks;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.util.Unit;
@@ -34,6 +37,7 @@ import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntPr
 import net.minecraft.world.item.ToolMaterial;
 import net.minecraft.world.item.SpawnEggItem;
 import net.minecraft.world.item.component.BlockItemStateProperties;
+import net.minecraft.world.item.component.ItemLore;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
@@ -68,6 +72,8 @@ public final class ModItems {
     public static final Map<BloodSkill, DeferredItem<SkillItem>> SKILLS = registerSkills();
     /// What the Blood Parade's orb looks like in flight. Not obtainable.
     public static final DeferredItem<Item> BLOOD_ORB = ITEMS.registerSimpleItem("blood_orb");
+    /// Only how a Blood Bat looks in flight
+    public static final DeferredItem<Item> BLOOD_BAT = ITEMS.registerSimpleItem("blood_bat");
     /// Conjured by the Blood Spear skill and thrown like a trident. Not obtainable otherwise.
     public static final DeferredItem<BloodSpearItem> BLOOD_SPEAR = ITEMS.registerItem("blood_spear", BloodSpearItem::new,
             properties -> properties.stacksTo(1).rarity(Rarity.RARE));
@@ -126,6 +132,8 @@ public final class ModItems {
             properties -> new GuideBookItem(GuideBooks.Book.LEDGER, properties), properties -> properties.stacksTo(1));
     public static final DeferredItem<GuideBookItem> CODEX_SANGUINIS = ITEMS.registerItem("codex_sanguinis",
             properties -> new GuideBookItem(GuideBooks.Book.CODEX, properties), properties -> properties.stacksTo(1).rarity(Rarity.UNCOMMON));
+    public static final DeferredItem<BlockItem> HORSEMANS_HEAD = ITEMS.registerSimpleBlockItem(ModBlocks.HORSEMANS_HEAD, properties -> properties.stacksTo(1).rarity(Rarity.UNCOMMON)
+            .component(DataComponents.LORE, new ItemLore(List.of(Component.translatable("item.crimsoncovenant.horsemans_head.hint").withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC)))));
     public static final DeferredItem<BlockItem> SILVER_NET_TRAP = ITEMS.registerSimpleBlockItem(ModBlocks.SILVER_NET_TRAP);
     /// Carved stone, waiting to be set down and woken: silver for the hunters', blood for the vampires'
     public static final DeferredItem<GargoyleStatueItem> CATHEDRAL_GARGOYLE_STATUE = ITEMS.registerItem("cathedral_gargoyle_statue",

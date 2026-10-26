@@ -25,13 +25,15 @@ import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 /// A vampire's age: the longer one survives, the stronger it grows, a tier for every ten days (twenty minutes of play
 /// each), up to the third at day 30.
 ///
-/// | Days  | Blood skills | Max health | Always on                         | And                                          |
-/// |-------|--------------|------------|-----------------------------------|----------------------------------------------|
-/// | 0-9   | full cost    | +0         | (Speed I, Strength I by night)    |                                              |
-/// | 10-19 | 5% cheaper   | +4         | Speed I                           |                                              |
-/// | 20-29 | 10% cheaper  | +7         | Speed I, Haste I, Strength I      |                                              |
-/// | 30+   | 20% cheaper  | +10        | Speed II, Haste I, Strength II    | Last Stand: at half health, the Armor of the |
-/// |       |              |            |                                   | Ancient and Regeneration rise up unbidden    |
+/// | Days  | Blood skills | Blood held | Comes back alone | Max health | Always on                      | And                                          |
+/// |-------|--------------|------------|------------------|------------|--------------------------------|----------------------------------------------|
+/// | 0-9   | full cost    | 100        | up to 30         | +0         | (Speed I, Strength I by night) |                                              |
+/// | 10-19 | 5% cheaper   | 110        | up to 36         | +4         | Speed I                        |                                              |
+/// | 20-29 | 10% cheaper  | 150        | up to 60         | +7         | Speed I, Haste I, Strength I   |                                              |
+/// | 30+   | 20% cheaper  | 200        | up to 90         | +10        | Speed II, Haste I, Strength II | Last Stand: at half health, the Armor of the |
+/// |       |              |            |                  |            |                                | Ancient and Regeneration rise up unbidden    |
+///
+/// Past what comes back on its own (see BloodPool), blood has to be fed for.
 ///
 /// Days are counted in game ticks since the turning, so sleeping through the night doesn't age a vampire faster.
 /// Dying sets one back a tier (ten days, from the cap); being cured starts the count over.
@@ -44,6 +46,9 @@ public final class VampireAge {
     /// What each tier does to blood skill costs, and adds to max health
     private static final float[] COST_MULTIPLIER = {1.0F, 0.95F, 0.90F, 0.80F};
     private static final double[] EXTRA_HEALTH = {0.0, 4.0, 7.0, 10.0};
+    /// How much blood each tier holds, and how much of it comes back on its own
+    private static final int[] MAX_BLOOD = {100, 110, 150, 200};
+    private static final int[] NATURAL_BLOOD = {30, 36, 60, 90};
     /// Amplifiers for the always-on effects at each tier, -1 for none
     private static final int[] SPEED = {-1, 0, 0, 1};
     private static final int[] HASTE = {-1, -1, 0, 0};
@@ -90,6 +95,8 @@ public final class VampireAge {
     public static void setDays(Player player, int days) {
         player.setData(ModAttachments.VAMPIRE_SINCE, player.level().getGameTime() - (long) Math.clamp(days, 0, MAX_DAYS) * TICKS_PER_DAY);
         player.setData(ModAttachments.VAMPIRE_DAYS, days(player));
+        // A younger vampire holds less: anything past that is lost
+        BloodPool.set(player, BloodPool.get(player));
     }
 
     public static int tier(Player player) {
@@ -118,6 +125,16 @@ public final class VampireAge {
             return cost;
         }
         return Math.max(1, (int) Math.ceil(cost * COST_MULTIPLIER[tier(player)] - 1.0E-4));
+    }
+
+    /// The most blood a vampire of this age can hold. On the client, as of the age last sent by the server.
+    public static int maxBlood(Player player) {
+        return MAX_BLOOD[tier(player)];
+    }
+
+    /// Blood stops coming back on its own here; the rest has to be fed for
+    public static int naturalBlood(Player player) {
+        return NATURAL_BLOOD[tier(player)];
     }
 
     public static double extraHealth(int tier) {
