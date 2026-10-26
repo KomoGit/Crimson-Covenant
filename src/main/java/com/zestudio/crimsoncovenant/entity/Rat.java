@@ -13,6 +13,7 @@ import com.zestudio.crimsoncovenant.block.RatBurrowBlock;
 import com.zestudio.crimsoncovenant.block.RatBurrowBlockEntity;
 import com.zestudio.crimsoncovenant.block.RatTrapBlock;
 import com.zestudio.crimsoncovenant.effect.PlagueEffect;
+import com.zestudio.crimsoncovenant.effect.Rabies;
 import com.zestudio.crimsoncovenant.registry.ModBlocks;
 import com.zestudio.crimsoncovenant.registry.ModEffects;
 import com.zestudio.crimsoncovenant.registry.ModEntities;
@@ -493,6 +494,8 @@ public class Rat extends Animal {
         if (spawnReason == EntitySpawnReason.NATURAL && level.getRandom().nextFloat() < 0.2F) {
             this.setBaby(true);
         }
+        // One in five comes with rabies
+        Rabies.mayCarry(this, spawnReason, level.getRandom());
         return super.finalizeSpawn(level, difficulty, spawnReason, groupData);
     }
 
@@ -606,7 +609,8 @@ public class Rat extends Animal {
 
         @Override
         public boolean canUse() {
-            return this.rat.level().isDarkOutside() && !this.rat.isAngry() && EventHooks.canEntityGrief(getServerLevel(this.rat), this.rat) && super.canUse();
+            return this.rat.level().isDarkOutside() && !this.rat.isAngry() && !Rabies.refusesFood(this.rat)
+                    && EventHooks.canEntityGrief(getServerLevel(this.rat), this.rat) && super.canUse();
         }
 
         @Override
@@ -704,7 +708,7 @@ public class Rat extends Animal {
 
         @Override
         public boolean canUse() {
-            if (this.rat.isAngry() || this.rat.getRandom().nextInt(reducedTickDelay(4)) != 0) {
+            if (this.rat.isAngry() || Rabies.refusesFood(this.rat) || this.rat.getRandom().nextInt(reducedTickDelay(4)) != 0) {
                 return false;
             }
             List<ItemEntity> found = this.rat.level().getEntitiesOfClass(ItemEntity.class, this.rat.getBoundingBox().inflate(RANGE),
@@ -781,7 +785,7 @@ public class Rat extends Animal {
 
         @Override
         public boolean canUse() {
-            return !this.rat.isAngry() && super.canUse();
+            return !this.rat.isAngry() && !Rabies.refusesFood(this.rat) && super.canUse();
         }
 
         @Override
@@ -1039,6 +1043,7 @@ public class Rat extends Animal {
                 continue;
             }
             rat.snapTo(door.getX() + 0.5, door.getY(), door.getZ() + 0.5, level.getRandom().nextFloat() * 360.0F, 0.0F);
+            Rabies.mayCarry(rat, EntitySpawnReason.STRUCTURE, level.getRandom());
             if (burrow.tryEnter(rat)) {
                 settled++;
             }

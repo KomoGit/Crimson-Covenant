@@ -17,6 +17,8 @@ import com.zestudio.crimsoncovenant.effect.PlagueEffect;
 import com.zestudio.crimsoncovenant.effect.MiasmaEffect;
 import com.zestudio.crimsoncovenant.effect.CrimsonShroudEffect;
 import com.zestudio.crimsoncovenant.effect.CleanseEffect;
+import com.zestudio.crimsoncovenant.effect.HydrophobiaEffect;
+import com.zestudio.crimsoncovenant.effect.RabiesEffect;
 import com.zestudio.crimsoncovenant.curse.Curse;
 import com.zestudio.crimsoncovenant.effect.KnockedDownEffect;
 
@@ -115,6 +117,13 @@ public final class ModEffects {
 
     /// The Potion of Cleanse: cures the Plague and the Miasma, and clears the Miasma where it's thrown
     public static final DeferredHolder<MobEffect, CleanseEffect> CLEANSE = MOB_EFFECTS.register("cleanse", CleanseEffect::new);
+
+    /// The first stage of rabies, carried by wild animals: won't eat, runs from water, and turns into Rabies unless
+    /// cleansed (see effect.Rabies)
+    public static final DeferredHolder<MobEffect, HydrophobiaEffect> HYDROPHOBIA = MOB_EFFECTS.register("hydrophobia", HydrophobiaEffect::new);
+
+    /// Rabies itself: incurable. Foaming at the mouth, biting on sight, and dead in two days (see effect.Rabies)
+    public static final DeferredHolder<MobEffect, RabiesEffect> RABIES = MOB_EFFECTS.register("rabies", RabiesEffect::new);
 
     private ModEffects() {}
 }

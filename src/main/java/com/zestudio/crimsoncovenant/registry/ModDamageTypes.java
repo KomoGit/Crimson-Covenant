@@ -28,5 +28,8 @@ public final class ModDamageTypes {
     /// A rat trap snapping shut
     public static final ResourceKey<DamageType> RAT_TRAP = ResourceKey.create(Registries.DAMAGE_TYPE, CrimsonCovenant.id("rat_trap"));
 
+    /// Rabies running its course (see effect.Rabies). Ignores armor.
+    public static final ResourceKey<DamageType> RABIES = ResourceKey.create(Registries.DAMAGE_TYPE, CrimsonCovenant.id("rabies"));
+
     private ModDamageTypes() {}
 }

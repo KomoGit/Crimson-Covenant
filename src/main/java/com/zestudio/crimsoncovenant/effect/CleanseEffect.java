@@ -23,7 +23,7 @@ import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
 import net.neoforged.neoforge.event.entity.living.LivingEntityUseItemEvent;
 
 /// The Potion of Cleanse, brewed from ferns (or bought from a Plague Doctor): it cures the Plague and the Miasma's
-/// sickness, and the nausea and blindness that come with it. Thrown, it also clears away any Miasma where it lands
+/// sickness, and the nausea and blindness that come with it, and Hydrophobia before it turns into Rabies. Thrown, it also clears away any Miasma where it lands
 /// and keeps it off that spot for a while (see MiasmaCloud). Drunk (not splashed), it also cures a vampire's curse
 /// that hasn't yet taken (Sanguine Vampiris), even the effect on its own with no infection behind it (see
 /// Vampirism.isTainted).
@@ -45,6 +45,12 @@ public class CleanseEffect extends InstantaneousMobEffect {
     }
 
     public static void cleanse(LivingEntity entity) {
+        curePlagues(entity);
+        Rabies.cleanse(entity);
+    }
+
+    /// Just the Plague and the Miasma's sickness: what a Plague Doctor treats by hand. Hydrophobia takes the potion.
+    public static void curePlagues(LivingEntity entity) {
         boolean miasma = entity.removeEffect(ModEffects.MIASMA);
         entity.removeEffect(ModEffects.PLAGUE);
         if (miasma) {

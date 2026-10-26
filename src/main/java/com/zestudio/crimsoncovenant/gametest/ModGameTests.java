@@ -270,6 +270,18 @@ public final class ModGameTests {
         // On its own: a doctor from another test running alongside would count as one already come
         isolatedTest("plague_doctor_answers_the_call", PlagueDoctorGameTests::doctorAnswersTheCall);
         test("plague_saps_the_living_not_the_undead", RatGameTests::plagueSapsTheLivingButNotTheUndead);
+        test("rabies_carriers_and_their_odds", RatGameTests::rabiesCarriersAndTheirOdds);
+        test("who_catches_rabies", RatGameTests::whoCatchesRabies);
+        test("hydrophobia_is_cleansed_but_rabies_is_not", RatGameTests::hydrophobiaIsCleansedButRabiesIsNot);
+        test("hydrophobia_turns_into_rabies", RatGameTests::hydrophobiaTurnsIntoRabies);
+        test("rabies_runs_its_course", RatGameTests::rabiesRunsItsCourse);
+        test("totems_see_you_through_rabies", RatGameTests::totemsSeeYouThroughRabies);
+        test("defy_death_sees_a_vampire_through_rabies", RatGameTests::defyDeathSeesAVampireThroughRabies);
+        test("rabid_bites_spread_hydrophobia", RatGameTests::rabidBitesSpreadHydrophobia);
+        test("plague_doctor_leaves_hydrophobia_to_the_potion", RatGameTests::doctorLeavesHydrophobiaToThePotion);
+        // A rabid fox goes about its own business, and other tests' monsters would draw it off
+        calmTest("rabid_animals_go_for_those_near", RatGameTests::rabidAnimalsGoForThoseNear, 300);
+        calmTest("hydrophobic_animals_run_from_water", RatGameTests::hydrophobicAnimalsRunFromWater, 300);
         test("only_vampires_open_the_skills", RatGameTests::onlyVampiresOpenTheSkills);
         test("hunter_cabin_style_follows_the_biome", HunterCabinGameTests::cabinStyleFollowsTheBiome);
         test("bear_trap_snaps_and_holds", TrapGameTests::bearTrapSnapsAndHolds);

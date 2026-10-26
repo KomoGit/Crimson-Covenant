@@ -7,13 +7,20 @@ import com.zestudio.crimsoncovenant.block.RatBurrowBlock;
 import com.zestudio.crimsoncovenant.block.RatBurrowBlockEntity;
 import com.zestudio.crimsoncovenant.block.RatTrapBlock;
 import com.zestudio.crimsoncovenant.effect.MiasmaEffect;
+import com.zestudio.crimsoncovenant.effect.CleanseEffect;
 import com.zestudio.crimsoncovenant.effect.PlagueEffect;
+import com.zestudio.crimsoncovenant.effect.Rabies;
 import com.zestudio.crimsoncovenant.entity.MiasmaCloud;
+import com.zestudio.crimsoncovenant.entity.PlagueDoctor;
 import com.zestudio.crimsoncovenant.entity.Rat;
 import com.zestudio.crimsoncovenant.entity.Vampire;
+import com.zestudio.crimsoncovenant.entity.VampireBat;
 import com.zestudio.crimsoncovenant.network.SkillPayloads;
 import com.zestudio.crimsoncovenant.registry.ModAttachments;
 import com.zestudio.crimsoncovenant.registry.ModBlocks;
+import com.zestudio.crimsoncovenant.registry.ModDamageTypes;
+import com.zestudio.crimsoncovenant.registry.ModPotions;
+import com.zestudio.crimsoncovenant.vampirism.BloodPool;
 import com.zestudio.crimsoncovenant.registry.ModEffects;
 import com.zestudio.crimsoncovenant.registry.ModEntities;
 import com.zestudio.crimsoncovenant.world.RatSpawner;
@@ -27,8 +34,13 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.animal.fox.Fox;
+import net.minecraft.world.entity.animal.wolf.Wolf;
+import net.minecraft.world.entity.boss.wither.WitherBoss;
 import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.entity.ai.village.poi.PoiTypes;
 import net.minecraft.world.entity.animal.feline.Cat;
@@ -39,6 +51,7 @@ import net.minecraft.world.entity.monster.zombie.ZombieVillager;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.pathfinder.PathType;
@@ -47,8 +60,10 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.entity.animal.cow.Cow;
+import net.neoforged.neoforge.event.EventHooks;
 
-/// Rats: their eating and breeding, their burrows, the Miasma, the Plague, and the trap
+/// Rats: their eating and breeding, their burrows, the Miasma, the Plague, and the trap. And rabies, which rats carry
+/// among others.
 final class RatGameTests {
     private RatGameTests() {}
 
@@ -490,6 +505,229 @@ final class RatGameTests {
                 Component.literal("A vampire should get the blood skills menu"));
         player.closeContainer();
         SkillGameTests.removePlayer(helper, player);
+        helper.succeed();
+    }
+
+    // ---- Rabies ----
+
+    static void rabiesCarriersAndTheirOdds(GameTestHelper helper) {
+        Wolf wolf = helper.spawnWithNoFreeWill(EntityTypes.WOLF, new BlockPos(2, 1, 2));
+        Wolf pet = helper.spawnWithNoFreeWill(EntityTypes.WOLF, new BlockPos(3, 1, 2));
+        pet.setTame(true, false);
+        Fox fox = helper.spawnWithNoFreeWill(EntityTypes.FOX, new BlockPos(4, 1, 2));
+        VampireBat bat = helper.spawnWithNoFreeWill(ModEntities.VAMPIRE_BAT.get(), new BlockPos(5, 2, 2));
+        Rat rat = helper.spawnWithNoFreeWill(ModEntities.RAT.get(), new BlockPos(6, 1, 2));
+        Cow cow = helper.spawnWithNoFreeWill(EntityTypes.COW, new BlockPos(4, 1, 6));
+        helper.assertValueEqual(Rabies.carrierOdds(wolf), 10, "odds (one in) of a wild wolf carrying rabies");
+        helper.assertValueEqual(Rabies.carrierOdds(pet), 0, "odds of a tame wolf carrying rabies");
+        helper.assertValueEqual(Rabies.carrierOdds(fox), 8, "odds (one in) of a fox carrying rabies");
+        helper.assertValueEqual(Rabies.carrierOdds(bat), 6, "odds (one in) of a vampire bat carrying rabies");
+        helper.assertValueEqual(Rabies.carrierOdds(rat), 5, "odds (one in) of a rat carrying rabies");
+        helper.assertValueEqual(Rabies.carrierOdds(cow), 0, "odds of a cow carrying rabies");
+
+        // Born in the wild, sooner or later one carries it, already some way along; bred, never
+        RandomSource random = helper.getLevel().getRandom();
+        boolean carried = false;
+        for (int i = 0; i < 200 && !carried; i++) {
+            carried = Rabies.mayCarry(fox, EntitySpawnReason.NATURAL, random);
+        }
+        MobEffectInstance hydrophobia = fox.getEffect(ModEffects.HYDROPHOBIA);
+        helper.assertTrue(carried && hydrophobia != null, Component.literal("Some foxes born in the wild should carry Hydrophobia"));
+        helper.assertTrue(hydrophobia.getDuration() >= Rabies.CARRIER_MIN_TICKS && hydrophobia.getDuration() < Rabies.CARRIER_MIN_TICKS + Rabies.CARRIER_SPREAD_TICKS,
+                Component.literal("A carrier should be half a day to a day and a half from rabies, not " + hydrophobia.getDuration() + " ticks"));
+        for (int i = 0; i < 200; i++) {
+            Rabies.mayCarry(rat, EntitySpawnReason.BREEDING, random);
+        }
+        helper.assertTrue(!Rabies.isSick(rat), Component.literal("Bred animals shouldn't be born with rabies"));
+        for (var mob : List.of(wolf, pet, fox, bat, rat, cow)) {
+            mob.discard();
+        }
+        helper.succeed();
+    }
+
+    static void whoCatchesRabies(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        Cat cat = helper.spawnWithNoFreeWill(EntityTypes.CAT, new BlockPos(2, 1, 2));
+        Wolf wolf = helper.spawnWithNoFreeWill(EntityTypes.WOLF, new BlockPos(3, 1, 2));
+        VampireBat bat = helper.spawnWithNoFreeWill(ModEntities.VAMPIRE_BAT.get(), new BlockPos(4, 2, 2));
+        Cow cow = helper.spawnWithNoFreeWill(EntityTypes.COW, new BlockPos(2, 1, 6));
+        Villager villager = helper.spawnWithNoFreeWill(EntityTypes.VILLAGER, new BlockPos(3, 1, 6));
+        IronGolem golem = helper.spawnWithNoFreeWill(EntityTypes.IRON_GOLEM, new BlockPos(5, 1, 6));
+        Zombie zombie = helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, new BlockPos(7, 1, 6));
+        zombie.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+        Vampire vampire = helper.spawnWithNoFreeWill(ModEntities.VAMPIRE.get(), new BlockPos(7, 1, 2));
+        vampire.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+        // Made but never put in the world: a wither in a test arena would blow it apart
+        WitherBoss wither = EntityTypes.WITHER.create(level, EntitySpawnReason.COMMAND);
+
+        helper.assertTrue(Rabies.infect(cat, Rabies.HYDROPHOBIA_TICKS) && Rabies.infect(wolf, Rabies.HYDROPHOBIA_TICKS) && Rabies.infect(bat, Rabies.HYDROPHOBIA_TICKS),
+                Component.literal("Cats, wolves and vampire bats should catch rabies"));
+        helper.assertTrue(!Rabies.infect(cow, Rabies.HYDROPHOBIA_TICKS) && !Rabies.infect(villager, Rabies.HYDROPHOBIA_TICKS),
+                Component.literal("Creatures that can't attack shouldn't catch rabies"));
+        helper.assertTrue(!Rabies.infect(golem, Rabies.HYDROPHOBIA_TICKS), Component.literal("Iron golems shouldn't catch rabies"));
+        helper.assertTrue(!Rabies.infect(zombie, Rabies.HYDROPHOBIA_TICKS) && !Rabies.infect(vampire, Rabies.HYDROPHOBIA_TICKS),
+                Component.literal("The undead, vampires among them, shouldn't catch rabies"));
+        helper.assertTrue(wither != null && !Rabies.canCatch(wither), Component.literal("Bosses shouldn't catch rabies"));
+        for (var mob : List.of(cat, wolf, bat, cow, villager, golem, zombie, vampire)) {
+            mob.discard();
+        }
+        helper.succeed();
+    }
+
+    static void hydrophobiaIsCleansedButRabiesIsNot(GameTestHelper helper) {
+        Wolf wolf = helper.spawnWithNoFreeWill(EntityTypes.WOLF, new BlockPos(2, 1, 4));
+        Fox fox = helper.spawnWithNoFreeWill(EntityTypes.FOX, new BlockPos(6, 1, 4));
+        Rabies.infect(wolf, Rabies.HYDROPHOBIA_TICKS);
+        Rabies.infect(fox, Rabies.HYDROPHOBIA_TICKS);
+        // Milk takes every effect away: not this one
+        fox.removeAllEffects();
+        helper.assertTrue(Rabies.isHydrophobic(fox), Component.literal("Milk shouldn't cure Hydrophobia"));
+        CleanseEffect.cleanse(wolf);
+        helper.assertTrue(!Rabies.isSick(wolf), Component.literal("A Potion of Cleanse should cure Hydrophobia"));
+
+        Rabies.becomeRabid(fox);
+        helper.assertTrue(Rabies.isRabid(fox) && !Rabies.isHydrophobic(fox), Component.literal("Hydrophobia should give way to Rabies"));
+        CleanseEffect.cleanse(fox);
+        fox.removeAllEffects();
+        helper.assertTrue(Rabies.isRabid(fox), Component.literal("Nothing should cure Rabies"));
+        wolf.discard();
+        fox.discard();
+        helper.succeed();
+    }
+
+    static void hydrophobiaTurnsIntoRabies(GameTestHelper helper) {
+        Wolf wolf = helper.spawnWithNoFreeWill(EntityTypes.WOLF, new BlockPos(4, 1, 4));
+        Rabies.infect(wolf, 10);
+        helper.succeedWhen(() -> {
+            MobEffectInstance rabies = wolf.getEffect(ModEffects.RABIES);
+            helper.assertTrue(rabies != null && !Rabies.isHydrophobic(wolf), Component.literal("Left alone, Hydrophobia should turn into Rabies"));
+            helper.assertTrue(rabies.getDuration() > Rabies.RABIES_TICKS - 100, Component.literal("A rabid animal should have two days to live"));
+            // Its foam gathers at its jaws, in front of its eyes
+            Vec3 mouth = Rabies.mouth(wolf);
+            Vec3 eyes = wolf.getEyePosition();
+            helper.assertTrue(mouth.subtract(eyes).horizontalDistance() > wolf.getBbWidth() * 0.4 && Math.abs(mouth.y - eyes.y) < 0.3,
+                    Component.literal("A rabid wolf should foam at the mouth, not elsewhere"));
+            wolf.discard();
+        });
+    }
+
+    static void rabiesRunsItsCourse(GameTestHelper helper) {
+        Cat cat = helper.spawnWithNoFreeWill(EntityTypes.CAT, new BlockPos(4, 1, 4));
+        cat.addEffect(new MobEffectInstance(ModEffects.RABIES, 10));
+        helper.succeedWhen(() -> helper.assertTrue(!cat.isAlive(), Component.literal("A rabid cat should die when rabies runs its course")));
+    }
+
+    static void totemsSeeYouThroughRabies(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        // Rabies running its course, with a totem in hand
+        Cat cat = helper.spawnWithNoFreeWill(EntityTypes.CAT, new BlockPos(2, 1, 4));
+        cat.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.TOTEM_OF_UNDYING));
+        cat.addEffect(new MobEffectInstance(ModEffects.RABIES, 10));
+        // Any death the totem saves it from burns the sickness out too
+        Wolf wolf = helper.spawnWithNoFreeWill(EntityTypes.WOLF, new BlockPos(6, 1, 4));
+        wolf.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.TOTEM_OF_UNDYING));
+        Rabies.infect(wolf, Rabies.HYDROPHOBIA_TICKS);
+        wolf.hurtServer(level, level.damageSources().generic(), 1000.0F);
+        helper.assertTrue(wolf.isAlive() && wolf.getMainHandItem().isEmpty(), Component.literal("The wolf's totem should save it"));
+        helper.assertTrue(!Rabies.isSick(wolf), Component.literal("A totem saving the wolf should cure its Hydrophobia"));
+        helper.succeedWhen(() -> {
+            helper.assertTrue(cat.isAlive() && cat.getMainHandItem().isEmpty(), Component.literal("A totem should save the cat from dying of rabies"));
+            helper.assertTrue(!Rabies.isSick(cat), Component.literal("Saved by a totem, the cat should be over rabies"));
+            cat.discard();
+            wolf.discard();
+        });
+    }
+
+    static void defyDeathSeesAVampireThroughRabies(GameTestHelper helper) {
+        // Rabid before it turned: vampires can't catch it, but a rabid player who turns keeps it
+        ServerPlayer player = SkillGameTests.makePlayer(helper);
+        player.addEffect(new MobEffectInstance(ModEffects.RABIES, 400));
+        player.setData(ModAttachments.IS_VAMPIRE, true);
+        BloodPool.set(player, 50);
+        player.addEffect(new MobEffectInstance(ModEffects.DEFY_DEATH, 100));
+        helper.assertTrue(Rabies.isRabid(player), Component.literal("The vampire should still have rabies"));
+        // Mock players can't be hurt, so the death rabies brings is played out by hand (as in the Defy Death test)
+        player.setHealth(0.0F);
+        player.die(helper.getLevel().damageSources().source(ModDamageTypes.RABIES));
+        helper.assertTrue(player.getHealth() > 0.0F, Component.literal("Defy Death should turn aside the death rabies brings"));
+        helper.assertTrue(!Rabies.isRabid(player), Component.literal("Having cheated its death, the vampire should be over rabies"));
+        SkillGameTests.removePlayer(helper, player);
+        helper.succeed();
+    }
+
+    static void rabidBitesSpreadHydrophobia(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        Wolf rabid = helper.spawnWithNoFreeWill(EntityTypes.WOLF, new BlockPos(2, 1, 4));
+        Wolf sick = helper.spawnWithNoFreeWill(EntityTypes.WOLF, new BlockPos(2, 1, 6));
+        Cat cat = helper.spawnWithNoFreeWill(EntityTypes.CAT, new BlockPos(4, 1, 4));
+        Cow cow = helper.spawnWithNoFreeWill(EntityTypes.COW, new BlockPos(6, 1, 4));
+        Wolf other = helper.spawnWithNoFreeWill(EntityTypes.WOLF, new BlockPos(6, 1, 6));
+        Rabies.becomeRabid(rabid);
+        Rabies.infect(sick, Rabies.HYDROPHOBIA_TICKS);
+        helper.assertTrue(!Rabies.bite(rabid, other, 0.5F), Component.literal("Nine bites in ten shouldn't pass it on"));
+        helper.assertTrue(!Rabies.bite(sick, other, 0.0F), Component.literal("Only the rabid should pass it on, not the merely hydrophobic"));
+        helper.assertTrue(Rabies.bite(rabid, cat, 0.05F) && Rabies.isHydrophobic(cat), Component.literal("One bite in ten should pass Hydrophobia on"));
+        helper.assertTrue(!Rabies.bite(rabid, cow, 0.0F), Component.literal("A cow can't catch it"));
+
+        // Bitten to hurt, never to kill: the cow is left with half a heart
+        cow.setHealth(2.0F);
+        cow.hurtServer(level, level.damageSources().mobAttack(rabid), 10.0F);
+        helper.assertTrue(cow.isAlive() && cow.getHealth() >= 1.0F, Component.literal("A rabid animal shouldn't bite another animal to death"));
+
+        helper.assertTrue(Rabies.rabidExperience(3) > 3, Component.literal("A rabid animal should be worth more experience"));
+        helper.assertTrue(Rabies.refusesToEat(sick, new ItemStack(Items.BEEF)) && !Rabies.refusesToEat(other, new ItemStack(Items.BEEF)),
+                Component.literal("A hydrophobic wolf should turn its nose up at meat"));
+        for (var mob : List.of(rabid, sick, cat, cow, other)) {
+            mob.discard();
+        }
+        helper.succeed();
+    }
+
+    static void rabidAnimalsGoForThoseNear(GameTestHelper helper) {
+        Fox fox = helper.spawn(EntityTypes.FOX, new BlockPos(2, 1, 4));
+        Cow near = helper.spawnWithNoFreeWill(EntityTypes.COW, new BlockPos(4, 1, 4));
+        Cow far = helper.spawnWithNoFreeWill(EntityTypes.COW, new BlockPos(8, 1, 8));
+        near.setHealth(3.0F);
+        Rabies.becomeRabid(fox);
+        helper.assertTrue(Rabies.wantsToBite(fox, near) && !Rabies.wantsToBite(fox, far), Component.literal("A rabid fox should go only for animals that come close"));
+        helper.succeedWhen(() -> {
+            helper.assertTrue(near.getHealth() < 3.0F, Component.literal("The rabid fox should bite the cow beside it"));
+            helper.assertTrue(near.isAlive(), Component.literal("The rabid fox shouldn't kill the cow"));
+            fox.discard();
+            near.discard();
+            far.discard();
+        });
+    }
+
+    static void hydrophobicAnimalsRunFromWater(GameTestHelper helper) {
+        // Sunk into the floor, so it can't spread across the arena
+        helper.setBlock(new BlockPos(1, 0, 4), Blocks.WATER);
+        Vec3 water = helper.absoluteVec(new Vec3(1.5, 0.5, 4.5));
+        Wolf wolf = helper.spawn(EntityTypes.WOLF, new BlockPos(2, 1, 4));
+        Rabies.infect(wolf, Rabies.HYDROPHOBIA_TICKS);
+        helper.succeedWhen(() -> {
+            helper.assertTrue(wolf.position().distanceTo(water) > 4.0, Component.literal("A hydrophobic wolf should run from water"));
+            wolf.discard();
+        });
+    }
+
+    static void doctorLeavesHydrophobiaToThePotion(GameTestHelper helper) {
+        PlagueDoctor doctor = helper.spawnWithNoFreeWill(ModEntities.PLAGUE_DOCTOR.get(), new BlockPos(4, 1, 4));
+        ServerPlayer player = SkillGameTests.makePlayer(helper);
+        helper.assertTrue(Rabies.infect(player, Rabies.HYDROPHOBIA_TICKS), Component.literal("Players can catch rabies"));
+        helper.assertValueEqual(PlagueDoctor.cureCost(player), 0, "the price the doctor asks for Hydrophobia (he doesn't treat it)");
+        player.addEffect(new MobEffectInstance(ModEffects.PLAGUE, 600));
+        player.getAbilities().instabuild = true;
+        helper.assertTrue(doctor.treat(player) && !player.hasEffect(ModEffects.PLAGUE) && Rabies.isHydrophobic(player),
+                Component.literal("Treating the Plague, the doctor should leave Hydrophobia to the potion"));
+        // The potion he sells does it
+        ItemStack potion = PotionContents.createItemStack(Items.POTION, ModPotions.CLEANSE);
+        EventHooks.onItemUseFinish(player, potion.copy(), 0, potion.finishUsingItem(helper.getLevel(), player));
+        helper.assertTrue(!Rabies.isSick(player), Component.literal("A drunk Potion of Cleanse should cure Hydrophobia"));
+        player.setData(ModAttachments.IS_VAMPIRE, true);
+        helper.assertTrue(!Rabies.canCatch(player), Component.literal("Vampires shouldn't catch rabies"));
+        SkillGameTests.removePlayer(helper, player);
+        doctor.discard();
         helper.succeed();
     }
 }

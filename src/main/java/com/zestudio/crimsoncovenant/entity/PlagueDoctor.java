@@ -11,6 +11,7 @@ import org.jspecify.annotations.Nullable;
 import com.zestudio.crimsoncovenant.block.RatBurrowBlock;
 import com.zestudio.crimsoncovenant.block.RatTrapBlock;
 import com.zestudio.crimsoncovenant.effect.CleanseEffect;
+import com.zestudio.crimsoncovenant.effect.Rabies;
 import com.zestudio.crimsoncovenant.registry.ModBlocks;
 import com.zestudio.crimsoncovenant.registry.ModEffects;
 import com.zestudio.crimsoncovenant.registry.ModEntities;
@@ -38,6 +39,7 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -77,7 +79,8 @@ import net.minecraft.world.phys.Vec3;
 ///   Plague and the Miasma's sickness. A vampire's curse that hasn't yet taken (Sanguine Vampiris) he leaves to a
 ///   drunk Potion of Cleanse (see CleanseEffect); a full vampire is past his help.
 /// - Otherwise he trades: Potions of Cleanse, rat traps, and ferns for his brewing. Vampires he won't deal with.
-/// - He clears the Miasma himself, throwing Cleanse into the cloud, and at anyone sick with it or the Plague.
+/// - He clears the Miasma himself, throwing Cleanse into the cloud, and at anyone sick with it or the Plague, and at
+///   any animal he sees with Hydrophobia (see effect.Rabies).
 /// - He carries silver for the undead: any that comes after him gets a splash Potion of Silver and runs from it.
 /// - He hunts the rats: a baited rat trap on the doorstep of every burrow he finds, and sprung ones set again.
 /// - He readies the village for the vampires: a garlic braid over every bare door he sees (see world.GarlicDoors).
@@ -232,7 +235,7 @@ public class PlagueDoctor extends AbstractVillager {
         if (!free) {
             takeEmeralds(player.getInventory(), cost);
         }
-        CleanseEffect.cleanse(player);
+        CleanseEffect.curePlagues(player);
         player.sendOverlayMessage(Component.translatable("message.crimsoncovenant.plague_doctor.cured", cost).withStyle(ChatFormatting.GREEN));
         if (doctor.level() instanceof ServerLevel level) {
             level.sendParticles(ParticleTypes.HAPPY_VILLAGER, player.getX(), player.getY(1.0), player.getZ(), 12, 0.4, 0.4, 0.4, 0.0);
@@ -347,7 +350,7 @@ public class PlagueDoctor extends AbstractVillager {
 
     // ---- Goals ----
 
-    /// Cleanse thrown into the Miasma, or at someone sick with it or the Plague
+    /// Cleanse thrown into the Miasma, or at someone sick with it or the Plague, or at an animal with Hydrophobia
     static class ThrowCleanseGoal extends Goal {
         private static final double THROW_RANGE = 7.0;
         private static final double SEEK_RANGE = 24.0;
@@ -403,10 +406,16 @@ public class PlagueDoctor extends AbstractVillager {
             }
             return level.getEntitiesOfClass(LivingEntity.class, doctor.getBoundingBox().inflate(SEEK_RANGE / 2),
                             entity -> entity != doctor && entity.isAlive() && !(entity instanceof Enemy)
-                                    && (entity.hasEffect(ModEffects.PLAGUE) || entity.hasEffect(ModEffects.MIASMA)))
+                                    && (entity.hasEffect(ModEffects.PLAGUE) || entity.hasEffect(ModEffects.MIASMA)
+                                            || needsCleansing(doctor, entity)))
                     .stream().min((a, b) -> Double.compare(a.distanceToSqr(doctor), b.distanceToSqr(doctor)))
                     .map(entity -> entity.position().add(0.0, entity.getBbHeight() * 0.5, 0.0)).orElse(null);
         }
+    }
+
+    /// An animal he can see with Hydrophobia: he cleanses it before it turns rabid. (People he leaves to buy the potion.)
+    public static boolean needsCleansing(PlagueDoctor doctor, LivingEntity entity) {
+        return entity instanceof Animal && Rabies.isHydrophobic(entity) && doctor.hasLineOfSight(entity);
     }
 
     public static void throwCleanseAt(PlagueDoctor doctor, Vec3 target) {
