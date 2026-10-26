@@ -12,6 +12,7 @@ import com.zestudio.crimsoncovenant.block.GarlicBraidBlock;
 import com.zestudio.crimsoncovenant.block.BloodAltarBlock;
 import com.zestudio.crimsoncovenant.effect.BlackBloodEffect;
 import com.zestudio.crimsoncovenant.effect.GarlicEffect;
+import com.zestudio.crimsoncovenant.entity.BloodBat;
 import com.zestudio.crimsoncovenant.entity.BloodOrb;
 import com.zestudio.crimsoncovenant.entity.BloodSpear;
 import com.zestudio.crimsoncovenant.entity.CrimsonLightning;
@@ -43,6 +44,7 @@ import com.zestudio.crimsoncovenant.skill.SkillKeeper;
 import com.zestudio.crimsoncovenant.skill.SkillSlots;
 import com.zestudio.crimsoncovenant.skill.SkillUpgrade;
 import com.zestudio.crimsoncovenant.vampirism.BloodPool;
+import com.zestudio.crimsoncovenant.vampirism.VampireAge;
 import com.zestudio.crimsoncovenant.vampirism.GarlicWard;
 import com.zestudio.crimsoncovenant.vampirism.Vampirism;
 import com.zestudio.crimsoncovenant.world.BloodMoon;
@@ -170,8 +172,32 @@ final class SkillGameTests {
             BloodPool.tick(player);
         }
         helper.assertValueEqual(BloodPool.get(player), 10, "blood regained in 20 seconds");
-        BloodPool.set(player, BloodPool.MAX_BLOOD + 50);
-        helper.assertValueEqual(BloodPool.get(player), BloodPool.MAX_BLOOD, "blood can't go over the maximum");
+        for (int tick = 401; tick <= 4000; tick++) {
+            player.tickCount = tick;
+            BloodPool.tick(player);
+        }
+        helper.assertValueEqual(BloodPool.get(player), VampireAge.FLEDGLING.naturalMax(), "blood regained on its own stops at 3 drops");
+        BloodPool.set(player, 150);
+        helper.assertValueEqual(BloodPool.get(player), 100, "blood can't go over the maximum");
+        removePlayer(helper, player);
+        helper.succeed();
+    }
+
+    static void olderVampiresHoldMoreBlood(GameTestHelper helper) {
+        ServerPlayer player = makeVampire(helper, 0);
+        long now = player.level().getGameTime();
+        int[][] expected = {{0, 100, 30}, {10, 110, 36}, {20, 150, 60}, {30, 200, 90}};
+        for (int[] age : expected) {
+            player.setData(ModAttachments.TURNED_AT, now - age[0] * 24000L);
+            BloodPool.set(player, 0);
+            for (int tick = 1; tick <= 8000; tick++) {
+                player.tickCount = tick;
+                BloodPool.tick(player);
+            }
+            helper.assertValueEqual(BloodPool.get(player), age[2], "blood regained on its own after " + age[0] + " days");
+            BloodPool.set(player, 1000);
+            helper.assertValueEqual(BloodPool.get(player), age[1], "most blood held after " + age[0] + " days");
+        }
         removePlayer(helper, player);
         helper.succeed();
     }
@@ -360,11 +386,39 @@ final class SkillGameTests {
         return zombie;
     }
 
+    static void bloodBatsChainUntilTheirReachRunsOut(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        // Each one-hit zombie is nearest to the last; the far one would be a fourth link
+        Zombie[] line = new Zombie[4];
+        for (int i = 0; i < line.length; i++) {
+            line[i] = weakZombie(helper, new BlockPos(1 + i * 2, 1, 1));
+        }
+        Zombie spared = weakZombie(helper, new BlockPos(1, 1, 7));
+        Zombie first = line[0];
+        first.discard();
+        helper.assertTrue(BloodBat.chain(level, null, first, BloodBat.FIRST_RANGE) != null, Component.literal("A kill should set a Blood Bat loose"));
+        helper.succeedWhen(() -> {
+            for (int i = 1; i < line.length; i++) {
+                helper.assertTrue(!line[i].isAlive(), Component.literal("Blood Bat link " + i + " should kill its zombie"));
+            }
+            helper.assertTrue(level.getEntitiesOfClass(BloodBat.class, new AABB(helper.absolutePos(BlockPos.ZERO)).inflate(32.0)).isEmpty(),
+                    Component.literal("The chain should have run out"));
+            helper.assertTrue(spared.isAlive(), Component.literal("Past 3 links, no more bats"));
+        });
+    }
+
+    private static Zombie weakZombie(GameTestHelper helper, BlockPos pos) {
+        Zombie zombie = helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, pos);
+        zombie.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+        zombie.setHealth(1.0F);
+        return zombie;
+    }
+
     static void bloodParadeDrainsHostiles(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         ServerPlayer player = makeVampire(helper, 100);
         helper.assertTrue(castSkill(player, BloodSkill.BLOOD_PARADE), Component.literal("Blood Parade should cast"));
-        helper.assertValueEqual(BloodPool.get(player), 0, "Blood Parade spends the whole bar");
+        helper.assertValueEqual(BloodPool.get(player), 60, "blood left after Blood Parade");
         // That orb was cast from wherever the mock player stands, outside the test: get rid of it
         level.getEntitiesOfClass(BloodOrb.class, player.getBoundingBox().inflate(4.0)).forEach(BloodOrb::discard);
         removePlayer(helper, player);

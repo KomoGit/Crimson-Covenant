@@ -36,6 +36,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.event.EventHooks;
 import com.zestudio.crimsoncovenant.block.GarlicBraidBlock;
 import com.zestudio.crimsoncovenant.mixin.StructureTemplatePoolAccessor;
 import com.zestudio.crimsoncovenant.world.DoctorHouses;
@@ -85,6 +86,20 @@ final class PlagueDoctorGameTests {
         });
     }
 
+    static void drunkCleanseCuresTheCurse(GameTestHelper helper) {
+        ServerPlayer player = SkillGameTests.makePlayer(helper);
+        player.setData(ModAttachments.INFECTION_TICKS, 1000);
+        // Splashed: no cure
+        ModEffects.CLEANSE.value().applyInstantaneousEffect(helper.getLevel(), null, null, player, 0, 1.0);
+        helper.assertTrue(Vampirism.isInfected(player), Component.literal("A splashed Cleanse shouldn't cure the curse"));
+        // Drunk: cured
+        ItemStack potion = PotionContents.createItemStack(Items.POTION, ModPotions.CLEANSE);
+        EventHooks.onItemUseFinish(player, potion.copy(), 0, potion.finishUsingItem(helper.getLevel(), player));
+        helper.assertTrue(!Vampirism.isInfected(player), Component.literal("A drunk Cleanse should cure the curse"));
+        SkillGameTests.removePlayer(helper, player);
+        helper.succeed();
+    }
+
     static void doctorCuresForEmeralds(GameTestHelper helper) {
         PlagueDoctor doctor = spawnDoctor(helper, new BlockPos(4, 1, 4));
         ServerPlayer player = SkillGameTests.makePlayer(helper);
@@ -92,8 +107,8 @@ final class PlagueDoctorGameTests {
         player.teleportTo(at.x, at.y, at.z);
         player.addEffect(new MobEffectInstance(ModEffects.PLAGUE, 600));
         player.setData(ModAttachments.INFECTION_TICKS, 1000);
-        int price = PlagueDoctor.CURE_PLAGUE + PlagueDoctor.CURE_CURSE;
-        helper.assertValueEqual(PlagueDoctor.cureCost(player), price, "the price of curing the Plague and Sanguine Vampiris");
+        int price = PlagueDoctor.CURE_PLAGUE;
+        helper.assertValueEqual(PlagueDoctor.cureCost(player), price, "the price of curing the Plague (the curse is the potion's to cure)");
 
         // Not enough
         player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.EMERALD, price - 1));
@@ -102,7 +117,7 @@ final class PlagueDoctorGameTests {
 
         player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.EMERALD, price + 2));
         player.interactOn(doctor, InteractionHand.MAIN_HAND, doctor.position());
-        helper.assertTrue(!player.hasEffect(ModEffects.PLAGUE) && !Vampirism.isInfected(player), Component.literal("The doctor should cure the Plague and the curse"));
+        helper.assertTrue(!player.hasEffect(ModEffects.PLAGUE) && Vampirism.isInfected(player), Component.literal("The doctor should cure the Plague, but not the curse"));
         helper.assertValueEqual(player.getMainHandItem().getCount(), 2, "emeralds left after the cure");
 
         // A vampire is past help

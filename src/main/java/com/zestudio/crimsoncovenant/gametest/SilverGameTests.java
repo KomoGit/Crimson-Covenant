@@ -105,13 +105,13 @@ final class SilverGameTests {
     }
 
     static void silverWoundStopsBloodComingBack(GameTestHelper helper) {
-        ServerPlayer player = SkillGameTests.makeVampire(helper, 50);
+        ServerPlayer player = SkillGameTests.makeVampire(helper, 20);
         player.tickCount = 0;
         BloodPool.tick(player);
-        helper.assertValueEqual(BloodPool.get(player), 51, "blood after a refill tick");
+        helper.assertValueEqual(BloodPool.get(player), 21, "blood after a refill tick");
         player.addEffect(new MobEffectInstance(ModEffects.SILVER_WOUND, 100));
         BloodPool.tick(player);
-        helper.assertValueEqual(BloodPool.get(player), 51, "blood after a refill tick with a Silver Wound");
+        helper.assertValueEqual(BloodPool.get(player), 21, "blood after a refill tick with a Silver Wound");
         SkillGameTests.removePlayer(helper, player);
         helper.succeed();
     }

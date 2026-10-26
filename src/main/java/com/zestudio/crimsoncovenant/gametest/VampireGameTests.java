@@ -517,6 +517,28 @@ final class VampireGameTests {
         helper.getLevel().getServer().getPlayerList().remove(player);
     }
 
+    static void vampiresToggleNightVision(GameTestHelper helper) {
+        ServerPlayer player = SkillGameTests.makePlayer(helper);
+        player.setData(ModAttachments.IS_VAMPIRE, true);
+        player.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 400, 0, true, false, true));
+        Vampirism.toggleNightVision(player);
+        helper.assertTrue(!player.hasEffect(MobEffects.NIGHT_VISION) && player.getData(ModAttachments.NIGHT_VISION_OFF), Component.literal("Toggling should turn a vampire's night vision off"));
+        Vampirism.toggleNightVision(player);
+        helper.assertTrue(player.hasEffect(MobEffects.NIGHT_VISION) && !player.getData(ModAttachments.NIGHT_VISION_OFF), Component.literal("Toggling again should turn it back on"));
+        SkillGameTests.removePlayer(helper, player);
+        helper.succeed();
+    }
+
+    static void vampiresDontFeelTheCold(GameTestHelper helper) {
+        ServerPlayer player = SkillGameTests.makePlayer(helper);
+        float health = player.getHealth();
+        player.setData(ModAttachments.IS_VAMPIRE, true);
+        player.hurtServer(helper.getLevel(), helper.getLevel().damageSources().freeze(), 4.0F);
+        helper.assertValueEqual(player.getHealth(), health, "a vampire's health after freezing");
+        SkillGameTests.removePlayer(helper, player);
+        helper.succeed();
+    }
+
     static void bloodBottlesCurseTheLiving(GameTestHelper helper) {
         ServerPlayer player = SkillGameTests.makePlayer(helper);
         helper.assertTrue(!Vampirism.isInfected(player), Component.literal("The player should start out clean"));

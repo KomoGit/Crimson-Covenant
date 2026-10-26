@@ -18,7 +18,7 @@ import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 /// The blood skill keys: one per skill slot, and one to open the Blood Skills screen; and the hunters' curse key, to
-/// unleash the curse on the weapon in hand. All can be changed in Options > Controls, under Crimson Covenant.
+/// unleash the curse on the weapon in hand; and one for a vampire to turn their night vision on or off. All can be changed in Options > Controls, under Crimson Covenant.
 @EventBusSubscriber(modid = CrimsonCovenant.MODID, value = Dist.CLIENT)
 public final class ModKeyMappings {
     public static final KeyMapping.Category CATEGORY = new KeyMapping.Category(CrimsonCovenant.id("skills"));
@@ -27,6 +27,7 @@ public final class ModKeyMappings {
     public static final KeyMapping OPEN_SKILLS = new KeyMapping("key.crimsoncovenant.open_skills", InputConstants.Type.KEYBOARD, InputConstants.KEY_K, CATEGORY);
     public static final KeyMapping[] CAST_SKILL = new KeyMapping[SkillSlots.SLOTS];
     public static final KeyMapping UNLEASH_CURSE = new KeyMapping("key.crimsoncovenant.unleash_curse", InputConstants.Type.KEYBOARD, InputConstants.KEY_Z, CATEGORY);
+    public static final KeyMapping NIGHT_VISION = new KeyMapping("key.crimsoncovenant.night_vision", InputConstants.Type.KEYBOARD, InputConstants.KEY_N, CATEGORY);
 
     static {
         for (int i = 0; i < SkillSlots.SLOTS; i++) {
@@ -41,6 +42,7 @@ public final class ModKeyMappings {
         event.registerCategory(CATEGORY);
         event.register(OPEN_SKILLS);
         event.register(UNLEASH_CURSE);
+        event.register(NIGHT_VISION);
         for (KeyMapping key : CAST_SKILL) {
             event.register(key);
         }
@@ -70,6 +72,9 @@ public final class ModKeyMappings {
         }
         while (UNLEASH_CURSE.consumeClick()) {
             ClientPacketDistributor.sendToServer(new SkillPayloads.UnleashCurse());
+        }
+        while (NIGHT_VISION.consumeClick()) {
+            ClientPacketDistributor.sendToServer(new SkillPayloads.ToggleNightVision());
         }
         for (int i = 0; i < CAST_SKILL.length; i++) {
             while (CAST_SKILL[i].consumeClick()) {

@@ -17,7 +17,7 @@ public enum BloodSkill {
     BLOOD_SPEAR("blood_spear", 10, 10, Rarity.RARE, Tier.UNUSUAL),
     DAYWALKER("daywalker", 100, 40, Rarity.UNCOMMON, Tier.NEO),
     /// Spends the whole bar, but needs at least `cost` blood to cast
-    BLOOD_PARADE("blood_parade", 30, 100, Rarity.EPIC, Tier.ANCIENT),
+    BLOOD_PARADE("blood_parade", 40, 100, Rarity.EPIC, Tier.ANCIENT),
     BAT_SWARM("bat_swarm", 30, 160, Rarity.UNCOMMON, Tier.NEO),
     NIGHT_OF_TERROR("night_of_terror", 60, 600, Rarity.EPIC, Tier.ANCIENT),
     /// Every deadly hit taken while it lasts costs another 10 blood
@@ -85,10 +85,6 @@ public enum BloodSkill {
     /// Blood needed to use the skill
     public int cost() {
         return this.cost;
-    }
-
-    public boolean spendsAllBlood() {
-        return this == BLOOD_PARADE;
     }
 
     /// Ticks before the skill item can be used again

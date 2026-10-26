@@ -44,6 +44,16 @@ public final class ModAttachments {
             () -> AttachmentType.builder(() -> false).serialize(Codec.BOOL.fieldOf("vampire")).copyOnDeath()
                     .sync((holder, to) -> holder == to, ByteBufCodecs.BOOL).build());
 
+    /// The game time a player turned into a vampire, -1 if they haven't: how old a vampire they are (see
+    /// vampirism.VampireAge). Survives death, and is sent to the player's own client to size the blood bar.
+    public static final Supplier<AttachmentType<Long>> TURNED_AT = ATTACHMENT_TYPES.register("turned_at",
+            () -> AttachmentType.builder(() -> -1L).serialize(Codec.LONG.fieldOf("time")).copyOnDeath()
+                    .sync((holder, to) -> holder == to, ByteBufCodecs.VAR_LONG).build());
+
+    /// Whether a vampire player has turned their night vision off (see Vampirism.toggleNightVision). Survives death.
+    public static final Supplier<AttachmentType<Boolean>> NIGHT_VISION_OFF = ATTACHMENT_TYPES.register("night_vision_off",
+            () -> AttachmentType.builder(() -> false).serialize(Codec.BOOL.fieldOf("off")).copyOnDeath().build());
+
     /// A player's rank in the hunters, 0 when not one of them (see hunter.HunterRanks). Survives death, and is sent to
     /// the player's own client.
     public static final Supplier<AttachmentType<Integer>> HUNTER_RANK = ATTACHMENT_TYPES.register("hunter_rank",

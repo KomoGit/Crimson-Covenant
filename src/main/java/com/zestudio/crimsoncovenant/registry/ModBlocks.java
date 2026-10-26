@@ -13,6 +13,7 @@ import com.zestudio.crimsoncovenant.block.SilverSpikesBlock;
 import com.zestudio.crimsoncovenant.block.RatBurrowBlock;
 import com.zestudio.crimsoncovenant.block.RatTrapBlock;
 import com.zestudio.crimsoncovenant.block.SilveredBottleBlock;
+import com.zestudio.crimsoncovenant.block.HorsemansHeadBlock;
 import com.zestudio.crimsoncovenant.block.CoffinBlock;
 import com.zestudio.crimsoncovenant.block.IronMaidenBlock;
 import com.zestudio.crimsoncovenant.block.BloodThroneBlock;
@@ -119,6 +120,10 @@ public final class ModBlocks {
     public static final DeferredBlock<SilveredBottleBlock> SILVERED_BOTTLE = BLOCKS.registerBlock("silvered_bottle", SilveredBottleBlock::new,
             properties -> properties.mapColor(MapColor.METAL).strength(0.3F).sound(SoundType.GLASS).noOcclusion().pushReaction(PushReaction.POPPED)
                     .lightLevel(state -> state.getValue(SilveredBottleBlock.GHOST) ? SilveredBottleBlock.GHOST_LIGHT : 0));
+    /// The Headless Horseman's head in a bottle, dropped when he dies; glows red
+    public static final DeferredBlock<HorsemansHeadBlock> HORSEMANS_HEAD = BLOCKS.registerBlock("horsemans_head", HorsemansHeadBlock::new,
+            properties -> properties.mapColor(MapColor.COLOR_RED).strength(0.3F).sound(SoundType.GLASS).noOcclusion().pushReaction(PushReaction.POPPED)
+                    .lightLevel(state -> HorsemansHeadBlock.LIGHT));
 
     /// Slept in like a bed, at any hour; the only bed a vampire can use
     public static final DeferredBlock<CoffinBlock> COFFIN = BLOCKS.registerBlock("coffin", CoffinBlock::new,

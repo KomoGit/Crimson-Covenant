@@ -60,6 +60,17 @@ public final class SkillPayloads {
         }
     }
 
+    /// Turn a vampire's night vision on or off (see Vampirism.toggleNightVision)
+    public record ToggleNightVision() implements CustomPacketPayload {
+        public static final Type<ToggleNightVision> TYPE = new Type<>(CrimsonCovenant.id("toggle_night_vision"));
+        public static final StreamCodec<ByteBuf, ToggleNightVision> STREAM_CODEC = StreamCodec.unit(new ToggleNightVision());
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
     public record OpenSkills() implements CustomPacketPayload {
         public static final Type<OpenSkills> TYPE = new Type<>(CrimsonCovenant.id("open_skills"));
         public static final StreamCodec<ByteBuf, OpenSkills> STREAM_CODEC = StreamCodec.unit(new OpenSkills());
@@ -120,6 +131,11 @@ public final class SkillPayloads {
             registrar.playToServer(UnleashCurse.TYPE, UnleashCurse.STREAM_CODEC, (payload, context) -> {
                 if (context.player() instanceof ServerPlayer player) {
                     Curses.unleash(player);
+                }
+            });
+            registrar.playToServer(ToggleNightVision.TYPE, ToggleNightVision.STREAM_CODEC, (payload, context) -> {
+                if (context.player() instanceof ServerPlayer player) {
+                    Vampirism.toggleNightVision(player);
                 }
             });
             registrar.playToServer(OpenSkills.TYPE, OpenSkills.STREAM_CODEC, (payload, context) -> {

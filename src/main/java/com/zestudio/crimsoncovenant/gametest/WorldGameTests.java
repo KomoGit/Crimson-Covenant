@@ -79,6 +79,17 @@ final class WorldGameTests {
         helper.succeedWhen(() -> helper.assertTrue(!horseman.isAlive(), Component.literal("The horseman should fall with his horse")));
     }
 
+    static void horsemanDropsHisGlowingHead(GameTestHelper helper) {
+        HeadlessHorseman horseman = helper.spawnWithNoFreeWill(ModEntities.HEADLESS_HORSEMAN.get(), new BlockPos(4, 1, 4));
+        horseman.kill(helper.getLevel());
+        helper.assertItemEntityPresent(ModItems.HORSEMANS_HEAD.get());
+
+        BlockPos stand = new BlockPos(2, 1, 2);
+        helper.setBlock(stand, ModBlocks.HORSEMANS_HEAD.get());
+        helper.assertTrue(helper.getLevel().getBlockState(helper.absolutePos(stand)).getLightEmission() > 0, Component.literal("The bottled head should glow when set down"));
+        helper.succeed();
+    }
+
     // ---- Vampires ----
 
     static void vampireSeeksShelterAtDawn(GameTestHelper helper) {

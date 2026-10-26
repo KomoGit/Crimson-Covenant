@@ -134,6 +134,8 @@ public class CrimsonCovenantClient {
         event.registerEntityRenderer(ModEntities.SPIRIT_WYRMS.get(), NoopRenderer::new);
         // A big, glowing ball of blood
         event.registerEntityRenderer(ModEntities.BLOOD_ORB.get(), context -> new ThrownItemRenderer<>(context, 3.0F, true));
+        // A glowing red bat, always facing you
+        event.registerEntityRenderer(ModEntities.BLOOD_BAT.get(), context -> new ThrownItemRenderer<>(context, 1.5F, true));
     }
 
     @SubscribeEvent

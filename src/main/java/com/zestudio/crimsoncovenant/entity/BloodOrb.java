@@ -45,7 +45,8 @@ import net.minecraft.world.phys.Vec3;
 /// becomes overheal: extra hearts that last as long as the orb does, and fade 10 seconds after it's gone. Each
 /// creature can only feed the overheal once per orb, however often it's hit.
 ///
-/// It's made from the caster's whole blood bar, and the more blood went in, the harder the bolts hit.
+/// The more blood went into it, the harder the bolts hit (a player's always puts in the skill's 40). Whatever a bolt
+/// kills sets a Blood Bat loose on the next hostile nearby (see BloodBat).
 public class BloodOrb extends Fireball {
     public static final int LIFETIME = 140;
     private static final double SPEED = 0.15;
@@ -114,7 +115,11 @@ public class BloodOrb extends Fireball {
             float before = target.getHealth();
             // Every volley lands in full, however recently the last one did
             target.damageCooldownTime = 0;
-            if (target.hurtServer(level, source, this.boltDamage()) && owner != null && owner.isAlive()) {
+            boolean hurt = target.hurtServer(level, source, this.boltDamage());
+            if (hurt && !target.isAlive()) {
+                BloodBat.chain(level, owner, target, BloodBat.FIRST_RANGE);
+            }
+            if (hurt && owner != null && owner.isAlive()) {
                 boolean firstOverheal = !this.overhealedFrom.contains(target.getUUID());
                 // The overheal holds while the orb lasts, and its 10 seconds start once the orb is gone
                 int overhealTicks = LIFETIME - this.tickCount + OVERHEAL_DURATION;

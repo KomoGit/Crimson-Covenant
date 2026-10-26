@@ -18,6 +18,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.tags.EntityTypeTags;
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -31,6 +32,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
+import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
@@ -89,6 +91,7 @@ public final class Vampirism {
         player.setData(ModAttachments.INFECTION_TICKS, 0);
         player.removeEffect(ModEffects.SANGUINE_VAMPIRIS);
         player.setData(ModAttachments.IS_VAMPIRE, true);
+        player.setData(ModAttachments.TURNED_AT, player.level().getGameTime());
         player.sendSystemMessage(Component.translatable(messageKey).withStyle(ChatFormatting.DARK_RED));
         HunterRanks.castOut(player);
         player.level().playSound(null, player.blockPosition(), SoundEvents.ZOMBIE_VILLAGER_CURE, SoundSource.PLAYERS, 1.0F, 0.6F);
@@ -97,8 +100,17 @@ public final class Vampirism {
     public static void cure(Player player) {
         player.setData(ModAttachments.INFECTION_TICKS, 0);
         player.setData(ModAttachments.IS_VAMPIRE, false);
+        player.setData(ModAttachments.TURNED_AT, VampireAge.NEVER);
         player.setData(ModAttachments.BLOOD, 0);
         player.removeEffect(ModEffects.SANGUINE_VAMPIRIS);
+    }
+
+    /// The dead don't feel the cold: vampire players take no freezing damage
+    @SubscribeEvent
+    static void immuneToCold(LivingIncomingDamageEvent event) {
+        if (event.getEntity() instanceof Player player && isVampire(player) && event.getSource().is(DamageTypeTags.IS_FREEZING)) {
+            event.setCanceled(true);
+        }
     }
 
     /// Vampires look after their own: hurt a vampire player and every vampire nearby turns on you
@@ -188,6 +200,10 @@ public final class Vampirism {
     }
 
     public static void tickVampire(ServerPlayer player) {
+        // Made a vampire some other way (a command), or before ages were kept: their age counts from now
+        if (player.getData(ModAttachments.TURNED_AT) == VampireAge.NEVER) {
+            player.setData(ModAttachments.TURNED_AT, player.level().getGameTime());
+        }
         BloodPool.tick(player);
         BloodSkills.showAnchor(player);
         GarlicWard.tickVampirePlayer(player);
@@ -204,12 +220,32 @@ public final class Vampirism {
         if (player.tickCount % PERK_REFRESH_INTERVAL == 0) {
             BloodMoon.tickBloodlust(player);
             // Night vision lasts over 10 seconds so it never starts flickering, the night buffs just get topped up
-            player.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 400, 0, true, false, true));
+            if (!player.getData(ModAttachments.NIGHT_VISION_OFF)) {
+                player.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 400, 0, true, false, true));
+            }
+            // The dead don't need air
+            player.addEffect(new MobEffectInstance(MobEffects.WATER_BREATHING, 400, 0, true, false, true));
             if (player.level().isDarkOutside()) {
                 player.addEffect(new MobEffectInstance(MobEffects.SPEED, PERK_REFRESH_INTERVAL * 2, 0, true, false, true));
                 player.addEffect(new MobEffectInstance(MobEffects.STRENGTH, PERK_REFRESH_INTERVAL * 2, 0, true, false, true));
             }
         }
+    }
+
+    /// The night vision key: a vampire's night vision on or off. A potion of it is left alone.
+    public static void toggleNightVision(ServerPlayer player) {
+        if (!isVampire(player)) {
+            return;
+        }
+        boolean off = !player.getData(ModAttachments.NIGHT_VISION_OFF);
+        player.setData(ModAttachments.NIGHT_VISION_OFF, off);
+        MobEffectInstance nightVision = player.getEffect(MobEffects.NIGHT_VISION);
+        if (off && nightVision != null && nightVision.isAmbient()) {
+            player.removeEffect(MobEffects.NIGHT_VISION);
+        } else if (!off) {
+            player.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 400, 0, true, false, true));
+        }
+        player.sendOverlayMessage(Component.translatable(off ? "message.crimsoncovenant.night_vision.off" : "message.crimsoncovenant.night_vision.on").withStyle(ChatFormatting.GRAY));
     }
 
     /// Same rules vanilla uses for zombies and skeletons, randomized per tick so it doesn't ignite instantly.

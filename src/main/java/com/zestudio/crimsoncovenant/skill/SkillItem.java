@@ -54,10 +54,7 @@ public class SkillItem extends Item {
     public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay display, Consumer<Component> builder, TooltipFlag flag) {
         builder.accept(Component.translatable("item.crimsoncovenant.skill.description." + this.skill.getName()).withStyle(ChatFormatting.GRAY));
         int baseCost = this.skill.cost() + SkillUpgrade.extraCost(stack);
-        Component cost = this.skill.spendsAllBlood()
-                ? Component.translatable("item.crimsoncovenant.skill.cost_all", baseCost)
-                : Component.translatable("item.crimsoncovenant.skill.cost", baseCost);
-        builder.accept(cost.copy().withStyle(ChatFormatting.DARK_RED));
+        builder.accept(Component.translatable("item.crimsoncovenant.skill.cost", baseCost).withStyle(ChatFormatting.DARK_RED));
         SkillUpgrade upgrade = SkillUpgrade.forSkill(this.skill);
         if (upgrade != null) {
             Component name = Component.translatable("skill_upgrade.crimsoncovenant." + upgrade.getName());

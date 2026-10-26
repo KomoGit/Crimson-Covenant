@@ -103,11 +103,10 @@ public final class BloodSkills {
             refuse(player, Component.translatable(refusal, BloodPool.get(player), cost));
             return false;
         }
-        int spent = skill.spendsAllBlood() ? BloodPool.get(player) : cost;
-        if (!cast(skill, player, spent, upgraded)) {
+        if (!cast(skill, player, cost, upgraded)) {
             return false;
         }
-        BloodPool.set(player, BloodPool.get(player) - spent);
+        BloodPool.set(player, BloodPool.get(player) - cost);
         player.getCooldowns().addCooldown(stack, skill.cooldown());
         return true;
     }
