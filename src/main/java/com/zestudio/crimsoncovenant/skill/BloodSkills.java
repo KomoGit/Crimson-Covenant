@@ -24,12 +24,10 @@ import com.zestudio.crimsoncovenant.vampirism.BloodPool;
 import com.zestudio.crimsoncovenant.vampirism.Vampirism;
 import com.zestudio.crimsoncovenant.registry.ModDamageTypes;
 import com.zestudio.crimsoncovenant.effect.CrimsonShroudEffect;
+import com.zestudio.crimsoncovenant.effect.FlightLift;
 import com.zestudio.crimsoncovenant.vampirism.VampireAge;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.world.item.component.Fireworks;
-import net.minecraft.world.entity.projectile.Projectile;
-import net.minecraft.world.entity.projectile.FireworkRocketEntity;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.Holder;
 import net.minecraft.core.particles.DustParticleOptions;
@@ -78,6 +76,8 @@ public final class BloodSkills {
     // Blood Charge (the Crimson Shroud's right click)
     public static final int BLOOD_CHARGE_COST = 5;
     private static final int BLOOD_CHARGE_COOLDOWN = 10;
+    /// How long a Blood Charge drives its vampire on: as long as a one-burst firework
+    public static final int BLOOD_CHARGE_TICKS = 25;
     private static final int STALKERS_GAZE_DURATION = 600;
 
     private BloodSkills() {}
@@ -261,10 +261,11 @@ public final class BloodSkills {
     }
 
     /// A Blood Charge, the Crimson Shroud's right click: while gliding, five blood burst out behind the vampire and
-    /// drive them on the way a firework drives an elytra. False if they can't (not gliding in the shroud, too soon
-    /// after the last, or short of blood).
+    /// drive them on the way a firework drives an elytra, leaving afterimages behind them as a Dash does (see
+    /// tickBloodCharge). False if they can't (not gliding in the shroud, their hands full with a creature they've
+    /// snatched up, too soon after the last, or short of blood).
     public static boolean bloodCharge(ServerPlayer player) {
-        if (!CrimsonShroudEffect.isShrouded(player) || !player.isFallFlying()) {
+        if (!CrimsonShroudEffect.isShrouded(player) || !player.isFallFlying() || FlightLift.isCarrying(player)) {
             return false;
         }
         ItemStack burst = new ItemStack(ModItems.BLOOD_CHARGE.get());
@@ -278,9 +279,7 @@ public final class BloodSkills {
         }
         BloodPool.add(player, -chargeCost);
         player.getCooldowns().addCooldown(burst, BLOOD_CHARGE_COOLDOWN);
-        // A one-burst rocket with no explosions, drawn as a clot of blood
-        burst.set(DataComponents.FIREWORKS, new Fireworks(1, List.of()));
-        Projectile.spawnProjectile(new FireworkRocketEntity(player.level(), burst, player), player.level(), burst);
+        player.setData(ModAttachments.BLOOD_CHARGE, BLOOD_CHARGE_TICKS);
         burst(player.level(), player, 20);
         playSound(player, SoundEvents.PHANTOM_FLAP, 0.7F);
         return true;
@@ -302,13 +301,32 @@ public final class BloodSkills {
 
     // ---- Dash ----
 
-    /// Called every tick for every player: moves a dash along, and lets its afterimages strike
+    /// Called every tick for every player: moves a dash (or a Blood Charge) along, and lets its afterimages strike
     public static void tickDash(ServerPlayer player) {
         DashState dash = player.getData(ModAttachments.DASH);
         if (dash.ticksLeft() > 0) {
             moveDash(player, dash);
         }
+        tickBloodCharge(player);
         AfterimageStrike.tick(player);
+    }
+
+    /// A Blood Charge's push, the same a firework gives an elytra: towards a speed of 1.7 blocks a tick along the
+    /// vampire's aim. It's spent once they stop gliding.
+    private static void tickBloodCharge(ServerPlayer player) {
+        int ticksLeft = player.getData(ModAttachments.BLOOD_CHARGE);
+        if (ticksLeft <= 0) {
+            return;
+        }
+        if (!player.isFallFlying()) {
+            player.removeData(ModAttachments.BLOOD_CHARGE);
+            return;
+        }
+        Vec3 aim = player.getLookAngle();
+        Vec3 velocity = player.getDeltaMovement();
+        player.setDeltaMovement(velocity.add(aim.scale(0.1).add(aim.scale(1.5).subtract(velocity).scale(0.5))));
+        player.syncVelocity = true;
+        player.setData(ModAttachments.BLOOD_CHARGE, ticksLeft - 1);
     }
 
     private static void moveDash(ServerPlayer player, DashState dash) {

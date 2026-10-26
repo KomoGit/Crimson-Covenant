@@ -8,7 +8,11 @@ import com.zestudio.crimsoncovenant.entity.CrimsonLightning;
 import com.zestudio.crimsoncovenant.entity.Gargoyle;
 import com.zestudio.crimsoncovenant.entity.Ghost;
 import com.zestudio.crimsoncovenant.entity.HemorrhageZone;
+import com.zestudio.crimsoncovenant.entity.GhostSteed;
+import com.zestudio.crimsoncovenant.entity.HalloweenSpirit;
 import com.zestudio.crimsoncovenant.entity.HeadlessHorseman;
+import com.zestudio.crimsoncovenant.entity.PumpkinBomb;
+import com.zestudio.crimsoncovenant.entity.SpectralHorseman;
 import com.zestudio.crimsoncovenant.entity.Hunter;
 import com.zestudio.crimsoncovenant.entity.HunterChemist;
 import com.zestudio.crimsoncovenant.entity.MasterHunter;
@@ -39,6 +43,7 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.SpawnPlacementTypes;
 import net.minecraft.world.entity.ambient.Bat;
+import net.minecraft.world.entity.animal.equine.ZombieHorse;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -98,6 +103,18 @@ public final class ModEntities {
 
     public static final DeferredHolder<EntityType<?>, EntityType<HeadlessHorseman>> HEADLESS_HORSEMAN = ENTITY_TYPES.registerEntityType("headless_horseman", HeadlessHorseman::new, MobCategory.MONSTER,
             builder -> builder.sized(0.6F, 1.95F).eyeHeight(1.74F).passengerAttachments(2.0F).ridingOffset(-0.7F).clientTrackingRange(10).notInPeaceful());
+    /// The Horseman's ghost, riding by night round his head on a pike (see SpectralHorseman)
+    public static final DeferredHolder<EntityType<?>, EntityType<SpectralHorseman>> SPECTRAL_HORSEMAN = ENTITY_TYPES.registerEntityType("spectral_horseman", SpectralHorseman::new, MobCategory.MISC,
+            builder -> builder.noLootTable().sized(0.6F, 1.95F).eyeHeight(1.74F).passengerAttachments(2.0F).ridingOffset(-0.7F).clientTrackingRange(10).fireImmune());
+    /// A horse's ghost: the Spectral Horseman's mount, or the Headless Horseman's horse risen (see GhostSteed)
+    public static final DeferredHolder<EntityType<?>, EntityType<GhostSteed>> GHOST_STEED = ENTITY_TYPES.registerEntityType("ghost_steed", GhostSteed::new, MobCategory.MISC,
+            builder -> builder.noLootTable().sized(1.3964844F, 1.6F).eyeHeight(1.52F).passengerAttachments(1.31875F).clientTrackingRange(10).fireImmune());
+    /// What rises from the fallen Headless Horseman (see HalloweenSpirit)
+    public static final DeferredHolder<EntityType<?>, EntityType<HalloweenSpirit>> HALLOWEEN_SPIRIT = ENTITY_TYPES.registerEntityType("halloween_spirit", HalloweenSpirit::new, MobCategory.MONSTER,
+            builder -> builder.sized(0.8F, 2.4F).eyeHeight(2.1F).clientTrackingRange(10).fireImmune());
+    /// The Headless Horseman's thrown jack o'lantern (see PumpkinBomb)
+    public static final DeferredHolder<EntityType<?>, EntityType<PumpkinBomb>> PUMPKIN_BOMB = ENTITY_TYPES.registerEntityType("pumpkin_bomb", PumpkinBomb::new, MobCategory.MISC,
+            builder -> builder.noLootTable().sized(0.5F, 0.5F).clientTrackingRange(6).updateInterval(5));
 
     // Spawned by WerewolfSpawner on full-moon nights, not by biome
     public static final DeferredHolder<EntityType<?>, EntityType<Werewolf>> WEREWOLF = ENTITY_TYPES.registerEntityType("werewolf", Werewolf::new, MobCategory.MONSTER,
@@ -182,6 +199,9 @@ public final class ModEntities {
         event.put(VAMPIRE_BAT.get(), VampireBat.createAttributes().build());
         event.put(SWARM_BAT.get(), Bat.createAttributes().build());
         event.put(HEADLESS_HORSEMAN.get(), HeadlessHorseman.createAttributes().build());
+        event.put(SPECTRAL_HORSEMAN.get(), HeadlessHorseman.createAttributes().build());
+        event.put(GHOST_STEED.get(), ZombieHorse.createAttributes().build());
+        event.put(HALLOWEEN_SPIRIT.get(), HalloweenSpirit.createAttributes().build());
         event.put(GHOST.get(), Ghost.createAttributes().build());
         event.put(HAUNTED_OBJECT.get(), HauntedObject.createAttributes().build());
         event.put(RAT.get(), Rat.createAttributes().build());
@@ -199,9 +219,6 @@ public final class ModEntities {
                 Monster::checkMonsterSpawnRules, RegisterSpawnPlacementsEvent.Operation.REPLACE);
         event.register(MASTER_VAMPIRE.get(), SpawnPlacementTypes.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
                 ModEntities::checkMasterVampireSpawnRules, RegisterSpawnPlacementsEvent.Operation.REPLACE);
-        // Forests only, see data/crimsoncovenant/neoforge/biome_modifier/headless_horseman_spawns.json
-        event.register(HEADLESS_HORSEMAN.get(), SpawnPlacementTypes.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
-                Monster::checkMonsterSpawnRules, RegisterSpawnPlacementsEvent.Operation.REPLACE);
         // Caves only, see data/crimsoncovenant/neoforge/biome_modifier/vampire_spawns.json
         event.register(VAMPIRE_BAT.get(), SpawnPlacementTypes.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
                 ModEntities::checkVampireBatSpawnRules, RegisterSpawnPlacementsEvent.Operation.REPLACE);

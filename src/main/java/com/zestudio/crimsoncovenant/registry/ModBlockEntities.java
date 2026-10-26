@@ -5,6 +5,7 @@ import com.zestudio.crimsoncovenant.block.RatBurrowBlockEntity;
 import com.zestudio.crimsoncovenant.block.IronMaidenBlockEntity;
 import com.zestudio.crimsoncovenant.block.SilveredBottleBlockEntity;
 import com.zestudio.crimsoncovenant.block.AncientTranslatorBlockEntity;
+import com.zestudio.crimsoncovenant.block.HeadOnAPikeBlockEntity;
 
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -23,6 +24,10 @@ public final class ModBlockEntities {
             () -> new BlockEntityType<>(AncientTranslatorBlockEntity::new, ModBlocks.ANCIENT_TRANSLATOR.get()));
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<SilveredBottleBlockEntity>> SILVERED_BOTTLE = BLOCK_ENTITY_TYPES.register("silvered_bottle",
             () -> new BlockEntityType<>(SilveredBottleBlockEntity::new, ModBlocks.SILVERED_BOTTLE.get()));
+
+    /// The ward and the night watch of a Head on a Pike
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<HeadOnAPikeBlockEntity>> HEAD_ON_A_PIKE = BLOCK_ENTITY_TYPES.register("head_on_a_pike",
+            () -> new BlockEntityType<>(HeadOnAPikeBlockEntity::new, ModBlocks.HEAD_ON_A_PIKE.get()));
 
     private ModBlockEntities() {}
 }

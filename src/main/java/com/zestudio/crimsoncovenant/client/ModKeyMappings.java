@@ -2,6 +2,7 @@ package com.zestudio.crimsoncovenant.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
+import com.zestudio.crimsoncovenant.effect.FlightLift;
 import com.zestudio.crimsoncovenant.network.SkillPayloads;
 import com.zestudio.crimsoncovenant.registry.ModEffects;
 import com.zestudio.crimsoncovenant.skill.SkillSlots;
@@ -50,11 +51,18 @@ public final class ModKeyMappings {
         }
     }
 
-    /// Gliding in the Crimson Shroud, a right click is a Blood Charge instead of whatever it would otherwise do
+    /// With a creature snatched up in flight, a right click lets go of it; otherwise, gliding in the Crimson Shroud, it's a
+    /// Blood Charge. Either way instead of whatever it would otherwise do.
     @SubscribeEvent
     static void bloodCharge(InputEvent.InteractionKeyMappingTriggered event) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (event.isUseItem() && minecraft.player != null && minecraft.player.isFallFlying() && minecraft.player.hasEffect(ModEffects.CRIMSON_SHROUD)) {
+        if (event.isUseItem() && minecraft.player != null && FlightLift.isCarrying(minecraft.player)) {
+            event.setCanceled(true);
+            event.setSwingHand(false);
+            if (event.getHand() == InteractionHand.MAIN_HAND) {
+                ClientPacketDistributor.sendToServer(new SkillPayloads.DropCarried());
+            }
+        } else if (event.isUseItem() && minecraft.player != null && minecraft.player.isFallFlying() && minecraft.player.hasEffect(ModEffects.CRIMSON_SHROUD)) {
             event.setCanceled(true);
             event.setSwingHand(false);
             if (event.getHand() == InteractionHand.MAIN_HAND) {

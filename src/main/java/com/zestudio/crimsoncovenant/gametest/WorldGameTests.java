@@ -72,18 +72,7 @@ final class WorldGameTests {
         }
     }
 
-    static void horsemanDiesWithHorse(GameTestHelper helper) {
-        HeadlessHorseman horseman = ModEntities.HEADLESS_HORSEMAN.get().spawn(helper.getLevel(), helper.absolutePos(new BlockPos(4, 1, 4)), EntitySpawnReason.SPAWN_ITEM_USE);
-        helper.assertTrue(horseman != null && horseman.getVehicle() != null, Component.literal("Horseman should spawn mounted"));
-        horseman.getVehicle().kill(helper.getLevel());
-        helper.succeedWhen(() -> helper.assertTrue(!horseman.isAlive(), Component.literal("The horseman should fall with his horse")));
-    }
-
-    static void horsemanDropsHisGlowingHead(GameTestHelper helper) {
-        HeadlessHorseman horseman = helper.spawnWithNoFreeWill(ModEntities.HEADLESS_HORSEMAN.get(), new BlockPos(4, 1, 4));
-        horseman.kill(helper.getLevel());
-        helper.assertItemEntityPresent(ModItems.HORSEMANS_HEAD.get());
-
+    static void horsemansHeadGlowsInItsJar(GameTestHelper helper) {
         BlockPos stand = new BlockPos(2, 1, 2);
         helper.setBlock(stand, ModBlocks.HORSEMANS_HEAD.get());
         helper.assertTrue(helper.getLevel().getBlockState(helper.absolutePos(stand)).getLightEmission() > 0, Component.literal("The bottled head should glow when set down"));

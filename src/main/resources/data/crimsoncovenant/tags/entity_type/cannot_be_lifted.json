@@ -1,0 +1,14 @@
+{
+  "values": [
+    "minecraft:warden",
+    "minecraft:iron_golem",
+    "minecraft:wither",
+    "minecraft:ender_dragon",
+    "crimsoncovenant:cathedral_gargoyle",
+    "crimsoncovenant:blood_gargoyle",
+    "crimsoncovenant:headless_horseman",
+    "crimsoncovenant:spectral_horseman",
+    "crimsoncovenant:ghost_steed",
+    "crimsoncovenant:halloween_spirit"
+  ]
+}

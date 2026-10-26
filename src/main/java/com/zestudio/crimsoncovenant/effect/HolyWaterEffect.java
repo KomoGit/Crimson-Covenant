@@ -7,6 +7,7 @@ import com.zestudio.crimsoncovenant.registry.ModDamageTypes;
 import com.zestudio.crimsoncovenant.registry.ModEffects;
 import com.zestudio.crimsoncovenant.skill.BloodSkills;
 import com.zestudio.crimsoncovenant.vampirism.Vampirism;
+import com.zestudio.crimsoncovenant.entity.HalloweenSpirit;
 import com.zestudio.crimsoncovenant.entity.HauntedObject;
 
 import net.minecraft.server.level.ServerLevel;
@@ -23,7 +24,7 @@ import net.minecraft.world.entity.player.Player;
 
 /// Holy Water: hurts undead creatures (and vampire players), strips away their Resistance and sets them alight
 /// with Holy Flame, which slows them and which water can't put out. Ghosts are destroyed instantly (and driven out of
-/// anything they've slipped into), and vampire
+/// anything they've slipped into), the Spirit of Halloween is driven back (and banished by the last of several), and vampire
 /// players lose any blood skills they have active.
 /// Everything else is unaffected.
 /// Splash potions scale the effect down with distance; lingering clouds re-apply it every second.
@@ -36,7 +37,7 @@ public class HolyWaterEffect extends InstantaneousMobEffect {
     }
 
     public static boolean isAffected(LivingEntity entity) {
-        return entity.is(EntityTypeTags.UNDEAD) || entity instanceof HauntedObject || (entity instanceof Player player && Vampirism.isVampire(player));
+        return entity.is(EntityTypeTags.UNDEAD) || entity instanceof HauntedObject || entity instanceof HalloweenSpirit || (entity instanceof Player player && Vampirism.isVampire(player));
     }
 
     @Override
@@ -52,6 +53,11 @@ public class HolyWaterEffect extends InstantaneousMobEffect {
 
     private void burn(ServerLevel level, @Nullable Entity source, @Nullable Entity owner, LivingEntity entity, int amplifier, double scale) {
         if (!isAffected(entity)) {
+            return;
+        }
+        // The Spirit of Halloween is only driven back, until it's taken enough to be banished
+        if (entity instanceof HalloweenSpirit spirit) {
+            spirit.sanctify(level, owner);
             return;
         }
         DamageSource holyFire = entity.damageSources().source(ModDamageTypes.HOLY_FIRE, source, owner);

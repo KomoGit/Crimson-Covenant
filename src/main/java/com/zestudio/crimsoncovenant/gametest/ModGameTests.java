@@ -27,7 +27,7 @@ public final class ModGameTests {
 
     private record TestEntry(DeferredHolder<Consumer<GameTestHelper>, Consumer<GameTestHelper>> function, int maxTicks, Batch batch) {}
 
-    private enum Batch { SHARED, ISOLATED, WITH_PLAYER, CALM }
+    private enum Batch { SHARED, ISOLATED, WITH_PLAYER, CALM, HORSEMAN, SOLO }
 
     static {
         test("hunter_party_has_one_leader", HunterGameTests::partyHasOneLeader);
@@ -68,8 +68,16 @@ public final class ModGameTests {
         test("headless_horseman_rides_with_golden_spear", VampireGameTests::headlessHorsemanRidesWithGoldenSpear);
         test("headless_horseman_hunts_hunters", VampireGameTests::headlessHorsemanHuntsHunters);
         test("holy_flame_looks_like_fire", WorldGameTests::holyFlameLooksLikeFire);
-        test("horseman_dies_with_horse", WorldGameTests::horsemanDiesWithHorse);
-        test("horseman_drops_his_glowing_head", WorldGameTests::horsemanDropsHisGlowingHead);
+        test("horsemans_head_glows_in_its_jar", WorldGameTests::horsemansHeadGlowsInItsJar);
+        horsemanTest("horseman_dies_with_horse", HorsemanGameTests::horsemanDiesWithHorse);
+        horsemanTest("slain_horseman_rises_as_a_spirit", HorsemanGameTests::slainHorsemanRisesAsASpirit);
+        horsemanTest("spirit_that_reaches_its_steed_rides_again", HorsemanGameTests::spiritThatReachesItsSteedRidesAgain);
+        soloTest("jack_o_lantern_by_a_crooked_tree_calls_him_up", HorsemanGameTests::jackOLanternByACrookedTreeCallsHimUp);
+        soloTest("head_on_a_pike_wards_and_calls_its_ghost", HorsemanGameTests::headOnAPikeWardsAndCallsItsGhost);
+        playerTest("horsemans_blows_blind_now_and_then", HorsemanGameTests::horsemansBlowsBlindNowAndThen, DEFAULT_MAX_TICKS);
+        test("pumpkin_bombs_throw_folk_clear_but_spare_the_ground", HorsemanGameTests::pumpkinBombsThrowFolkClearButSpareTheGround);
+        test("horseman_wont_charge_through_holy_water", HorsemanGameTests::horsemanWontChargeThroughHolyWater);
+        test("crooked_tree_stands_beside_its_road", HorsemanGameTests::crookedTreeStandsBesideItsRoad);
         test("vampire_seeks_shelter_at_dawn", WorldGameTests::vampireSeeksShelterAtDawn, 400);
         test("master_vampire_cant_drain_under_holy_flame", WorldGameTests::masterVampireCantDrainUnderHolyFlame);
         test("blood_moon_timing", WorldGameTests::bloodMoonTiming);
@@ -127,9 +135,12 @@ public final class ModGameTests {
         test("blood_spear_pierces_through", SkillGameTests::bloodSpearPiercesThrough);
         playerTest("whips_reach_far_and_slam", SkillGameTests::whipsReachFarAndSlam, DEFAULT_MAX_TICKS);
         playerTest("whip_lash_lands_the_blow", SkillGameTests::whipLashLandsTheBlow, DEFAULT_MAX_TICKS);
+        playerTest("whip_reach_is_known_before_the_crack", SkillGameTests::whipReachIsKnownBeforeTheCrack, DEFAULT_MAX_TICKS);
+        playerTest("flight_carries_off_what_it_flies_through", SkillGameTests::flightCarriesOffWhatItFliesThrough, DEFAULT_MAX_TICKS);
         playerTest("whip_pulls_creatures_in", SkillGameTests::whipPullsCreaturesIn, DEFAULT_MAX_TICKS);
         test("blood_parade_drains_hostiles", SkillGameTests::bloodParadeDrainsHostiles, 400);
-        test("blood_bats_chain_until_their_reach_runs_out", SkillGameTests::bloodBatsChainUntilTheirReachRunsOut, 200);
+        // Its bats would fly off after other tests' monsters
+        isolatedTest("blood_bats_chain_until_their_reach_runs_out", SkillGameTests::bloodBatsChainUntilTheirReachRunsOut, 200);
         test("blood_parade_bounces_off_walls", SkillGameTests::bloodParadeBouncesOffWalls);
         test("blood_altar_upgrades_skills", SkillGameTests::bloodAltarUpgradesSkills);
         test("crimson_lightning_strikes_spear_victims", SkillGameTests::crimsonLightningStrikesSpearVictims);
@@ -324,6 +335,17 @@ public final class ModGameTests {
         TESTS.add(new TestEntry(TEST_FUNCTIONS.register(name, () -> function), maxTicks, Batch.WITH_PLAYER));
     }
 
+    /// For tests where the Headless Horseman dies: his Ghost Steed gallops off through the neighbouring tests
+    private static void horsemanTest(String name, Consumer<GameTestHelper> function) {
+        TESTS.add(new TestEntry(TEST_FUNCTIONS.register(name, () -> function), DEFAULT_MAX_TICKS, Batch.HORSEMAN));
+    }
+
+    /// For a test that reaches far beyond its arena (a ward over 50 blocks, "only one Horseman about") and so can't
+    /// share its batch with any other
+    private static void soloTest(String name, Consumer<GameTestHelper> function) {
+        TESTS.add(new TestEntry(TEST_FUNCTIONS.register(name, () -> function), DEFAULT_MAX_TICKS, Batch.SOLO));
+    }
+
     /// For tests of a skittish mob going about its business (the wandering Plague Doctor), which the monsters and
     /// doors of other tests nearby would scare off or lead astray
     private static void calmTest(String name, Consumer<GameTestHelper> function, int maxTicks) {
@@ -347,6 +369,7 @@ public final class ModGameTests {
         Holder<TestEnvironmentDefinition<?>> isolated = event.registerEnvironment(CrimsonCovenant.id("isolated"), clearSkies());
         Holder<TestEnvironmentDefinition<?>> withPlayer = event.registerEnvironment(CrimsonCovenant.id("with_player"), clearSkies());
         Holder<TestEnvironmentDefinition<?>> calm = event.registerEnvironment(CrimsonCovenant.id("calm"), clearSkies());
+        Holder<TestEnvironmentDefinition<?>> horseman = event.registerEnvironment(CrimsonCovenant.id("horseman"), clearSkies());
         for (TestEntry test : TESTS) {
             ResourceKey<Consumer<GameTestHelper>> key = test.function().getKey();
             Holder<TestEnvironmentDefinition<?>> environment = switch (test.batch()) {
@@ -354,6 +377,8 @@ public final class ModGameTests {
                 case ISOLATED -> isolated;
                 case WITH_PLAYER -> withPlayer;
                 case CALM -> calm;
+                case HORSEMAN -> horseman;
+                case SOLO -> event.registerEnvironment(CrimsonCovenant.id("solo/" + key.identifier().getPath()), clearSkies());
             };
             event.registerTest(key.identifier(), new FunctionGameTestInstance(key,
                     new TestData<>(environment, CrimsonCovenant.id("arena"), test.maxTicks(), 0, true)));

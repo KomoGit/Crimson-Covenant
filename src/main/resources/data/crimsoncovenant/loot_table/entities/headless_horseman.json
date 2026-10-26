@@ -1,15 +1,5 @@
 {
   "type": "minecraft:entity",
-  "pools": [
-    {
-      "rolls": 1,
-      "entries": [
-        {
-          "type": "minecraft:item",
-          "name": "crimsoncovenant:horsemans_head"
-        }
-      ]
-    }
-  ],
+  "pools": [],
   "random_sequence": "crimsoncovenant:entities/headless_horseman"
 }

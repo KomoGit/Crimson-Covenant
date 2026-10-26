@@ -14,6 +14,7 @@ import com.zestudio.crimsoncovenant.block.RatBurrowBlock;
 import com.zestudio.crimsoncovenant.block.RatTrapBlock;
 import com.zestudio.crimsoncovenant.block.SilveredBottleBlock;
 import com.zestudio.crimsoncovenant.block.HorsemansHeadBlock;
+import com.zestudio.crimsoncovenant.block.HeadOnAPikeBlock;
 import com.zestudio.crimsoncovenant.block.CoffinBlock;
 import com.zestudio.crimsoncovenant.block.IronMaidenBlock;
 import com.zestudio.crimsoncovenant.block.BloodThroneBlock;
@@ -22,6 +23,7 @@ import com.zestudio.crimsoncovenant.block.GravestoneBlock;
 import com.zestudio.crimsoncovenant.block.TormentedSoulBlock;
 
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.properties.NoteBlockInstrument;
@@ -129,6 +131,13 @@ public final class ModBlocks {
     public static final DeferredBlock<HorsemansHeadBlock> HORSEMANS_HEAD = BLOCKS.registerBlock("horsemans_head", HorsemansHeadBlock::new,
             properties -> properties.mapColor(MapColor.COLOR_RED).strength(0.3F).sound(SoundType.GLASS).noOcclusion().pushReaction(PushReaction.POPPED)
                     .lightLevel(state -> HorsemansHeadBlock.LIGHT));
+    /// The Horseman's head out of its jar and on a pike: wards off monsters, and calls up the Spectral Horseman by night
+    public static final DeferredBlock<HeadOnAPikeBlock> HEAD_ON_A_PIKE = BLOCKS.registerBlock("head_on_a_pike", HeadOnAPikeBlock::new,
+            properties -> properties.mapColor(MapColor.COLOR_ORANGE).strength(1.0F).sound(SoundType.WOOD).noOcclusion()
+                    .lightLevel(state -> HeadOnAPikeBlock.LIGHT));
+    /// The dead wood of a Crooked Tree (see world.CrookedTreePiece), where a jack o'lantern calls up the Headless Horseman
+    public static final DeferredBlock<RotatedPillarBlock> CROOKED_LOG = BLOCKS.registerBlock("crooked_log", RotatedPillarBlock::new,
+            properties -> properties.mapColor(MapColor.COLOR_BLACK).strength(2.0F).sound(SoundType.WOOD).instrument(NoteBlockInstrument.BASS).ignitedByLava());
 
     /// A ghost crammed into a plain glass bottle, set down (see guide.Souls)
     public static final DeferredBlock<TormentedSoulBlock> TORMENTED_SOUL = BLOCKS.registerBlock("tormented_soul", TormentedSoulBlock::new,

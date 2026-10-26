@@ -502,11 +502,10 @@ final class VampireGameTests {
         helper.assertTrue(spawnsIn(biomes.getOrThrow(Biomes.DRIPSTONE_CAVES).value()), Component.literal("Vampires should spawn in caves"));
         helper.assertTrue(!spawnsIn(biomes.getOrThrow(Biomes.MUSHROOM_FIELDS).value()), Component.literal("Vampires should not spawn on mushroom islands"));
         helper.assertTrue(!spawnsIn(biomes.getOrThrow(Biomes.NETHER_WASTES).value()), Component.literal("Vampires should not spawn in the Nether"));
-        helper.assertTrue(spawnsIn(biomes.getOrThrow(Biomes.FOREST).value(), ModEntities.HEADLESS_HORSEMAN.get())
-                && spawnsIn(biomes.getOrThrow(Biomes.DARK_FOREST).value(), ModEntities.HEADLESS_HORSEMAN.get()),
-                Component.literal("The Headless Horseman should spawn in forests"));
-        helper.assertTrue(!spawnsIn(biomes.getOrThrow(Biomes.PLAINS).value(), ModEntities.HEADLESS_HORSEMAN.get()),
-                Component.literal("The Headless Horseman should only spawn in forests"));
+        // He's only ever called up, at a Crooked Tree (see world.HorsemanSummoning)
+        helper.assertTrue(!spawnsIn(biomes.getOrThrow(Biomes.FOREST).value(), ModEntities.HEADLESS_HORSEMAN.get())
+                && !spawnsIn(biomes.getOrThrow(Biomes.DARK_FOREST).value(), ModEntities.HEADLESS_HORSEMAN.get()),
+                Component.literal("The Headless Horseman shouldn't spawn by himself"));
         helper.succeed();
     }
 

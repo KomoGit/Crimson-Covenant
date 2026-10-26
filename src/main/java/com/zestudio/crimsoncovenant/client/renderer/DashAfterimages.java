@@ -25,8 +25,8 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RenderLivingEvent;
 
-/// Ghostly copies of a dashing player, left behind along the way. Each tick of a Dash leaves one where the player
-/// was, and each lingers for a few ticks. They're drawn the way the game draws an invisible player to a teammate:
+/// Ghostly copies of a dashing player, left behind along the way. Each tick of a Dash (or of a Blood Charge, see
+/// skill.BloodSkills.bloodCharge) leaves one where the player was, and each lingers for a few ticks. They're drawn the way the game draws an invisible player to a teammate:
 /// faint and see-through.
 @EventBusSubscriber(modid = CrimsonCovenant.MODID, value = Dist.CLIENT)
 public final class DashAfterimages {
@@ -50,7 +50,7 @@ public final class DashAfterimages {
         Set<Integer> present = new HashSet<>();
         for (AbstractClientPlayer player : level.players()) {
             present.add(player.getId());
-            if (player.getData(ModAttachments.DASH).ticksLeft() > 0) {
+            if (player.getData(ModAttachments.DASH).ticksLeft() > 0 || player.getData(ModAttachments.BLOOD_CHARGE) > 0) {
                 TRAILS.computeIfAbsent(player.getId(), id -> new ArrayDeque<>()).addLast(new Afterimage(player.position(), player.yBodyRot, player.yHeadRot,
                         player.getXRot(), player.walkAnimation.position(), player.walkAnimation.speed(), now));
             }

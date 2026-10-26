@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "end": "crimsoncovenant:block/crooked_log_top",
+    "side": "crimsoncovenant:block/crooked_log"
+  }
+}

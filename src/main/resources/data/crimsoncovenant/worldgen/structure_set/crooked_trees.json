@@ -1,0 +1,14 @@
+{
+  "placement": {
+    "type": "minecraft:random_spread",
+    "salt": 1031867442,
+    "spacing": 40,
+    "separation": 14
+  },
+  "structures": [
+    {
+      "structure": "crimsoncovenant:crooked_tree",
+      "weight": 1
+    }
+  ]
+}

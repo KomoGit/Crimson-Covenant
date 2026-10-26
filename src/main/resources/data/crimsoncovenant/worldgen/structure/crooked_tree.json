@@ -1,0 +1,6 @@
+{
+  "type": "crimsoncovenant:crooked_tree",
+  "biomes": "#crimsoncovenant:has_structure/crooked_tree",
+  "spawn_overrides": {},
+  "step": "top_layer_modification"
+}

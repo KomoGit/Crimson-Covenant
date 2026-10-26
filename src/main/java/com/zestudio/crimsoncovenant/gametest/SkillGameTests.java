@@ -54,6 +54,7 @@ import com.zestudio.crimsoncovenant.block.AncientTranslatorBlockEntity;
 import com.zestudio.crimsoncovenant.block.IronMaidenBlock;
 import com.zestudio.crimsoncovenant.block.IronMaidenBlockEntity;
 import com.zestudio.crimsoncovenant.entity.WhipLash;
+import com.zestudio.crimsoncovenant.effect.FlightLift;
 import com.zestudio.crimsoncovenant.item.WhipItem;
 import com.zestudio.crimsoncovenant.item.Silvering;
 
@@ -78,6 +79,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.chicken.Chicken;
 import net.minecraft.world.entity.animal.cow.Cow;
 import net.minecraft.world.entity.animal.sheep.Sheep;
+import net.minecraft.world.entity.animal.golem.IronGolem;
 import net.minecraft.world.entity.monster.Creeper;
 import net.minecraft.world.entity.monster.spider.Spider;
 import net.minecraft.world.entity.monster.zombie.Husk;
@@ -455,6 +457,83 @@ final class SkillGameTests {
                 .thenSucceed();
     }
 
+    static void whipReachIsKnownBeforeTheCrack(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer player = makePlayer(helper);
+        // Facing east, down the test, at a zombie eight blocks off: past the whip's reach, but in its sights
+        Vec3 stand = helper.absoluteVec(new Vec3(0.5, 1.0, 4.5));
+        player.snapTo(stand.x, stand.y, stand.z, -90.0F, 0.0F);
+        player.teleportTo(stand.x, stand.y, stand.z);
+        player.setYRot(-90.0F);
+        player.setYHeadRot(-90.0F);
+        player.setXRot(0.0F);
+        Zombie zombie = spawnSturdyZombie(helper, new BlockPos(8, 1, 4));
+        zombie.removeFreeWill();
+        helper.assertTrue(WhipLash.reached(level, player).isEmpty(), Component.literal("Eight blocks off is past the whip's reach"));
+        helper.assertTrue(WhipLash.along(level, player, 32.0).contains(zombie), Component.literal("The zombie should still be in the whip's sights"));
+        Vec3 near = helper.absoluteVec(new Vec3(4.5, 1.0, 4.5));
+        zombie.teleportTo(near.x, near.y, near.z);
+        helper.assertTrue(WhipLash.reached(level, player).contains(zombie), Component.literal("Four blocks off is within the whip's reach"));
+        removePlayer(helper, player);
+        zombie.discard();
+        helper.succeed();
+    }
+
+    static void flightCarriesOffWhatItFliesThrough(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer player = makeVampire(helper, 100);
+        Zombie zombie = spawnSturdyZombie(helper, new BlockPos(4, 1, 4));
+        zombie.removeFreeWill();
+        Zombie second = spawnSturdyZombie(helper, new BlockPos(1, 1, 7));
+        second.removeFreeWill();
+        IronGolem golem = helper.spawnWithNoFreeWill(EntityTypes.IRON_GOLEM, new BlockPos(1, 1, 1));
+        // Without wings, passing through is only passing through
+        flyPast(helper, player, new Vec3(4.5, 1.5, 1.5), new Vec3(4.5, 1.5, 7.5));
+        helper.assertTrue(!FlightLift.snatch(player) && !FlightLift.isLifted(zombie), Component.literal("Without Flight, nothing should be snatched up"));
+        player.addEffect(new MobEffectInstance(ModEffects.BLOOD_FLIGHT, 400));
+        flyPast(helper, player, new Vec3(1.5, 1.5, 1.5), new Vec3(1.5, 1.5, 1.6));
+        helper.assertTrue(!FlightLift.snatch(player) && !FlightLift.isLifted(golem), Component.literal("An Iron Golem is too heavy to carry off"));
+        // Flat out, straight through the zombie between one tick and the next
+        flyPast(helper, player, new Vec3(4.5, 1.5, 1.5), new Vec3(4.5, 1.5, 7.5));
+        helper.assertTrue(FlightLift.snatch(player) && FlightLift.isLifted(zombie), Component.literal("Flying through the zombie should snatch it up"));
+        flyPast(helper, player, new Vec3(1.5, 1.5, 7.4), new Vec3(1.5, 1.5, 7.5));
+        helper.assertTrue(!FlightLift.snatch(player) && !FlightLift.isLifted(second), Component.literal("A vampire can only carry one creature at a time"));
+        // Up under the arena's ceiling, which is as high as the zombie can be carried
+        flyPast(helper, player, new Vec3(4.5, 4.2, 4.5), new Vec3(4.5, 4.2, 4.5));
+        double ground = helper.absoluteVec(new Vec3(0.0, 1.0, 0.0)).y;
+        helper.startSequence()
+                .thenWaitUntil(() -> {
+                    helper.assertTrue(zombie.getY() > ground + 0.8, Component.literal("The zombie should be carried up by the vampire"));
+                    Vec3 offset = zombie.position().subtract(player.position());
+                    helper.assertTrue(offset.z > 0.5 && offset.horizontalDistance() < 2.0 && offset.y > -2.0,
+                            Component.literal("The zombie should be held up just in front of the vampire, not " + offset));
+                })
+                // Held for as long as they like, until a right click lets it go
+                .thenIdle(FlightLift.REGRAB_TICKS + 20)
+                .thenExecute(() -> {
+                    helper.assertTrue(FlightLift.isLifted(zombie), Component.literal("The zombie should still be held"));
+                    helper.assertTrue(FlightLift.drop(player) && !FlightLift.isLifted(zombie), Component.literal("A right click should let the zombie go"));
+                    helper.assertTrue(!FlightLift.drop(player), Component.literal("Nothing left to let go"));
+                    flyPast(helper, player, helper.relativeVec(zombie.position()), helper.relativeVec(zombie.position()));
+                    helper.assertTrue(!FlightLift.snatch(player), Component.literal("What's just been let go shouldn't be snatched straight back up"));
+                    removePlayer(helper, player);
+                    zombie.discard();
+                    second.discard();
+                    golem.discard();
+                })
+                .thenSucceed();
+    }
+
+    /// Puts a (never ticked) player where they'd be after flying from `from` to `to` in one tick, both relative
+    private static void flyPast(GameTestHelper helper, ServerPlayer player, Vec3 from, Vec3 to) {
+        Vec3 was = helper.absoluteVec(from);
+        Vec3 now = helper.absoluteVec(to);
+        player.teleportTo(now.x, now.y, now.z);
+        player.xOld = was.x;
+        player.yOld = was.y;
+        player.zOld = was.z;
+    }
+
     static void whipPullsCreaturesIn(GameTestHelper helper) {
         ServerPlayer player = makePlayer(helper);
         // Facing east, at a zombie five blocks off
@@ -587,7 +666,7 @@ final class SkillGameTests {
                     helper.assertTrue(zombie.getHealth() < zombieHealth[0], Component.literal("The orb keeps lashing the zombie"));
                     helper.assertValueEqual(caster.getAbsorptionAmount(), firstOverheal[0], "overheal after more hits on the same zombie (it only counts once)");
                 })
-                .thenWaitUntil(() -> helper.assertTrue(orb.isRemoved(), Component.literal("The orb lasts 7 seconds")))
+                .thenWaitUntil(() -> helper.assertTrue(orb.isRemoved(), Component.literal("The orb lasts 8 seconds")))
                 .thenExecute(() -> {
                     int left = caster.getEffect(ModEffects.OVERHEAL).getDuration();
                     helper.assertTrue(left > 0 && left <= BloodOrb.OVERHEAL_DURATION, Component.literal("Once the orb is gone, the overheal has 10 seconds left, not " + left));
@@ -671,11 +750,23 @@ final class SkillGameTests {
         int before = BloodPool.get(player);
         helper.assertTrue(!BloodSkills.bloodCharge(player) && BloodPool.get(player) == before, Component.literal("No Blood Charge without gliding"));
         player.startFallFlying();
+        // Not with a creature snatched up in their hands: a right click lets that go instead
+        Zombie carried = spawnSturdyZombie(helper, new BlockPos(4, 1, 4));
+        carried.removeFreeWill();
+        flyPast(helper, player, new Vec3(4.5, 1.5, 4.5), new Vec3(4.5, 3.0, 4.5));
+        helper.assertTrue(FlightLift.snatch(player), Component.literal("Gliding through the zombie should snatch it up"));
+        helper.assertTrue(!BloodSkills.bloodCharge(player) && BloodPool.get(player) == before, Component.literal("No Blood Charge with hands full"));
+        helper.assertTrue(FlightLift.drop(player), Component.literal("A right click should let the zombie go"));
+        carried.discard();
         helper.assertTrue(BloodSkills.bloodCharge(player), Component.literal("A Blood Charge while gliding in the shroud"));
         helper.assertValueEqual(BloodPool.get(player), before - BloodSkills.BLOOD_CHARGE_COST, "blood after a Blood Charge");
-        List<FireworkRocketEntity> boosts = level.getEntitiesOfClass(FireworkRocketEntity.class, player.getBoundingBox().inflate(3.0));
-        helper.assertTrue(boosts.size() == 1, Component.literal("A Blood Charge should drive the vampire on like a firework"));
-        boosts.forEach(FireworkRocketEntity::discard);
+        helper.assertTrue(level.getEntitiesOfClass(FireworkRocketEntity.class, player.getBoundingBox().inflate(3.0)).isEmpty(),
+                Component.literal("A Blood Charge drives the vampire on itself, with no firework"));
+        helper.assertValueEqual(player.getData(ModAttachments.BLOOD_CHARGE), BloodSkills.BLOOD_CHARGE_TICKS, "ticks of Blood Charge (and afterimages) to come");
+        player.setDeltaMovement(Vec3.ZERO);
+        BloodSkills.tickDash(player);
+        helper.assertTrue(player.getDeltaMovement().dot(player.getLookAngle()) > 0.5, Component.literal("A Blood Charge should drive the vampire on along their aim"));
+        player.removeData(ModAttachments.BLOOD_CHARGE);
         helper.assertTrue(!BloodSkills.bloodCharge(player), Component.literal("Not another straight away"));
         player.getCooldowns().removeCooldown(player.getCooldowns().getCooldownGroup(new ItemStack(ModItems.BLOOD_CHARGE.get())));
         BloodPool.set(player, BloodSkills.BLOOD_CHARGE_COST - 1);

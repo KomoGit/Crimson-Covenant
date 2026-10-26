@@ -20,6 +20,7 @@ import io.netty.buffer.ByteBuf;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.Identifier;
@@ -187,6 +188,26 @@ public final class ModAttachments {
     /// dashing player. Not saved.
     public static final Supplier<AttachmentType<DashState>> DASH = ATTACHMENT_TYPES.register("dash",
             () -> AttachmentType.builder(() -> DashState.NONE).sync(DashState.STREAM_CODEC).build());
+
+    /// A Blood Charge under way (see skill.BloodSkills.bloodCharge): the ticks it has left to drive its vampire on. Sent
+    /// to everyone nearby, who draw afterimages behind them. Not saved.
+    public static final Supplier<AttachmentType<Integer>> BLOOD_CHARGE = ATTACHMENT_TYPES.register("blood_charge",
+            () -> AttachmentType.builder(() -> 0).sync(ByteBufCodecs.VAR_INT).build());
+
+    /// A creature carried off by a flying vampire who struck it (see effect.FlightLift). Sent to everyone nearby, who
+    /// hold it in the vampire's hands themselves so it keeps up with them. Not saved.
+    public static final Supplier<AttachmentType<Optional<Lift>>> LIFTED = ATTACHMENT_TYPES.register("lifted",
+            () -> AttachmentType.builder(() -> Optional.<Lift>empty()).sync(ByteBufCodecs.optional(Lift.STREAM_CODEC)).build());
+
+    /// The game time a flying vampire last let go of this creature (see effect.FlightLift), so it isn't snatched straight
+    /// back up as it falls. Not saved.
+    public static final Supplier<AttachmentType<Long>> DROPPED = ATTACHMENT_TYPES.register("dropped",
+            () -> AttachmentType.builder(() -> Long.MIN_VALUE).build());
+
+    /// Who's carrying a lifted creature
+    public record Lift(UUID carrier) {
+        public static final StreamCodec<ByteBuf, Lift> STREAM_CODEC = UUIDUtil.STREAM_CODEC.map(Lift::new, Lift::carrier);
+    }
 
     /// A mob under a Death March: the way it's marching, and the game time it stops. Not saved.
     public static final Supplier<AttachmentType<Optional<DeathMarch>>> DEATH_MARCH = ATTACHMENT_TYPES.register("death_march",

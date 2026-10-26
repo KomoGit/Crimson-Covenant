@@ -207,9 +207,15 @@ public class WhipLash extends Entity {
     }
 
     /// Every creature along the wielder's aim the lash reaches, nearest first: within reach, and not behind a wall
-    public static List<LivingEntity> reached(ServerLevel level, LivingEntity wielder) {
+    public static List<LivingEntity> reached(Level level, LivingEntity wielder) {
+        return along(level, wielder, REACH);
+    }
+
+    /// Every creature along the wielder's aim within `distance`, nearest first, not behind a wall: what the lash would
+    /// catch if it reached that far (on the client too, for the reach indicator: see client.hud.WhipReachLayer)
+    public static List<LivingEntity> along(Level level, LivingEntity wielder, double distance) {
         Vec3 eyes = wielder.getEyePosition();
-        Vec3 end = tip(wielder, 1.0F);
+        Vec3 end = eyes.add(wielder.getViewVector(1.0F).scale(distance));
         BlockHitResult wall = level.clip(new ClipContext(eyes, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, wielder));
         if (wall.getType() == HitResult.Type.BLOCK) {
             end = wall.getLocation();

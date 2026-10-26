@@ -1,6 +1,7 @@
 package com.zestudio.crimsoncovenant.network;
 
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
+import com.zestudio.crimsoncovenant.effect.FlightLift;
 import com.zestudio.crimsoncovenant.skill.BloodSkills;
 import com.zestudio.crimsoncovenant.skill.CreatureAbilities;
 import com.zestudio.crimsoncovenant.skill.Possession;
@@ -45,6 +46,17 @@ public final class SkillPayloads {
     public record BloodCharge() implements CustomPacketPayload {
         public static final Type<BloodCharge> TYPE = new Type<>(CrimsonCovenant.id("blood_charge"));
         public static final StreamCodec<ByteBuf, BloodCharge> STREAM_CODEC = StreamCodec.unit(new BloodCharge());
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
+    /// A right click with a snatched-up creature in hand: let it go (see FlightLift.drop)
+    public record DropCarried() implements CustomPacketPayload {
+        public static final Type<DropCarried> TYPE = new Type<>(CrimsonCovenant.id("drop_carried"));
+        public static final StreamCodec<ByteBuf, DropCarried> STREAM_CODEC = StreamCodec.unit(new DropCarried());
 
         @Override
         public Type<? extends CustomPacketPayload> type() {
@@ -153,6 +165,7 @@ public final class SkillPayloads {
                     BloodSkills.bloodCharge(player);
                 }
             });
+            registrar.playToServer(DropCarried.TYPE, DropCarried.STREAM_CODEC, (payload, context) -> FlightLift.drop(context.player()));
             registrar.playToServer(UnleashCurse.TYPE, UnleashCurse.STREAM_CODEC, (payload, context) -> {
                 if (context.player() instanceof ServerPlayer player) {
                     Curses.unleash(player);

@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "H": "crimsoncovenant:horsemans_head",
+    "S": "minecraft:stick"
+  },
+  "pattern": [
+    "H",
+    "S",
+    "S"
+  ],
+  "result": {
+    "id": "crimsoncovenant:head_on_a_pike"
+  }
+}

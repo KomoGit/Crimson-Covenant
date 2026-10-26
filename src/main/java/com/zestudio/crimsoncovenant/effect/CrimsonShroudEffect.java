@@ -20,7 +20,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 /// The Crimson Shroud (the upgraded Flight skill): for a minute the vampire grows a giant bat's wings that glide like
 /// an elytra, over whatever armor they have on (jump in mid-air to spread them; see client.renderer.CrimsonShroudLayer
 /// for how they're drawn). While gliding, a right click is a Blood Charge: five blood burst behind them to drive them
-/// on, the way a firework drives an elytra (see skill.BloodSkills.bloodCharge). No fall hurts them while it lasts. It
+/// on, the way a firework drives an elytra, leaving afterimages behind (see skill.BloodSkills.bloodCharge). No fall hurts them while it lasts. It
 /// ends when its minute is up, or when the vampire uses the skill again, and the vampire is caught as they near the
 /// ground and drifts down gently (see SoftLanding).
 @EventBusSubscriber(modid = CrimsonCovenant.MODID)

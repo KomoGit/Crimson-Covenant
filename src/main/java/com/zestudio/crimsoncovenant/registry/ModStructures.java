@@ -1,6 +1,8 @@
 package com.zestudio.crimsoncovenant.registry;
 
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
+import com.zestudio.crimsoncovenant.world.CrookedTreePiece;
+import com.zestudio.crimsoncovenant.world.CrookedTreeStructure;
 import com.zestudio.crimsoncovenant.world.GraveyardPiece;
 import com.zestudio.crimsoncovenant.world.GraveyardStructure;
 import com.zestudio.crimsoncovenant.world.HunterCabinPiece;
@@ -28,6 +30,11 @@ public final class ModStructures {
             () -> () -> HunterCabinStructure.CODEC);
     public static final DeferredHolder<StructurePieceType, StructurePieceType> HUNTER_CABIN_PIECE = STRUCTURE_PIECES.register("hunter_cabin",
             () -> (StructurePieceType.ContextlessType) HunterCabinPiece::new);
+
+    public static final DeferredHolder<StructureType<?>, StructureType<CrookedTreeStructure>> CROOKED_TREE = STRUCTURE_TYPES.register("crooked_tree",
+            () -> () -> CrookedTreeStructure.CODEC);
+    public static final DeferredHolder<StructurePieceType, StructurePieceType> CROOKED_TREE_PIECE = STRUCTURE_PIECES.register("crooked_tree",
+            () -> (StructurePieceType.ContextlessType) CrookedTreePiece::new);
 
     /// The graveyard structure itself (worldgen/structure/graveyard.json)
     public static final ResourceKey<Structure> GRAVEYARD_STRUCTURE = ResourceKey.create(Registries.STRUCTURE, CrimsonCovenant.id("graveyard"));

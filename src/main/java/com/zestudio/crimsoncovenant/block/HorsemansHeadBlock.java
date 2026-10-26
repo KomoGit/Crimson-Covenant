@@ -24,15 +24,17 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-/// The Headless Horseman's own head, sealed in a glass bottle; he drops it when he dies. Set down on a floor or a
-/// table, it glows a baleful red, embers of blood drifting up through the glass, and now and then it cackles.
+/// The Headless Horseman's own head, pickled in a jar of red brine the size of a block; he drops it when he dies. Set
+/// down on a floor or a table, it glows a baleful red, embers of blood drifting up through the brine, and now and then
+/// it cackles.
 public class HorsemansHeadBlock extends Block {
     /// Which way the head looks
     public static final EnumProperty<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;
     public static final int LIGHT = 10;
     private static final int BRIGHT_RED = 0xFF2A1A;
     private static final int DARK_RED = 0x8A1010;
-    private static final VoxelShape SHAPE = Shapes.or(Block.box(5.0, 0.0, 5.0, 11.0, 7.0, 11.0), Block.box(6.0, 7.0, 6.0, 10.0, 10.5, 10.0));
+    /// The jar, and its cork
+    private static final VoxelShape SHAPE = Shapes.or(Block.box(1.0, 0.0, 1.0, 15.0, 14.0, 15.0), Block.box(4.0, 14.0, 4.0, 12.0, 16.0, 12.0));
 
     public HorsemansHeadBlock(BlockBehaviour.Properties properties) {
         super(properties);
@@ -81,8 +83,8 @@ public class HorsemansHeadBlock extends Block {
         double z = pos.getZ() + 0.5;
         if (random.nextInt(2) == 0) {
             int colour = random.nextBoolean() ? BRIGHT_RED : DARK_RED;
-            level.addParticle(new DustParticleOptions(colour, 0.3F + random.nextFloat() * 0.3F), x + (random.nextDouble() - 0.5) * 0.3,
-                    y + 0.1 + random.nextDouble() * 0.4, z + (random.nextDouble() - 0.5) * 0.3, 0.0, 0.02, 0.0);
+            level.addParticle(new DustParticleOptions(colour, 0.3F + random.nextFloat() * 0.3F), x + (random.nextDouble() - 0.5) * 0.7,
+                    y + 0.1 + random.nextDouble() * 0.6, z + (random.nextDouble() - 0.5) * 0.7, 0.0, 0.02, 0.0);
         }
         if (random.nextInt(600) == 0) {
             level.playLocalSound(x, y + 0.3, z, SoundEvents.WITCH_CELEBRATE, SoundSource.BLOCKS, 0.3F, 0.6F, false);

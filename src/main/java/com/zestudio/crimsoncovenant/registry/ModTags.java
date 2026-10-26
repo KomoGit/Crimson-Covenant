@@ -23,6 +23,8 @@ public final class ModTags {
         public static final TagKey<EntityType<?>> WEAK_TO_SILVER = TagKey.create(Registries.ENTITY_TYPE, CrimsonCovenant.id("weak_to_silver"));
         /// Too powerful for the Possess skill: bosses, minibosses and the master vampires and hunters
         public static final TagKey<EntityType<?>> CANNOT_BE_POSSESSED = TagKey.create(Registries.ENTITY_TYPE, CrimsonCovenant.id("cannot_be_possessed"));
+        /// Too big or too heavy for a flying vampire to carry off (see effect.FlightLift)
+        public static final TagKey<EntityType<?>> CANNOT_BE_LIFTED = TagKey.create(Registries.ENTITY_TYPE, CrimsonCovenant.id("cannot_be_lifted"));
 
         private Entities() {}
     }

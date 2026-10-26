@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "crimsoncovenant:block/head_on_a_pike"
+    },
+    "facing=east": {
+      "model": "crimsoncovenant:block/head_on_a_pike",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "crimsoncovenant:block/head_on_a_pike",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "crimsoncovenant:block/head_on_a_pike",
+      "y": 270
+    }
+  }
+}

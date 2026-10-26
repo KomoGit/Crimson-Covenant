@@ -2,6 +2,7 @@ package com.zestudio.crimsoncovenant;
 
 import com.zestudio.crimsoncovenant.client.ModModelLayers;
 import com.zestudio.crimsoncovenant.client.hud.BloodBarLayer;
+import com.zestudio.crimsoncovenant.client.hud.WhipReachLayer;
 import com.zestudio.crimsoncovenant.client.hud.FadingItemsLayer;
 import com.zestudio.crimsoncovenant.client.hud.SkillBarLayer;
 import com.zestudio.crimsoncovenant.client.screen.SkillsScreen;
@@ -9,6 +10,7 @@ import com.zestudio.crimsoncovenant.client.model.BloodSpearModel;
 import com.zestudio.crimsoncovenant.client.model.BatWingsModel;
 import com.zestudio.crimsoncovenant.client.model.GargoyleModel;
 import com.zestudio.crimsoncovenant.client.model.GhostModel;
+import com.zestudio.crimsoncovenant.client.model.HalloweenSpiritModel;
 import com.zestudio.crimsoncovenant.client.model.PlagueDoctorModel;
 import com.zestudio.crimsoncovenant.client.model.RatModel;
 import com.zestudio.crimsoncovenant.client.model.WerewolfModel;
@@ -20,6 +22,9 @@ import com.zestudio.crimsoncovenant.client.renderer.GargoyleRenderer;
 import com.zestudio.crimsoncovenant.client.renderer.GhostRenderer;
 import com.zestudio.crimsoncovenant.entity.Gargoyle;
 import com.zestudio.crimsoncovenant.client.renderer.HeadlessHorsemanRenderer;
+import com.zestudio.crimsoncovenant.client.renderer.GhostSteedRenderer;
+import com.zestudio.crimsoncovenant.client.renderer.HalloweenSpiritRenderer;
+import com.zestudio.crimsoncovenant.client.renderer.SpectralHorsemanRenderer;
 import com.zestudio.crimsoncovenant.client.renderer.HunterRenderer;
 import com.zestudio.crimsoncovenant.client.renderer.CrimsonShroudLayer;
 import com.zestudio.crimsoncovenant.client.renderer.PlagueDoctorRenderer;
@@ -102,6 +107,7 @@ public class CrimsonCovenantClient {
         event.registerLayerDefinition(ModModelLayers.HUNTER, () -> LayerDefinition.create(PlayerModel.createMesh(CubeDeformation.NONE, false), 64, 64));
         event.registerLayerDefinition(ModModelLayers.VAMPIRE, () -> LayerDefinition.create(PlayerModel.createMesh(CubeDeformation.NONE, false), 64, 64));
         event.registerLayerDefinition(ModModelLayers.GHOST, GhostModel::createBodyLayer);
+        event.registerLayerDefinition(ModModelLayers.HALLOWEEN_SPIRIT, HalloweenSpiritModel::createBodyLayer);
         event.registerLayerDefinition(ModModelLayers.WEREWOLF, WerewolfModel::createBodyLayer);
         event.registerLayerDefinition(ModModelLayers.GARGOYLE, GargoyleModel::createBodyLayer);
         event.registerLayerDefinition(ModModelLayers.BLOOD_SPEAR, BloodSpearModel::createLayer);
@@ -124,6 +130,10 @@ public class CrimsonCovenantClient {
         event.registerEntityRenderer(ModEntities.HEMORRHAGE_ZONE.get(), NoopRenderer::new);
         event.registerEntityRenderer(ModEntities.CRIMSON_LIGHTNING.get(), CrimsonLightningRenderer::new);
         event.registerEntityRenderer(ModEntities.HEADLESS_HORSEMAN.get(), HeadlessHorsemanRenderer::new);
+        event.registerEntityRenderer(ModEntities.SPECTRAL_HORSEMAN.get(), SpectralHorsemanRenderer::new);
+        event.registerEntityRenderer(ModEntities.GHOST_STEED.get(), GhostSteedRenderer::new);
+        event.registerEntityRenderer(ModEntities.HALLOWEEN_SPIRIT.get(), HalloweenSpiritRenderer::new);
+        event.registerEntityRenderer(ModEntities.PUMPKIN_BOMB.get(), context -> new ThrownItemRenderer<>(context, 1.75F, true));
         event.registerEntityRenderer(ModEntities.GHOST.get(), GhostRenderer::new);
         event.registerEntityRenderer(ModEntities.WEREWOLF.get(), WerewolfRenderer::new);
         event.registerEntityRenderer(ModEntities.CATHEDRAL_GARGOYLE.get(), context -> new GargoyleRenderer(context, Gargoyle.Side.HUNTER));
@@ -149,6 +159,7 @@ public class CrimsonCovenantClient {
     @SubscribeEvent
     static void registerGuiLayers(RegisterGuiLayersEvent event) {
         event.registerAbove(VanillaGuiLayers.FOOD_LEVEL, BloodBarLayer.ID, new BloodBarLayer());
+        event.registerAbove(VanillaGuiLayers.CROSSHAIR, WhipReachLayer.ID, new WhipReachLayer());
         event.registerAbove(VanillaGuiLayers.HOTBAR, SkillBarLayer.ID, new SkillBarLayer());
         event.registerAbove(VanillaGuiLayers.HOTBAR, FadingItemsLayer.ID, new FadingItemsLayer());
     }

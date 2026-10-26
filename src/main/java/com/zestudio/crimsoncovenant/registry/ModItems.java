@@ -85,8 +85,8 @@ public final class ModItems {
     public static final DeferredItem<EphemeralSwordItem> EPHEMERAL_SWORD = ITEMS.registerItem("ephemeral_sword", EphemeralSwordItem::new,
             properties -> properties.sword(ToolMaterial.IRON, 3.0F, -2.4F).component(DataComponents.UNBREAKABLE, Unit.INSTANCE).rarity(Rarity.UNCOMMON));
 
-    /// The burst of blood a Blood Charge drives the Crimson Shroud on with, drawn as it flies. Never held: the charge is
-    /// part of the skill (see skill.BloodSkills.bloodCharge)
+    /// The Crimson Shroud's Blood Charge, only so its cooldown has something to be kept on. Never held: the charge is part
+    /// of the skill (see skill.BloodSkills.bloodCharge)
     public static final DeferredItem<Item> BLOOD_CHARGE = ITEMS.registerSimpleItem("blood_charge");
 
     // ---- Garlic: planted like a carrot, brewed into the Potion of Garlic, braided to hang up ----
@@ -134,6 +134,8 @@ public final class ModItems {
             properties -> new GuideBookItem(GuideBooks.Book.CODEX, properties), properties -> properties.stacksTo(1).rarity(Rarity.UNCOMMON));
     public static final DeferredItem<BlockItem> HORSEMANS_HEAD = ITEMS.registerSimpleBlockItem(ModBlocks.HORSEMANS_HEAD, properties -> properties.stacksTo(1).rarity(Rarity.UNCOMMON)
             .component(DataComponents.LORE, new ItemLore(List.of(Component.translatable("item.crimsoncovenant.horsemans_head.hint").withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC)))));
+    public static final DeferredItem<BlockItem> HEAD_ON_A_PIKE = ITEMS.registerSimpleBlockItem(ModBlocks.HEAD_ON_A_PIKE, properties -> properties.stacksTo(1).rarity(Rarity.RARE));
+    public static final DeferredItem<BlockItem> CROOKED_LOG = ITEMS.registerSimpleBlockItem(ModBlocks.CROOKED_LOG);
     public static final DeferredItem<BlockItem> SILVER_NET_TRAP = ITEMS.registerSimpleBlockItem(ModBlocks.SILVER_NET_TRAP);
     /// Carved stone, waiting to be set down and woken: silver for the hunters', blood for the vampires'
     public static final DeferredItem<GargoyleStatueItem> CATHEDRAL_GARGOYLE_STATUE = ITEMS.registerItem("cathedral_gargoyle_statue",

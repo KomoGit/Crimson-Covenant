@@ -10,6 +10,7 @@ public final class ModModelLayers {
     public static final ModelLayerLocation WEREWOLF = new ModelLayerLocation(CrimsonCovenant.id("werewolf"), "main");
     public static final ModelLayerLocation GARGOYLE = new ModelLayerLocation(CrimsonCovenant.id("gargoyle"), "main");
     public static final ModelLayerLocation GHOST =new ModelLayerLocation(CrimsonCovenant.id("ghost"), "main");
+    public static final ModelLayerLocation HALLOWEEN_SPIRIT = new ModelLayerLocation(CrimsonCovenant.id("halloween_spirit"), "main");
     public static final ModelLayerLocation BAT_WINGS = new ModelLayerLocation(CrimsonCovenant.id("bat_wings"), "main");
     public static final ModelLayerLocation PLAGUE_DOCTOR = new ModelLayerLocation(CrimsonCovenant.id("plague_doctor"), "main");
     public static final ModelLayerLocation RAT = new ModelLayerLocation(CrimsonCovenant.id("rat"), "main");

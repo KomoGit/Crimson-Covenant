@@ -39,7 +39,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
-/// The Blood Parade skill: a big ball of blood that drifts slowly ahead for 7 seconds, straight through creatures,
+/// The Blood Parade skill: a big ball of blood that drifts slowly ahead for 8 seconds, straight through creatures,
 /// bouncing off any wall it meets. Twice a second it lashes out with bolts of blood at up to three hostile creatures
 /// within 8 blocks that it can see. Each bolt hurts, and the blood it draws heals the caster. Healing past full health
 /// becomes overheal: extra hearts that last as long as the orb does, and fade 10 seconds after it's gone. Each
@@ -48,14 +48,14 @@ import net.minecraft.world.phys.Vec3;
 /// The more blood went into it, the harder the bolts hit (a player's puts in what the skill cost them). Whatever a bolt
 /// kills sets a Blood Bat loose on the next hostile nearby (see BloodBat).
 public class BloodOrb extends Fireball {
-    public static final int LIFETIME = 140;
+    public static final int LIFETIME = 160;
     private static final double SPEED = 0.15;
     public static final int BOLT_INTERVAL = 10;
     private static final double BOLT_RANGE = 8.0;
     private static final int BOLTS_PER_VOLLEY = 3;
-    private static final float BASE_BOLT_DAMAGE = 2.0F;
-    /// A full bar of 100 blood makes every bolt hit for 4
-    private static final float BOLT_DAMAGE_PER_BLOOD = 0.02F;
+    private static final float BASE_BOLT_DAMAGE = 2.2F;
+    /// The 40 blood a player puts in makes every bolt hit for about 3.1
+    private static final float BOLT_DAMAGE_PER_BLOOD = 0.022F;
     public static final int OVERHEAL_DURATION = 200;
 
     private int bloodSpent;
