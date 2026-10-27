@@ -69,9 +69,9 @@ public final class ModGameTests {
         test("headless_horseman_hunts_hunters", VampireGameTests::headlessHorsemanHuntsHunters);
         test("holy_flame_looks_like_fire", WorldGameTests::holyFlameLooksLikeFire);
         test("horsemans_head_glows_in_its_jar", WorldGameTests::horsemansHeadGlowsInItsJar);
-        horsemanTest("horseman_dies_with_horse", HorsemanGameTests::horsemanDiesWithHorse);
-        horsemanTest("slain_horseman_rises_as_a_spirit", HorsemanGameTests::slainHorsemanRisesAsASpirit);
-        horsemanTest("spirit_that_reaches_its_steed_rides_again", HorsemanGameTests::spiritThatReachesItsSteedRidesAgain);
+        horsemanTest("horseman_fights_on_when_his_horse_falls", HorsemanGameTests::horsemanFightsOnWhenHisHorseFalls, 400);
+        horsemanTest("slain_horseman_rises_from_his_tree", HorsemanGameTests::slainHorsemanRisesFromHisTree, DEFAULT_MAX_TICKS);
+        horsemanTest("spirit_that_reaches_his_horse_rides_again", HorsemanGameTests::spiritThatReachesHisHorseRidesAgain, DEFAULT_MAX_TICKS);
         soloTest("jack_o_lantern_by_a_crooked_tree_calls_him_up", HorsemanGameTests::jackOLanternByACrookedTreeCallsHimUp);
         soloTest("head_on_a_pike_wards_and_calls_its_ghost", HorsemanGameTests::headOnAPikeWardsAndCallsItsGhost);
         playerTest("horsemans_blows_blind_now_and_then", HorsemanGameTests::horsemansBlowsBlindNowAndThen, DEFAULT_MAX_TICKS);
@@ -137,6 +137,8 @@ public final class ModGameTests {
         playerTest("whip_lash_lands_the_blow", SkillGameTests::whipLashLandsTheBlow, DEFAULT_MAX_TICKS);
         playerTest("whip_reach_is_known_before_the_crack", SkillGameTests::whipReachIsKnownBeforeTheCrack, DEFAULT_MAX_TICKS);
         playerTest("flight_carries_off_what_it_flies_through", SkillGameTests::flightCarriesOffWhatItFliesThrough, DEFAULT_MAX_TICKS);
+        playerTest("dropped_prey_killed_by_the_fall_feeds_the_vampire", SkillGameTests::droppedPreyKilledByTheFallFeedsTheVampire, DEFAULT_MAX_TICKS);
+        test("gliders_use_their_ranged_weapons_instead_of_charging", SkillGameTests::glidersUseTheirRangedWeaponsInsteadOfCharging);
         playerTest("whip_pulls_creatures_in", SkillGameTests::whipPullsCreaturesIn, DEFAULT_MAX_TICKS);
         test("blood_parade_drains_hostiles", SkillGameTests::bloodParadeDrainsHostiles, 400);
         // Its bats would fly off after other tests' monsters
@@ -335,9 +337,9 @@ public final class ModGameTests {
         TESTS.add(new TestEntry(TEST_FUNCTIONS.register(name, () -> function), maxTicks, Batch.WITH_PLAYER));
     }
 
-    /// For tests where the Headless Horseman dies: his Ghost Steed gallops off through the neighbouring tests
-    private static void horsemanTest(String name, Consumer<GameTestHelper> function) {
-        TESTS.add(new TestEntry(TEST_FUNCTIONS.register(name, () -> function), DEFAULT_MAX_TICKS, Batch.HORSEMAN));
+    /// For tests where the Headless Horseman or his horse dies: his spirit and his horse rise again and ride about
+    private static void horsemanTest(String name, Consumer<GameTestHelper> function, int maxTicks) {
+        TESTS.add(new TestEntry(TEST_FUNCTIONS.register(name, () -> function), maxTicks, Batch.HORSEMAN));
     }
 
     /// For a test that reaches far beyond its arena (a ward over 50 blocks, "only one Horseman about") and so can't

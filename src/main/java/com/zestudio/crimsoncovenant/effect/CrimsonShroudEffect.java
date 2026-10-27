@@ -1,8 +1,10 @@
 package com.zestudio.crimsoncovenant.effect;
 
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
+import com.zestudio.crimsoncovenant.item.BloodSpearItem;
 import com.zestudio.crimsoncovenant.registry.ModEffects;
 
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
@@ -11,6 +13,11 @@ import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.BowItem;
+import net.minecraft.world.item.CrossbowItem;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TridentItem;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.common.NeoForgeMod;
@@ -53,6 +60,19 @@ public class CrimsonShroudEffect extends MobEffect {
 
     public static boolean isShrouded(LivingEntity entity) {
         return entity.hasEffect(ModEffects.CRIMSON_SHROUD);
+    }
+
+    /// Bows, crossbows, tridents and spears (the Blood Spear too): held in either hand while gliding, a right click
+    /// draws, aims or throws them instead of being a Blood Charge
+    public static boolean isRangedWeapon(ItemStack stack) {
+        Item item = stack.getItem();
+        return item instanceof BowItem || item instanceof CrossbowItem || item instanceof TridentItem || item instanceof BloodSpearItem
+                || stack.has(DataComponents.KINETIC_WEAPON);
+    }
+
+    /// Whether `player` holds one of those in either hand
+    public static boolean holdsRangedWeapon(Player player) {
+        return isRangedWeapon(player.getMainHandItem()) || isRangedWeapon(player.getOffhandItem());
     }
 
     /// The old Man-Bat form made players half again as big. Effects' attribute modifiers are saved with the player,

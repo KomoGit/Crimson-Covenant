@@ -54,6 +54,9 @@ import net.minecraft.client.model.player.PlayerModel;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.entity.NoopRenderer;
 import net.minecraft.client.renderer.entity.ThrownItemRenderer;
+import net.minecraft.client.renderer.entity.UndeadHorseRenderer;
+import net.minecraft.client.model.geom.ModelLayers;
+import net.minecraft.client.resources.model.EquipmentClientInfo;
 import net.minecraft.client.renderer.entity.player.AvatarRenderer;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
@@ -132,6 +135,8 @@ public class CrimsonCovenantClient {
         event.registerEntityRenderer(ModEntities.HEADLESS_HORSEMAN.get(), HeadlessHorsemanRenderer::new);
         event.registerEntityRenderer(ModEntities.SPECTRAL_HORSEMAN.get(), SpectralHorsemanRenderer::new);
         event.registerEntityRenderer(ModEntities.GHOST_STEED.get(), GhostSteedRenderer::new);
+        event.registerEntityRenderer(ModEntities.HORSEMANS_STEED.get(), context -> new UndeadHorseRenderer(context, EquipmentClientInfo.LayerType.ZOMBIE_HORSE_SADDLE,
+                ModelLayers.ZOMBIE_HORSE_SADDLE, UndeadHorseRenderer.Type.ZOMBIE, UndeadHorseRenderer.Type.ZOMBIE_BABY));
         event.registerEntityRenderer(ModEntities.HALLOWEEN_SPIRIT.get(), HalloweenSpiritRenderer::new);
         event.registerEntityRenderer(ModEntities.PUMPKIN_BOMB.get(), context -> new ThrownItemRenderer<>(context, 1.75F, true));
         event.registerEntityRenderer(ModEntities.GHOST.get(), GhostRenderer::new);

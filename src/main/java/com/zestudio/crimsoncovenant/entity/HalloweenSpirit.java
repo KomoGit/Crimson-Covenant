@@ -5,7 +5,9 @@ import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
 import com.zestudio.crimsoncovenant.registry.ModDamageTypes;
+import com.zestudio.crimsoncovenant.registry.ModEntities;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
@@ -22,6 +24,7 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -33,8 +36,9 @@ import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
 
 /// The Spirit of Halloween: what rises from the Headless Horseman when he falls. A gaunt, headless ghost, its ribs
-/// broken out through its shroud, drifting through walls after its Ghost Steed (see GhostSteed). If it reaches the
-/// horse, the Horseman rides again.
+/// broken out through its shroud. It rises up out of the Horseman's Crooked Tree and drifts through walls after his
+/// horse (see HorsemansSteed): if it reaches the horse, the Horseman rides again. With the horse dead and buried, it
+/// waits by the tree for it to dig its way back out.
 ///
 /// Nothing harms it but Holy Water, and even that only drives it back: it takes HOLY_HITS splashes (each a second or
 /// more apart) to banish it for good, and only then does it give up the Horseman's head. It fights under a boss bar
@@ -46,14 +50,24 @@ public class HalloweenSpirit extends Monster {
     /// How long a splash leaves it reeling, unable to go on
     private static final int REEL_TICKS = 40;
     /// Blocks a tick it drifts at
-    public static final double SPEED = 0.14;
+    public static final double SPEED = 0.11;
     /// How close it has to come to its steed to ride again
     public static final double REMOUNT_RANGE = 1.8;
+    /// How long it takes to rise up out of the tree, and how high it rises
+    public static final int RISE_TICKS = 40;
+    private static final double RISE_HEIGHT = 4.0;
+    /// How far off it can sense its horse
+    private static final double STEED_RANGE = 160.0;
+    /// How long it waits with no horse about before calling one up out of the ground
+    private static final int HORSELESS_TICKS = 40;
     private static final int CHILL_COOLDOWN = 60;
 
     private final ServerBossEvent bossEvent = new ServerBossEvent(Mth.createInsecureUUID(this.random), this.getDisplayName(),
             BossEvent.BossBarColor.WHITE, BossEvent.BossBarOverlay.NOTCHED_6);
     private @Nullable UUID steed;
+    private @Nullable BlockPos tree;
+    private int rising;
+    private int horseless;
     private int holyHitsLeft = HOLY_HITS;
     private long lastHolyHit = Long.MIN_VALUE / 2;
     private int reeling;
@@ -73,14 +87,54 @@ public class HalloweenSpirit extends Monster {
                 .add(Attributes.FOLLOW_RANGE, 64.0);
     }
 
-    public void setSteed(GhostSteed steed) {
+    /// The Spirit of the Horseman of the tree at `tree` rising up out of it, or out of where he fell (`fell`) if he had
+    /// none, to go after `steed` (or whichever of his horses it can find)
+    public static @Nullable HalloweenSpirit riseFrom(ServerLevel level, @Nullable BlockPos tree, Vec3 fell, @Nullable HorsemansSteed steed) {
+        HalloweenSpirit spirit = ModEntities.HALLOWEEN_SPIRIT.get().create(level, EntitySpawnReason.EVENT);
+        if (spirit == null) {
+            return null;
+        }
+        spirit.tree = tree != null ? tree : BlockPos.containing(fell);
+        Vec3 from = tree != null ? Vec3.atBottomCenterOf(tree) : fell;
+        spirit.snapTo(from.x, from.y, from.z, level.getRandom().nextFloat() * 360.0F, 0.0F);
+        spirit.rising = RISE_TICKS;
+        if (steed != null) {
+            spirit.setSteed(steed);
+        }
+        level.addFreshEntity(spirit);
+        level.sendParticles(ParticleTypes.SOUL, from.x, from.y + 1.5, from.z, 40, 0.4, 1.5, 0.4, 0.04);
+        level.playSound(null, from.x, from.y, from.z, SoundEvents.SOUL_ESCAPE.value(), SoundSource.HOSTILE, 3.0F, 0.5F);
+        level.playSound(null, from.x, from.y, from.z, SoundEvents.WITCH_CELEBRATE, SoundSource.HOSTILE, 2.0F, 0.4F);
+        return spirit;
+    }
+
+    public void setSteed(HorsemansSteed steed) {
         this.steed = steed.getUUID();
     }
 
-    public @Nullable GhostSteed findSteed() {
-        return this.steed != null && this.level() instanceof ServerLevel level && level.getEntity(this.steed) instanceof GhostSteed found && found.isAlive()
-                ? found
-                : null;
+    public @Nullable BlockPos getTree() {
+        return this.tree;
+    }
+
+    public boolean isRising() {
+        return this.rising > 0;
+    }
+
+    /// Its horse: the one it was after, or any horse bound to its tree (one still in the ground included)
+    public @Nullable HorsemansSteed findSteed() {
+        if (!(this.level() instanceof ServerLevel level)) {
+            return null;
+        }
+        if (this.steed != null && level.getEntity(this.steed) instanceof HorsemansSteed found && found.isAlive()) {
+            return found;
+        }
+        HorsemansSteed found = level.getEntitiesOfClass(HorsemansSteed.class, this.getBoundingBox().inflate(STEED_RANGE),
+                horse -> horse.isAlive() && !horse.isVehicle() && this.tree != null && this.tree.equals(horse.getTree())).stream()
+                .min(java.util.Comparator.comparingDouble(this::distanceToSqr)).orElse(null);
+        if (found != null) {
+            this.setSteed(found);
+        }
+        return found;
     }
 
     public int getHolyHitsLeft() {
@@ -111,25 +165,38 @@ public class HalloweenSpirit extends Monster {
         }
     }
 
-    // After its steed, through anything in the way; if it's lost, the steed comes back to it from down the road
+    // Up out of the tree; then after the horse, through anything in the way. With no horse about at all, it calls one up
+    // out of the ground by the tree.
     private void seekSteed(ServerLevel level) {
+        if (this.rising > 0) {
+            this.rising--;
+            this.setDeltaMovement(0.0, RISE_HEIGHT / RISE_TICKS, 0.0);
+            level.sendParticles(ParticleTypes.SOUL, this.getX(), this.getY(), this.getZ(), 2, 0.3, 0.2, 0.3, 0.02);
+            return;
+        }
         if (this.reeling > 0) {
             this.reeling--;
             this.setDeltaMovement(this.getDeltaMovement().scale(0.85));
             return;
         }
-        GhostSteed steed = this.findSteed();
+        HorsemansSteed steed = this.findSteed();
         if (steed == null) {
-            if (this.tickCount % 20 == 0) {
-                float angle = this.random.nextFloat() * Mth.TWO_PI;
-                this.setSteed(GhostSteed.gallopFrom(level, this.position(),
-                        new Vec3(Mth.cos(angle), 0.0, Mth.sin(angle)).scale(HeadlessHorseman.STEED_FLIGHT)));
+            this.setDeltaMovement(this.getDeltaMovement().scale(0.8));
+            if (++this.horseless >= HORSELESS_TICKS && this.tree != null) {
+                this.setSteed(HorsemansSteed.buryAt(level, this.tree));
+                this.horseless = 0;
             }
             return;
         }
-        Vec3 toSteed = steed.position().add(0.0, 0.5, 0.0).subtract(this.position());
-        if (toSteed.length() <= REMOUNT_RANGE) {
+        this.horseless = 0;
+        // Still in the ground: it hovers over the spot, waiting
+        Vec3 toSteed = steed.position().add(0.0, steed.isRising() ? 3.0 : 0.5, 0.0).subtract(this.position());
+        if (!steed.isRising() && toSteed.length() <= REMOUNT_RANGE) {
             this.rideAgain(level, steed);
+            return;
+        }
+        if (toSteed.length() < 0.5) {
+            this.setDeltaMovement(Vec3.ZERO);
             return;
         }
         this.setDeltaMovement(toSteed.normalize().scale(SPEED));
@@ -138,12 +205,11 @@ public class HalloweenSpirit extends Monster {
         this.yHeadRot = this.getYRot();
     }
 
-    /// Back on its steed: the Headless Horseman rides again, and goes for whoever's nearest
-    public @Nullable HeadlessHorseman rideAgain(ServerLevel level, GhostSteed steed) {
+    /// Back on its horse: the Headless Horseman rides again, and goes for whoever's nearest
+    public @Nullable HeadlessHorseman rideAgain(ServerLevel level, HorsemansSteed steed) {
         Vec3 at = steed.position();
-        steed.fade();
         this.discard();
-        return HeadlessHorseman.summon(level, at, level.getNearestPlayer(at.x, at.y, at.z, 48.0, true));
+        return HeadlessHorseman.summon(level, at, level.getNearestPlayer(at.x, at.y, at.z, 48.0, true), this.tree, steed);
     }
 
     // Those it drifts close to feel the dark close in
@@ -172,7 +238,7 @@ public class HalloweenSpirit extends Monster {
         this.lastHolyHit = level.getGameTime();
         this.holyHitsLeft--;
         this.reeling = REEL_TICKS;
-        GhostSteed steed = this.findSteed();
+        HorsemansSteed steed = this.findSteed();
         Vec3 back = steed != null ? this.position().subtract(steed.position()).normalize() : Vec3.ZERO;
         this.setDeltaMovement(back.scale(0.8).add(0.0, 0.2, 0.0));
         level.sendParticles(ParticleTypes.END_ROD, this.getX(), this.getY(0.6), this.getZ(), 25, 0.4, 0.6, 0.4, 0.08);
@@ -180,7 +246,7 @@ public class HalloweenSpirit extends Monster {
         if (this.holyHitsLeft <= 0) {
             this.banished = true;
             if (steed != null) {
-                steed.fade();
+                steed.crumble();
             }
             this.hurtServer(level, this.damageSources().source(ModDamageTypes.HOLY_FIRE, thrower, thrower), Float.MAX_VALUE);
         }
@@ -240,6 +306,8 @@ public class HalloweenSpirit extends Monster {
     protected void addAdditionalSaveData(ValueOutput output) {
         super.addAdditionalSaveData(output);
         output.storeNullable("Steed", UUIDUtil.CODEC, this.steed);
+        output.storeNullable("Tree", BlockPos.CODEC, this.tree);
+        output.putInt("Rising", this.rising);
         output.putInt("HolyHitsLeft", this.holyHitsLeft);
     }
 
@@ -247,6 +315,8 @@ public class HalloweenSpirit extends Monster {
     protected void readAdditionalSaveData(ValueInput input) {
         super.readAdditionalSaveData(input);
         this.steed = input.read("Steed", UUIDUtil.CODEC).orElse(null);
+        this.tree = input.read("Tree", BlockPos.CODEC).orElse(null);
+        this.rising = input.getIntOr("Rising", 0);
         this.holyHitsLeft = input.getIntOr("HolyHitsLeft", HOLY_HITS);
         if (this.hasCustomName()) {
             this.bossEvent.setName(this.getDisplayName());

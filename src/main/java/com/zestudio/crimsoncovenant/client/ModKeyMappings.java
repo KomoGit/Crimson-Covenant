@@ -2,6 +2,7 @@ package com.zestudio.crimsoncovenant.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
+import com.zestudio.crimsoncovenant.effect.CrimsonShroudEffect;
 import com.zestudio.crimsoncovenant.effect.FlightLift;
 import com.zestudio.crimsoncovenant.network.SkillPayloads;
 import com.zestudio.crimsoncovenant.registry.ModEffects;
@@ -52,7 +53,8 @@ public final class ModKeyMappings {
     }
 
     /// With a creature snatched up in flight, a right click lets go of it; otherwise, gliding in the Crimson Shroud, it's a
-    /// Blood Charge. Either way instead of whatever it would otherwise do.
+    /// Blood Charge, unless there's a bow, crossbow, trident or spear in hand to use. Either way instead of whatever it
+    /// would otherwise do.
     @SubscribeEvent
     static void bloodCharge(InputEvent.InteractionKeyMappingTriggered event) {
         Minecraft minecraft = Minecraft.getInstance();
@@ -62,7 +64,8 @@ public final class ModKeyMappings {
             if (event.getHand() == InteractionHand.MAIN_HAND) {
                 ClientPacketDistributor.sendToServer(new SkillPayloads.DropCarried());
             }
-        } else if (event.isUseItem() && minecraft.player != null && minecraft.player.isFallFlying() && minecraft.player.hasEffect(ModEffects.CRIMSON_SHROUD)) {
+        } else if (event.isUseItem() && minecraft.player != null && minecraft.player.isFallFlying() && minecraft.player.hasEffect(ModEffects.CRIMSON_SHROUD)
+                && !CrimsonShroudEffect.holdsRangedWeapon(minecraft.player)) {
             event.setCanceled(true);
             event.setSwingHand(false);
             if (event.getHand() == InteractionHand.MAIN_HAND) {

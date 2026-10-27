@@ -104,7 +104,7 @@ public class SpectralHorseman extends HeadlessHorseman {
 
     // A ghost already: nothing rises from him
     @Override
-    protected void riseAsSpirit(ServerLevel level, DamageSource source) {
+    protected void riseAsSpirit(ServerLevel level, @Nullable AbstractHorse steed) {
     }
 
     /// Fades away with his steed

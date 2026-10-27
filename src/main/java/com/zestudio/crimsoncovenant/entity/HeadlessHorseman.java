@@ -4,10 +4,10 @@ import java.util.EnumSet;
 
 import org.jspecify.annotations.Nullable;
 
-import com.zestudio.crimsoncovenant.CrimsonCovenant;
 import com.zestudio.crimsoncovenant.registry.ModEntities;
 import com.zestudio.crimsoncovenant.registry.ModPotions;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.Registries;
@@ -29,7 +29,6 @@ import net.minecraft.world.entity.AreaEffectCloud;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.SpawnGroupData;
@@ -41,7 +40,6 @@ import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.ai.util.DefaultRandomPos;
 import net.minecraft.world.entity.animal.equine.AbstractHorse;
-import net.minecraft.world.entity.animal.equine.ZombieHorse;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -54,9 +52,6 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 
 /// A headless rider with a jack o'lantern for a head and an enchanted golden spear, mounted on a zombie horse. Called up
 /// at a Crooked Tree (see world.HorsemanSummoning), and fought under a boss bar.
@@ -65,9 +60,9 @@ import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 /// One blow in nine blinds and slows a player. Every 30 seconds he lobs a Pumpkin Bomb, which knocks people flying
 /// without harming the ground. He won't charge through lingering Holy Water, nor at anyone standing in it.
 ///
-/// Slain (or his horse slain from under him), he rises as the Spirit of Halloween, and his horse as a Ghost Steed that
-/// gallops off down the road: if the spirit reaches it, he rides again (see HalloweenSpirit).
-@EventBusSubscriber(modid = CrimsonCovenant.MODID)
+/// His horse slain from under him, he fights on foot until it claws its way back up out of the ground by his tree and
+/// gallops back to him (see HorsemansSteed). Slain himself, the Spirit of Halloween rises out of his tree and drifts
+/// after his horse: if it reaches it, he rides again (see HalloweenSpirit).
 public class HeadlessHorseman extends Zombie {
     /// One blow in this many blinds and slows a player
     public static final int AFFLICTION_ODDS = 9;
@@ -76,12 +71,16 @@ public class HeadlessHorseman extends Zombie {
     private static final int FIRST_BOMB = 100;
     private static final double BOMB_MIN_RANGE = 5.0;
     private static final double BOMB_MAX_RANGE = 28.0;
-    /// How far down the road his Ghost Steed gallops when he falls
-    public static final double STEED_FLIGHT = 24.0;
+    /// How close his horse has to come for him to mount it again
+    private static final double REMOUNT_RANGE = 2.5;
 
     private final ServerBossEvent bossEvent = new ServerBossEvent(Mth.createInsecureUUID(this.random), this.getDisplayName(),
             BossEvent.BossBarColor.YELLOW, BossEvent.BossBarOverlay.PROGRESS);
     private int bombCooldown = FIRST_BOMB;
+    /// The Crooked Tree he was called up at, which his horse and his spirit rise from
+    private @Nullable BlockPos tree;
+    /// The horse he's to be mounted on when he next spawns, instead of a new one
+    private @Nullable AbstractHorse mountOnSpawn;
 
     public HeadlessHorseman(EntityType<? extends HeadlessHorseman> type, Level level) {
         super(type, level);
@@ -98,19 +97,24 @@ public class HeadlessHorseman extends Zombie {
                 .add(Attributes.SPAWN_REINFORCEMENTS_CHANCE, 0.0);
     }
 
-    /// Calls the Horseman up at `at`, mounted and set on `target` (if there's one), never to wander off and fade
-    public static @Nullable HeadlessHorseman summon(ServerLevel level, Vec3 at, @Nullable LivingEntity target) {
+    /// Calls the Horseman of the Crooked Tree at `tree` up at `at`, set on `target` (if there's one), never to wander off
+    /// and fade. He rides `mount` if he's given one, or a new horse of his own.
+    public static @Nullable HeadlessHorseman summon(ServerLevel level, Vec3 at, @Nullable LivingEntity target, @Nullable BlockPos tree,
+            @Nullable AbstractHorse mount) {
         HeadlessHorseman horseman = ModEntities.HEADLESS_HORSEMAN.get().create(level, EntitySpawnReason.EVENT);
         if (horseman == null) {
             return null;
         }
+        horseman.tree = tree;
+        horseman.mountOnSpawn = mount;
         horseman.snapTo(at.x, at.y, at.z, level.getRandom().nextFloat() * 360.0F, 0.0F);
         horseman.finalizeSpawn(level, level.getCurrentDifficultyAt(horseman.blockPosition()), EntitySpawnReason.EVENT, null);
         horseman.setPersistenceRequired();
-        if (horseman.getVehicle() instanceof AbstractHorse steed) {
-            steed.setPersistenceRequired();
-        }
         level.addFreshEntity(horseman);
+        if (mount != null && mount.isAlive()) {
+            horseman.startRiding(mount, false, false);
+        }
+        horseman.mountOnSpawn = null;
         if (target != null) {
             horseman.setTarget(target);
         }
@@ -137,7 +141,7 @@ public class HeadlessHorseman extends Zombie {
         this.setBaby(false);
         this.setCanBreakDoors(false);
         this.populateHorsemanEquipment();
-        if (!this.isPassenger()) {
+        if (!this.isPassenger() && this.mountOnSpawn == null) {
             this.mountSteed(level, difficulty);
         }
         return groupData;
@@ -160,14 +164,13 @@ public class HeadlessHorseman extends Zombie {
         return true;
     }
 
-    /// The horse he rides: a zombie horse in golden barding, which also keeps it from burning at sunrise
+    /// The horse he rides: his own zombie horse in golden barding, bound to his tree
     protected @Nullable AbstractHorse createSteed() {
-        ZombieHorse steed = EntityTypes.ZOMBIE_HORSE.create(this.level(), EntitySpawnReason.JOCKEY);
-        if (steed != null) {
-            steed.setItemSlot(EquipmentSlot.BODY, new ItemStack(Items.GOLDEN_HORSE_ARMOR));
-            steed.setDropChance(EquipmentSlot.BODY, 0.0F);
-        }
-        return steed;
+        return HorsemansSteed.bred(this.level(), this.tree);
+    }
+
+    public @Nullable BlockPos getTree() {
+        return this.tree;
     }
 
     private void mountSteed(ServerLevelAccessor level, DifficultyInstance difficulty) {
@@ -179,25 +182,6 @@ public class HeadlessHorseman extends Zombie {
         steed.finalizeSpawn(level, difficulty, EntitySpawnReason.JOCKEY, null);
         level.addFreshEntity(steed);
         this.startRiding(steed, false, false);
-    }
-
-    /// Horse and rider are one: when the steed falls, so does the horseman, in a puff of flame and smoke
-    @SubscribeEvent
-    static void onSteedDeath(LivingDeathEvent event) {
-        if (!(event.getEntity().level() instanceof ServerLevel level)) {
-            return;
-        }
-        for (Entity passenger : event.getEntity().getPassengers()) {
-            if (passenger instanceof HeadlessHorseman horseman && horseman.isAlive()) {
-                level.sendParticles(ParticleTypes.FLAME, horseman.getX(), horseman.getY(1.0), horseman.getZ(), 30, 0.3, 0.5, 0.3, 0.02);
-                level.sendParticles(ParticleTypes.LARGE_SMOKE, horseman.getX(), horseman.getY(1.0), horseman.getZ(), 20, 0.3, 0.5, 0.3, 0.02);
-                // Credit the kill to whoever brought the horse down
-                horseman.hurtServer(level, event.getSource(), Float.MAX_VALUE);
-                if (horseman.isAlive()) {
-                    horseman.kill(level);
-                }
-            }
-        }
     }
 
     // ---- The fight ----
@@ -281,38 +265,35 @@ public class HeadlessHorseman extends Zombie {
                 }
             }
         }
+        this.remountIfHorseNear();
         this.bossEvent.setProgress(this.getHealth() / this.getMaxHealth());
+    }
+
+    // On foot, he swings back up onto his own horse once it's come back to him
+    private void remountIfHorseNear() {
+        if (this.isPassenger() || this.tickCount % 5 != 0) {
+            return;
+        }
+        this.level().getEntitiesOfClass(HorsemansSteed.class, this.getBoundingBox().inflate(REMOUNT_RANGE), steed -> !steed.isVehicle() && !steed.isRising())
+                .stream().findFirst().ifPresent(steed -> this.startRiding(steed, false, false));
     }
 
     // ---- Death, and the spirit that rises ----
 
     @Override
     public void die(DamageSource source) {
+        // Whatever he was riding when he fell is the horse his spirit goes looking for
+        AbstractHorse steed = this.getVehicle() instanceof AbstractHorse horse ? horse : null;
         super.die(source);
         if (this.level() instanceof ServerLevel level && this.isDeadOrDying()) {
-            this.riseAsSpirit(level, source);
+            this.riseAsSpirit(level, steed);
         }
     }
 
-    /// The Spirit of Halloween rises from him, and his horse comes back as a Ghost Steed that gallops away down the road
-    protected void riseAsSpirit(ServerLevel level, DamageSource source) {
-        Vec3 from = this.position();
-        LivingEntity chaser = source.getEntity() instanceof LivingEntity killer ? killer : level.getNearestPlayer(this, 32.0);
-        Vec3 away = chaser != null ? from.subtract(chaser.position()).multiply(1.0, 0.0, 1.0) : Vec3.ZERO;
-        if (away.lengthSqr() < 1.0E-4) {
-            float angle = this.random.nextFloat() * Mth.TWO_PI;
-            away = new Vec3(Mth.cos(angle), 0.0, Mth.sin(angle));
-        }
-        GhostSteed steed = GhostSteed.gallopFrom(level, from, away.normalize().scale(STEED_FLIGHT));
-        HalloweenSpirit spirit = ModEntities.HALLOWEEN_SPIRIT.get().create(level, EntitySpawnReason.EVENT);
-        if (spirit == null) {
-            return;
-        }
-        spirit.snapTo(from.x, from.y + 0.5, from.z, this.getYRot(), 0.0F);
-        spirit.setSteed(steed);
-        level.addFreshEntity(spirit);
-        level.sendParticles(ParticleTypes.SOUL, from.x, from.y + 1.0, from.z, 40, 0.5, 1.0, 0.5, 0.05);
-        level.playSound(null, from.x, from.y, from.z, SoundEvents.SOUL_ESCAPE.value(), SoundSource.HOSTILE, 3.0F, 0.5F);
+    /// The Spirit of Halloween rises up out of his tree (or out of him, if he has none), to go looking for `steed`
+    protected void riseAsSpirit(ServerLevel level, @Nullable AbstractHorse steed) {
+        level.sendParticles(ParticleTypes.LARGE_SMOKE, this.getX(), this.getY(1.0), this.getZ(), 20, 0.3, 0.5, 0.3, 0.02);
+        HalloweenSpirit.riseFrom(level, this.tree, this.position(), steed instanceof HorsemansSteed own ? own : null);
     }
 
     /// The highest ground at `x`, `z`
@@ -352,12 +333,14 @@ public class HeadlessHorseman extends Zombie {
     protected void addAdditionalSaveData(ValueOutput output) {
         super.addAdditionalSaveData(output);
         output.putInt("BombCooldown", this.bombCooldown);
+        output.storeNullable("Tree", BlockPos.CODEC, this.tree);
     }
 
     @Override
     protected void readAdditionalSaveData(ValueInput input) {
         super.readAdditionalSaveData(input);
         this.bombCooldown = input.getIntOr("BombCooldown", FIRST_BOMB);
+        this.tree = input.read("Tree", BlockPos.CODEC).orElse(null);
         if (this.hasCustomName()) {
             this.bossEvent.setName(this.getDisplayName());
         }

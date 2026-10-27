@@ -45,20 +45,23 @@ public final class HorsemanSummoning {
         }
     }
 
-    /// Whether a Crooked Log stands within TREE_RANGE of `pos`
-    public static boolean nearCrookedTree(ServerLevel level, BlockPos pos) {
+    /// The foot of the Crooked Tree within TREE_RANGE of `pos` (its lowest log nearest `pos`), if there's one
+    public static @Nullable BlockPos findCrookedTree(ServerLevel level, BlockPos pos) {
+        BlockPos best = null;
         for (BlockPos near : BlockPos.betweenClosed(pos.offset(-TREE_RANGE, -TREE_RANGE, -TREE_RANGE), pos.offset(TREE_RANGE, TREE_RANGE, TREE_RANGE))) {
-            if (level.getBlockState(near).is(ModBlocks.CROOKED_LOG.get())) {
-                return true;
+            if (level.getBlockState(near).is(ModBlocks.CROOKED_LOG.get())
+                    && (best == null || near.getY() < best.getY() || (near.getY() == best.getY() && near.distSqr(pos) < best.distSqr(pos)))) {
+                best = near.immutable();
             }
         }
-        return false;
+        return best;
     }
 
     /// The jack o'lantern at `lantern`, set down by `placer`: if it's `night` and by a Crooked Tree, and no Horseman
     /// rides near already, it's taken and he's called up. Returns him, if he was.
     public static @Nullable HeadlessHorseman summon(ServerLevel level, BlockPos lantern, boolean night, @Nullable LivingEntity placer) {
-        if (!night || !nearCrookedTree(level, lantern)
+        BlockPos tree = night ? findCrookedTree(level, lantern) : null;
+        if (tree == null
                 || !level.getEntitiesOfClass(LivingEntity.class, new AABB(lantern).inflate(ALREADY_RIDING_RANGE),
                         rider -> (rider instanceof HeadlessHorseman horseman && horseman.hasBossBar()) || rider instanceof HalloweenSpirit).isEmpty()) {
             return null;
@@ -68,7 +71,7 @@ public final class HorsemanSummoning {
         level.sendParticles(ParticleTypes.FLAME, centre.x, centre.y, centre.z, 30, 0.3, 0.3, 0.3, 0.05);
         level.sendParticles(ParticleTypes.SOUL, centre.x, centre.y, centre.z, 15, 0.3, 0.3, 0.3, 0.05);
         level.playSound(null, lantern, SoundEvents.LIGHTNING_BOLT_THUNDER, SoundSource.HOSTILE, 2.0F, 0.6F);
-        return HeadlessHorseman.summon(level, roadEnd(level, lantern), placer);
+        return HeadlessHorseman.summon(level, roadEnd(level, lantern), placer, tree, null);
     }
 
     /// Where he rides in from: the furthest bit of road (dirt path) MIN_DISTANCE to MAX_DISTANCE blocks off, or open

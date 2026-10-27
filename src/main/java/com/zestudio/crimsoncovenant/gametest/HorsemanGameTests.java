@@ -6,6 +6,7 @@ import com.zestudio.crimsoncovenant.block.HeadOnAPikeBlockEntity;
 import com.zestudio.crimsoncovenant.entity.GhostSteed;
 import com.zestudio.crimsoncovenant.entity.HalloweenSpirit;
 import com.zestudio.crimsoncovenant.entity.HeadlessHorseman;
+import com.zestudio.crimsoncovenant.entity.HorsemansSteed;
 import com.zestudio.crimsoncovenant.entity.PumpkinBomb;
 import com.zestudio.crimsoncovenant.entity.SpectralHorseman;
 import com.zestudio.crimsoncovenant.registry.ModBlocks;
@@ -56,41 +57,55 @@ final class HorsemanGameTests {
         }
     }
 
-    /// The spirit risen from a Horseman who fell at `at`, and its steed
-    private static void discardSpirit(GameTestHelper helper, Vec3 at) {
-        for (HalloweenSpirit spirit : helper.getLevel().getEntitiesOfClass(HalloweenSpirit.class, new AABB(at, at).inflate(4.0))) {
-            discard(spirit.findSteed(), spirit);
-        }
+    /// Calls up the Horseman of a Crooked Tree whose foot is at `tree`, at `at` (both relative), held still
+    private static HeadlessHorseman callUp(GameTestHelper helper, BlockPos tree, Vec3 at) {
+        helper.setBlock(tree, ModBlocks.CROOKED_LOG.get());
+        HeadlessHorseman horseman = HeadlessHorseman.summon(helper.getLevel(), helper.absoluteVec(at), null, helper.absolutePos(tree), null);
+        horseman.removeFreeWill();
+        return horseman;
     }
 
-    static void horsemanDiesWithHorse(GameTestHelper helper) {
-        HeadlessHorseman horseman = ModEntities.HEADLESS_HORSEMAN.get().spawn(helper.getLevel(), helper.absolutePos(new BlockPos(4, 1, 4)), EntitySpawnReason.SPAWN_ITEM_USE);
-        helper.assertTrue(horseman != null && horseman.getVehicle() != null, Component.literal("Horseman should spawn mounted"));
-        horseman.getVehicle().kill(helper.getLevel());
+    static void horsemanFightsOnWhenHisHorseFalls(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos tree = helper.absolutePos(new BlockPos(1, 1, 1));
+        HeadlessHorseman horseman = callUp(helper, new BlockPos(1, 1, 1), new Vec3(6.5, 1.0, 6.5));
+        helper.assertTrue(horseman.getVehicle() instanceof HorsemansSteed steed && tree.equals(steed.getTree()),
+                Component.literal("He should ride his own horse, bound to his tree"));
+        HorsemansSteed fallen = (HorsemansSteed) horseman.getVehicle();
+        fallen.kill(level);
+        helper.assertTrue(horseman.isAlive() && !horseman.isPassenger(), Component.literal("He should fight on, on foot, when his horse falls"));
+        List<HorsemansSteed> buried = level.getEntitiesOfClass(HorsemansSteed.class, new AABB(tree).inflate(8.0), HorsemansSteed::isRising);
+        helper.assertTrue(buried.size() == 1, Component.literal("His horse should lie buried by the tree, not " + buried.size() + " of them"));
+        HorsemansSteed risen = buried.get(0);
+        double ground = helper.absoluteVec(new Vec3(0.0, 1.0, 0.0)).y;
+        helper.assertTrue(risen.getY() < ground - 1.0, Component.literal("It should start out under the ground"));
+        helper.assertTrue(!risen.hurtServer(level, level.damageSources().magic(), 50.0F), Component.literal("Nothing should hurt it while it's in the ground"));
         helper.startSequence()
-                .thenWaitUntil(() -> helper.assertTrue(!horseman.isAlive(), Component.literal("The horseman should fall with his horse")))
-                .thenExecute(() -> discardSpirit(helper, horseman.position()))
+                .thenWaitUntil(() -> helper.assertTrue(!risen.isRising() && risen.getY() > ground - 0.2,
+                        Component.literal("It should dig its way back out, not stay at " + helper.relativeVec(risen.position()))))
+                .thenWaitUntil(() -> helper.assertTrue(horseman.getVehicle() == risen, Component.literal("He should mount it again when it comes back to him: horse at " + helper.relativeVec(risen.position()) + " path " + risen.getNavigation().getPath() + ", him at " + helper.relativeVec(horseman.position()) + " riding " + horseman.getVehicle())))
+                .thenExecute(() -> discard(horseman))
                 .thenSucceed();
     }
 
-    static void slainHorsemanRisesAsASpirit(GameTestHelper helper) {
+    static void slainHorsemanRisesFromHisTree(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        HeadlessHorseman horseman = helper.spawnWithNoFreeWill(ModEntities.HEADLESS_HORSEMAN.get(), new BlockPos(4, 1, 4));
-        discard(horseman.getVehicle());
+        BlockPos tree = helper.absolutePos(new BlockPos(1, 1, 1));
+        HeadlessHorseman horseman = callUp(helper, new BlockPos(1, 1, 1), new Vec3(6.5, 1.0, 6.5));
+        HorsemansSteed steed = (HorsemansSteed) horseman.getVehicle();
+        steed.removeFreeWill();
         horseman.kill(level);
         List<HalloweenSpirit> spirits = level.getEntitiesOfClass(HalloweenSpirit.class, new AABB(helper.absolutePos(BlockPos.ZERO)).inflate(16.0));
-        helper.assertTrue(spirits.size() == 1, Component.literal("One Spirit of Halloween should rise from the Horseman, not " + spirits.size()));
+        helper.assertTrue(spirits.size() == 1, Component.literal("One Spirit of Halloween should rise, not " + spirits.size()));
         HalloweenSpirit spirit = spirits.get(0);
-        GhostSteed steed = spirit.findSteed();
-        helper.assertTrue(steed != null && steed.getRally() != null, Component.literal("His horse should rise as a Ghost Steed with somewhere to run to"));
-        helper.assertTrue(steed.getRally().distanceTo(horseman.position()) > HeadlessHorseman.STEED_FLIGHT - 2.0,
-                Component.literal("The steed should be off down the road"));
+        helper.assertTrue(spirit.isRising() && spirit.position().distanceTo(Vec3.atBottomCenterOf(tree)) < 1.0,
+                Component.literal("It should rise up out of his tree, not out of him"));
+        helper.assertTrue(spirit.findSteed() == steed && steed.isAlive(), Component.literal("It should go after the horse he fell from"));
         helper.assertTrue(level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, new AABB(helper.absolutePos(BlockPos.ZERO)).inflate(16.0),
                 item -> item.getItem().is(ModItems.HORSEMANS_HEAD.get())).isEmpty(), Component.literal("The Horseman himself shouldn't drop his head"));
-        // Nothing but holy water touches the spirit, and the steed's beyond harm altogether
+        // Nothing but holy water touches the spirit
         helper.assertTrue(!spirit.hurtServer(level, level.damageSources().generic(), 50.0F)
                 && !spirit.hurtServer(level, level.damageSources().magic(), 50.0F), Component.literal("Only holy water should touch the spirit"));
-        helper.assertTrue(!steed.hurtServer(level, level.damageSources().magic(), 50.0F), Component.literal("Nothing should hurt the Ghost Steed"));
         ModEffects.HOLY_WATER.get().applyInstantaneousEffect(level, null, null, spirit, 0, 1.0);
         helper.assertTrue(spirit.isAlive() && spirit.getHolyHitsLeft() == HalloweenSpirit.HOLY_HITS - 1, Component.literal("One splash should only drive it back"));
         ModEffects.HOLY_WATER.get().applyInstantaneousEffect(level, null, null, spirit, 0, 1.0);
@@ -103,7 +118,7 @@ final class HorsemanGameTests {
                 })
                 .thenWaitUntil(() -> {
                     helper.assertTrue(!spirit.isAlive(), Component.literal("The third splash should banish it"));
-                    helper.assertTrue(!steed.isAlive(), Component.literal("Its steed should fade with it"));
+                    helper.assertTrue(!steed.isAlive(), Component.literal("His horse should crumble with it"));
                     helper.assertTrue(!level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, spirit.getBoundingBox().inflate(4.0),
                             item -> item.getItem().is(ModItems.HORSEMANS_HEAD.get())).isEmpty(), Component.literal("Banished, it should give up the head"));
                 })
@@ -111,22 +126,22 @@ final class HorsemanGameTests {
                 .thenSucceed();
     }
 
-    static void spiritThatReachesItsSteedRidesAgain(GameTestHelper helper) {
+    static void spiritThatReachesHisHorseRidesAgain(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
+        BlockPos tree = helper.absolutePos(new BlockPos(6, 1, 4));
+        HorsemansSteed steed = HorsemansSteed.bred(level, tree);
         Vec3 at = helper.absoluteVec(new Vec3(2.5, 1.0, 4.5));
-        GhostSteed steed = GhostSteed.gallopFrom(level, at, new Vec3(0.0, 0.0, 0.0));
-        HalloweenSpirit spirit = ModEntities.HALLOWEEN_SPIRIT.get().create(level, EntitySpawnReason.EVENT);
-        Vec3 from = helper.absoluteVec(new Vec3(6.5, 1.5, 4.5));
-        spirit.snapTo(from.x, from.y, from.z, 0.0F, 0.0F);
-        spirit.setSteed(steed);
-        level.addFreshEntity(spirit);
+        steed.snapTo(at.x, at.y, at.z, 0.0F, 0.0F);
+        level.addFreshEntity(steed);
+        steed.removeFreeWill();
+        HalloweenSpirit spirit = HalloweenSpirit.riseFrom(level, tree, Vec3.atBottomCenterOf(tree), steed);
         helper.startSequence()
                 .thenWaitUntil(() -> {
-                    helper.assertTrue(!spirit.isAlive() && !steed.isAlive(), Component.literal("The spirit should reach its steed"));
-                    helper.assertTrue(!level.getEntitiesOfClass(HeadlessHorseman.class, new AABB(at, at).inflate(4.0), HeadlessHorseman::hasBossBar).isEmpty(),
-                            Component.literal("The Horseman should ride again"));
+                    helper.assertTrue(!spirit.isAlive(), Component.literal("The spirit should reach his horse"));
+                    helper.assertTrue(steed.getFirstPassenger() instanceof HeadlessHorseman horseman && horseman.hasBossBar(),
+                            Component.literal("The Horseman should ride again, on that same horse"));
                 })
-                .thenExecute(() -> level.getEntitiesOfClass(HeadlessHorseman.class, new AABB(at, at).inflate(6.0)).forEach(HorsemanGameTests::discard))
+                .thenExecute(() -> discard(steed.getFirstPassenger()))
                 .thenSucceed();
     }
 
@@ -243,18 +258,19 @@ final class HorsemanGameTests {
         }
         yard.postProcess(level, level.structureManager(), level.getChunkSource().getGenerator(), RandomSource.create(3L), box,
                 ChunkPos.containing(yard.pos(0, 0, 0)), origin);
-        helper.assertTrue(level.getBlockState(yard.pos(CrookedTreePiece.TREE_X, 1, CrookedTreePiece.TREE_Z)).is(ModBlocks.CROOKED_LOG.get()),
-                Component.literal("The Crooked Tree should stand beside the road"));
-        for (int z = 0; z <= CrookedTreePiece.LENGTH; z += 4) {
-            helper.assertTrue(level.getBlockState(yard.pos(0, 0, z)).is(Blocks.DIRT_PATH) && level.getBlockState(yard.pos(0, 1, z)).isAir(),
-                    Component.literal("The road should run clear down the yard at " + z));
+        helper.assertTrue(level.getBlockState(yard.pos(0, 1, 0)).is(ModBlocks.CROOKED_LOG.get()), Component.literal("The Crooked Tree should stand in the middle"));
+        int ring = CrookedTreePiece.RING;
+        for (BlockPos road : List.of(yard.pos(ring, 0, 0), yard.pos(-ring, 0, 0), yard.pos(0, 0, ring), yard.pos(0, 0, -ring), yard.pos(9, 0, 9),
+                yard.pos(0, 0, CrookedTreePiece.RADIUS + 1), yard.pos(0, 0, -CrookedTreePiece.RADIUS - 1))) {
+            helper.assertTrue(level.getBlockState(road).is(Blocks.DIRT_PATH) && level.getBlockState(road.above()).isAir(),
+                    Component.literal("The road should run round the tree and out through both gates, clear at " + road));
         }
-        helper.assertTrue(level.getBlockState(yard.pos(-CrookedTreePiece.HALF_WIDTH, 1, 10)).is(Blocks.DARK_OAK_FENCE)
-                && level.getBlockState(yard.pos(CrookedTreePiece.HALF_WIDTH, 1, 30)).is(Blocks.DARK_OAK_FENCE), Component.literal("It should be fenced in"));
-        helper.assertTrue(level.getBlockState(yard.pos(0, 1, -1)).isAir() && level.getBlockState(yard.pos(0, 1, CrookedTreePiece.LENGTH + 1)).isAir(),
-                Component.literal("The road should run out at both ends"));
-        helper.assertTrue(HorsemanSummoning.nearCrookedTree(level, yard.pos(CrookedTreePiece.TREE_X - 3, 1, CrookedTreePiece.TREE_Z)),
-                Component.literal("A jack o'lantern by the tree should find it"));
+        int radius = CrookedTreePiece.RADIUS;
+        helper.assertTrue(level.getBlockState(yard.pos(-radius, 1, 7)).is(Blocks.DARK_OAK_FENCE) && level.getBlockState(yard.pos(radius, 1, -12)).is(Blocks.DARK_OAK_FENCE)
+                && level.getBlockState(yard.pos(8, 1, radius)).is(Blocks.DARK_OAK_FENCE), Component.literal("It should be fenced in all round"));
+        helper.assertTrue(level.getBlockState(yard.pos(0, 1, radius)).isAir() && level.getBlockState(yard.pos(0, 1, -radius)).isAir(),
+                Component.literal("The gates should stand open"));
+        helper.assertTrue(HorsemanSummoning.findCrookedTree(level, yard.pos(-3, 1, 0)) != null, Component.literal("A jack o'lantern by the tree should find it"));
         helper.succeed();
     }
 }

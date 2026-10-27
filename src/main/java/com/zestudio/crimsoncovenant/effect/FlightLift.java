@@ -2,6 +2,9 @@ package com.zestudio.crimsoncovenant.effect;
 
 import java.util.Comparator;
 import java.util.Optional;
+import java.util.UUID;
+
+import org.jspecify.annotations.Nullable;
 
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
 import com.zestudio.crimsoncovenant.registry.ModAttachments;
@@ -11,6 +14,8 @@ import com.zestudio.crimsoncovenant.registry.ModTags;
 import com.zestudio.crimsoncovenant.skill.Enthrall;
 
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.DamageTypeTags;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
@@ -43,6 +48,8 @@ public final class FlightLift {
     private static final double REACH = 0.4;
     /// How long a creature that's been let go can't be snatched up again
     public static final int REGRAB_TICKS = 30;
+    /// How long after a drop a death from the fall still counts as the vampire's kill
+    public static final int DROP_CREDIT_TICKS = 200;
     /// How high the top of a held creature is, as a share of the vampire's height
     private static final double HOLD_HEIGHT = 0.7;
     /// The gap between the vampire and a held creature
@@ -94,10 +101,22 @@ public final class FlightLift {
         return held.isPresent();
     }
 
-    // It falls from here, and the fall's counted from here
+    // It falls from here, and the fall's counted from here. If the fall kills it, it's the vampire's kill.
     private static void letGo(LivingEntity held) {
+        Optional<UUID> carrier = held.getData(ModAttachments.LIFTED).map(Lift::carrier);
         held.setData(ModAttachments.LIFTED, Optional.empty());
         held.setData(ModAttachments.DROPPED, held.level().getGameTime());
+        held.setData(ModAttachments.DROPPED_BY, carrier);
+        carrier.ifPresent(player -> held.setLastHurtByPlayer(player, DROP_CREDIT_TICKS));
+    }
+
+    /// The vampire whose drop killed `victim`, if `source` is the fall from it: they let go of it within the last
+    /// DROP_CREDIT_TICKS
+    public static @Nullable Player droppedBy(LivingEntity victim, DamageSource source) {
+        if (!source.is(DamageTypeTags.IS_FALL) || victim.level().getGameTime() - victim.getData(ModAttachments.DROPPED) > DROP_CREDIT_TICKS) {
+            return null;
+        }
+        return victim.getData(ModAttachments.DROPPED_BY).map(victim.level()::getPlayerByUUID).orElse(null);
     }
 
     /// Carries `target` off in front of `carrier`, if it can be. Returns whether it was.

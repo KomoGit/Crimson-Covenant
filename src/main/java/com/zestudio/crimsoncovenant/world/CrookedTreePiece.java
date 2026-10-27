@@ -8,6 +8,7 @@ import com.zestudio.crimsoncovenant.registry.ModStructures;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.StructureManager;
@@ -24,21 +25,25 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
 
-/// A Crooked Tree: a dead, twisted tree of Crooked Logs beside a long straight dirt road, the whole of it fenced in, a
-/// tilting-yard where the Headless Horseman can be called up and ridden against (see HorsemanSummoning). The road runs
-/// out through gaps at both ends, and carved pumpkins stand watch on the fence posts.
+/// A Crooked Tree: a dead, twisted tree of Crooked Logs on a bare mound in the middle of a square fenced yard, where the
+/// Headless Horseman can be called up and fought (see HorsemanSummoning). A dirt road runs in a ring round the tree for
+/// him to ride, and straight out through gates north and south. Carved pumpkins watch from the fence posts, and a
+/// scarecrow stands in each corner.
 ///
-/// Laid out facing south in its own coordinates: the yard is x -8 to 8 and z 0 to 44 inside its fence, the road down
-/// the middle at x -1 to 1, the tree beside it at x 5, z 22, with the ground at y 0. It's turned to face any way.
+/// Laid out in its own coordinates round the tree's foot at 0, 0, 0 (the ground at y 0): the fence runs RADIUS blocks
+/// out each way, the ring road RING blocks out. It's turned to face any way.
 public class CrookedTreePiece extends StructurePiece {
-    public static final int HALF_WIDTH = 9;
-    public static final int LENGTH = 44;
+    public static final int RADIUS = 20;
+    public static final int RING = 13;
+    private static final double RING_WIDTH = 1.6;
+    /// How far past the gates the roads run out
+    private static final int ROAD_OUT = 3;
+    private static final int MOUND = 4;
     private static final int CLEAR_HEIGHT = 30;
     private static final int FOUNDATION_DEPTH = 8;
     /// Every this many blocks along the fence, a post stands taller with a carved pumpkin on top
-    private static final int POST_SPACING = 8;
-    public static final int TREE_X = 5;
-    public static final int TREE_Z = 22;
+    private static final int POST_SPACING = 5;
+    private static final int SCARECROW = 16;
     /// The tree, as offsets from its foot: its trunk twisting up, then its bare branches
     private static final List<int[]> TRUNK = List.of(
             new int[] {0, 1, 0}, new int[] {1, 1, 0}, new int[] {0, 1, 1},
@@ -85,8 +90,8 @@ public class CrookedTreePiece extends StructurePiece {
     }
 
     private static BoundingBox boundsOf(BlockPos origin, Rotation rotation) {
-        BlockPos a = HunterCabinPiece.turn(origin, rotation, -HALF_WIDTH - 1, -FOUNDATION_DEPTH, -2);
-        BlockPos b = HunterCabinPiece.turn(origin, rotation, HALF_WIDTH + 1, CLEAR_HEIGHT, LENGTH + 2);
+        BlockPos a = HunterCabinPiece.turn(origin, rotation, -RADIUS - 1, -FOUNDATION_DEPTH, -RADIUS - ROAD_OUT);
+        BlockPos b = HunterCabinPiece.turn(origin, rotation, RADIUS + 1, CLEAR_HEIGHT, RADIUS + ROAD_OUT);
         return BoundingBox.fromCorners(a, b);
     }
 
@@ -106,15 +111,23 @@ public class CrookedTreePiece extends StructurePiece {
         this.set(level, chunkBB, block.defaultBlockState(), x, y, z);
     }
 
-    public static boolean onRoad(int x) {
-        return x >= -1 && x <= 1;
+    /// Whether the road runs over this spot: the ring round the tree, or the way out to either gate
+    public static boolean onRoad(int x, int z) {
+        double fromTree = Mth.length(x, z);
+        boolean ring = fromTree >= RING - RING_WIDTH && fromTree < RING + RING_WIDTH;
+        boolean outward = Math.abs(x) <= 1 && Math.abs(z) >= RING && Math.abs(z) <= RADIUS + ROAD_OUT;
+        return ring || outward;
     }
 
-    /// Whether the fence runs through this spot (it's open where the road runs out)
+    /// Whether the fence runs through this spot (it's open at the gates, where the roads run out)
     public static boolean isFence(int x, int z) {
-        boolean side = (x == -HALF_WIDTH || x == HALF_WIDTH) && z >= -1 && z <= LENGTH + 1;
-        boolean end = (z == -1 || z == LENGTH + 1) && x >= -HALF_WIDTH && x <= HALF_WIDTH && !onRoad(x);
+        boolean side = Math.abs(x) == RADIUS && Math.abs(z) <= RADIUS;
+        boolean end = Math.abs(z) == RADIUS && Math.abs(x) <= RADIUS && Math.abs(x) > 1;
         return side || end;
+    }
+
+    private static boolean inYard(int x, int z) {
+        return Math.abs(x) <= RADIUS + 1 && Math.abs(z) <= RADIUS + 1;
     }
 
     @Override
@@ -122,13 +135,18 @@ public class CrookedTreePiece extends StructurePiece {
             BoundingBox chunkBB, ChunkPos chunkPos, BlockPos referencePos) {
         this.layGround(level, random, chunkBB);
         this.buildFence(level, chunkBB);
+        this.raiseScarecrows(level, chunkBB);
         this.growTree(level, random, chunkBB);
     }
 
-    // Foundations under the yard, a clear sky over it, the road down the middle and grass going to seed either side
+    // Foundations under the yard, a clear sky over it, the road, a bare mound round the tree and dying grass elsewhere
     private void layGround(WorldGenLevel level, RandomSource random, BoundingBox chunkBB) {
-        for (int x = -HALF_WIDTH - 1; x <= HALF_WIDTH + 1; x++) {
-            for (int z = -2; z <= LENGTH + 2; z++) {
+        for (int x = -RADIUS - 1; x <= RADIUS + 1; x++) {
+            for (int z = -RADIUS - ROAD_OUT; z <= RADIUS + ROAD_OUT; z++) {
+                boolean road = onRoad(x, z);
+                if (!inYard(x, z) && !road) {
+                    continue;
+                }
                 for (int y = -1; y >= -FOUNDATION_DEPTH; y--) {
                     BlockPos pos = this.pos(x, y, z);
                     if (!chunkBB.isInside(pos)) {
@@ -140,31 +158,32 @@ public class CrookedTreePiece extends StructurePiece {
                     }
                     level.setBlock(pos, Blocks.DIRT.defaultBlockState(), Block.UPDATE_CLIENTS);
                 }
+                double fromTree = Mth.length(x, z);
                 Block ground;
-                if (onRoad(x)) {
+                if (road) {
                     ground = Blocks.DIRT_PATH;
-                } else if (Math.abs(x) == 2 && random.nextInt(3) > 0) {
-                    ground = Blocks.COARSE_DIRT;
+                } else if (fromTree <= MOUND) {
+                    ground = random.nextInt(3) == 0 ? Blocks.COARSE_DIRT : Blocks.PODZOL;
                 } else {
-                    int roll = random.nextInt(10);
-                    ground = roll == 0 ? Blocks.PODZOL : roll == 1 ? Blocks.COARSE_DIRT : Blocks.GRASS_BLOCK;
+                    int roll = random.nextInt(12);
+                    ground = roll == 0 ? Blocks.PODZOL : roll <= 2 ? Blocks.COARSE_DIRT : Blocks.GRASS_BLOCK;
                 }
                 this.set(level, chunkBB, ground, x, 0, z);
                 for (int y = 1; y <= CLEAR_HEIGHT; y++) {
                     this.set(level, chunkBB, Blocks.AIR, x, y, z);
                 }
-                // Dead grass and the odd bush, never on the road
-                if (!onRoad(x) && !isFence(x, z) && ground == Blocks.GRASS_BLOCK && random.nextInt(6) == 0) {
-                    this.set(level, chunkBB, random.nextInt(4) == 0 ? Blocks.DEAD_BUSH : Blocks.SHORT_GRASS, x, 1, z);
+                if (!road && !isFence(x, z) && ground == Blocks.GRASS_BLOCK && random.nextInt(7) == 0) {
+                    this.set(level, chunkBB, random.nextInt(3) == 0 ? Blocks.DEAD_BUSH : Blocks.SHORT_GRASS, x, 1, z);
                 }
             }
         }
     }
 
-    // Dark oak fence all round, joined up, with a carved pumpkin keeping watch atop every eighth post
+    // Dark oak fence all round, joined up, with carved pumpkins keeping watch from the taller posts and either side of
+    // each gate
     private void buildFence(WorldGenLevel level, BoundingBox chunkBB) {
-        for (int x = -HALF_WIDTH; x <= HALF_WIDTH; x++) {
-            for (int z = -1; z <= LENGTH + 1; z++) {
+        for (int x = -RADIUS; x <= RADIUS; x++) {
+            for (int z = -RADIUS; z <= RADIUS; z++) {
                 if (!isFence(x, z)) {
                     continue;
                 }
@@ -174,12 +193,33 @@ public class CrookedTreePiece extends StructurePiece {
                         .setValue(FenceBlock.EAST, isFence(x + 1, z))
                         .setValue(FenceBlock.WEST, isFence(x - 1, z));
                 this.set(level, chunkBB, fence, x, 1, z);
-                boolean corner = Math.abs(x) == HALF_WIDTH && (z == -1 || z == LENGTH + 1);
-                if (corner || ((x == -HALF_WIDTH || x == HALF_WIDTH) && Math.floorMod(z, POST_SPACING) == 0)) {
+                boolean gatepost = Math.abs(z) == RADIUS && Math.abs(x) == 2;
+                boolean post = Math.floorMod(x, POST_SPACING) == 0 && Math.floorMod(z, POST_SPACING) == 0;
+                if (gatepost || post) {
                     this.set(level, chunkBB, Blocks.DARK_OAK_FENCE, x, 2, z);
-                    Direction inward = x < 0 ? Direction.EAST : Direction.WEST;
-                    this.set(level, chunkBB, Blocks.CARVED_PUMPKIN.defaultBlockState().setValue(CarvedPumpkinBlock.FACING, inward), x, 3, z);
+                    this.set(level, chunkBB, Blocks.CARVED_PUMPKIN.defaultBlockState().setValue(CarvedPumpkinBlock.FACING, inward(x, z)), x, 3, z);
                 }
+            }
+        }
+    }
+
+    // The way from the fence at x, z towards the tree, along whichever side it's on
+    private static Direction inward(int x, int z) {
+        if (Math.abs(x) >= Math.abs(z)) {
+            return x > 0 ? Direction.WEST : Direction.EAST;
+        }
+        return z > 0 ? Direction.NORTH : Direction.SOUTH;
+    }
+
+    // A scarecrow in each corner: a post, a bale of hay for a body, and a carved pumpkin for a head, staring at the tree
+    private void raiseScarecrows(WorldGenLevel level, BoundingBox chunkBB) {
+        for (int sx = -1; sx <= 1; sx += 2) {
+            for (int sz = -1; sz <= 1; sz += 2) {
+                int x = sx * SCARECROW;
+                int z = sz * SCARECROW;
+                this.set(level, chunkBB, Blocks.DARK_OAK_FENCE, x, 1, z);
+                this.set(level, chunkBB, Blocks.HAY_BLOCK, x, 2, z);
+                this.set(level, chunkBB, Blocks.CARVED_PUMPKIN.defaultBlockState().setValue(CarvedPumpkinBlock.FACING, inward(x, z)), x, 3, z);
             }
         }
     }
@@ -188,22 +228,20 @@ public class CrookedTreePiece extends StructurePiece {
     private void growTree(WorldGenLevel level, RandomSource random, BoundingBox chunkBB) {
         BlockState log = ModBlocks.CROOKED_LOG.get().defaultBlockState();
         for (int[] at : TRUNK) {
-            this.set(level, chunkBB, log, TREE_X + at[0], at[1], TREE_Z + at[2]);
+            this.set(level, chunkBB, log, at[0], at[1], at[2]);
         }
         for (int[] at : BRANCHES) {
             Direction.Axis axis = at[3] == 'x' ? Direction.Axis.X : at[3] == 'z' ? Direction.Axis.Z : Direction.Axis.Y;
-            this.set(level, chunkBB, log.setValue(RotatedPillarBlock.AXIS, axis), TREE_X + at[0], at[1], TREE_Z + at[2]);
+            this.set(level, chunkBB, log.setValue(RotatedPillarBlock.AXIS, axis), at[0], at[1], at[2]);
         }
         for (int[] at : TWIGS) {
-            this.set(level, chunkBB, Blocks.DARK_OAK_FENCE, TREE_X + at[0], at[1], TREE_Z + at[2]);
+            this.set(level, chunkBB, Blocks.DARK_OAK_FENCE, at[0], at[1], at[2]);
         }
-        this.set(level, chunkBB, Blocks.COBWEB, TREE_X + 2, 5, TREE_Z + 1);
-        this.set(level, chunkBB, Blocks.COBWEB, TREE_X - 2, 6, TREE_Z + 1);
-        this.set(level, chunkBB, Blocks.CARVED_PUMPKIN.defaultBlockState().setValue(CarvedPumpkinBlock.FACING, Direction.WEST), TREE_X - 1, 1, TREE_Z - 1);
+        this.set(level, chunkBB, Blocks.COBWEB, 2, 5, 1);
+        this.set(level, chunkBB, Blocks.COBWEB, -2, 6, 1);
+        this.set(level, chunkBB, Blocks.CARVED_PUMPKIN.defaultBlockState().setValue(CarvedPumpkinBlock.FACING, Direction.SOUTH), -1, 1, -1);
         if (random.nextBoolean()) {
-            this.set(level, chunkBB, Blocks.PUMPKIN, TREE_X + 2, 1, TREE_Z + 2);
+            this.set(level, chunkBB, Blocks.PUMPKIN, 2, 1, 2);
         }
-        this.set(level, chunkBB, Blocks.PODZOL, TREE_X + 1, 0, TREE_Z + 1);
-        this.set(level, chunkBB, Blocks.PODZOL, TREE_X - 1, 0, TREE_Z);
     }
 }

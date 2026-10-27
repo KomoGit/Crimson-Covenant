@@ -479,6 +479,34 @@ final class SkillGameTests {
         helper.succeed();
     }
 
+    static void droppedPreyKilledByTheFallFeedsTheVampire(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer player = makeVampire(helper, 30);
+        player.addEffect(new MobEffectInstance(ModEffects.BLOOD_FLIGHT, 400));
+        Vec3 above = helper.absoluteVec(new Vec3(4.5, 3.0, 4.5));
+        player.teleportTo(above.x, above.y, above.z);
+        Cow dropped = helper.spawnWithNoFreeWill(EntityTypes.COW, new BlockPos(4, 1, 5));
+        Cow fell = helper.spawnWithNoFreeWill(EntityTypes.COW, new BlockPos(1, 1, 1));
+        helper.assertTrue(FlightLift.lift(dropped, player) && FlightLift.drop(player), Component.literal("The cow should be snatched up and let go"));
+        int before = BloodPool.get(player);
+        fell.hurtServer(level, level.damageSources().fall(), 1000.0F);
+        helper.assertValueEqual(BloodPool.get(player), before, "blood after a cow nobody dropped dies of a fall");
+        dropped.hurtServer(level, level.damageSources().fall(), 1000.0F);
+        helper.assertTrue(!dropped.isAlive(), Component.literal("The fall should kill the dropped cow"));
+        helper.assertValueEqual(BloodPool.get(player), before + BloodPool.bloodFrom(dropped), "blood after the cow the vampire dropped dies of the fall");
+        removePlayer(helper, player);
+        helper.succeed();
+    }
+
+    static void glidersUseTheirRangedWeaponsInsteadOfCharging(GameTestHelper helper) {
+        for (Item weapon : new Item[] {Items.BOW, Items.CROSSBOW, Items.TRIDENT, Items.IRON_SPEAR, ModItems.BLOOD_SPEAR.get()}) {
+            helper.assertTrue(CrimsonShroudEffect.isRangedWeapon(new ItemStack(weapon)), Component.literal(weapon + " should be used, not charged over"));
+        }
+        helper.assertTrue(!CrimsonShroudEffect.isRangedWeapon(new ItemStack(Items.IRON_SWORD)) && !CrimsonShroudEffect.isRangedWeapon(ItemStack.EMPTY),
+                Component.literal("Anything else in hand still means a Blood Charge"));
+        helper.succeed();
+    }
+
     static void flightCarriesOffWhatItFliesThrough(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         ServerPlayer player = makeVampire(helper, 100);

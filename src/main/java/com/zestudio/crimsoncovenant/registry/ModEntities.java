@@ -11,6 +11,7 @@ import com.zestudio.crimsoncovenant.entity.HemorrhageZone;
 import com.zestudio.crimsoncovenant.entity.GhostSteed;
 import com.zestudio.crimsoncovenant.entity.HalloweenSpirit;
 import com.zestudio.crimsoncovenant.entity.HeadlessHorseman;
+import com.zestudio.crimsoncovenant.entity.HorsemansSteed;
 import com.zestudio.crimsoncovenant.entity.PumpkinBomb;
 import com.zestudio.crimsoncovenant.entity.SpectralHorseman;
 import com.zestudio.crimsoncovenant.entity.Hunter;
@@ -109,6 +110,9 @@ public final class ModEntities {
     /// A horse's ghost: the Spectral Horseman's mount, or the Headless Horseman's horse risen (see GhostSteed)
     public static final DeferredHolder<EntityType<?>, EntityType<GhostSteed>> GHOST_STEED = ENTITY_TYPES.registerEntityType("ghost_steed", GhostSteed::new, MobCategory.MISC,
             builder -> builder.noLootTable().sized(1.3964844F, 1.6F).eyeHeight(1.52F).passengerAttachments(1.31875F).clientTrackingRange(10).fireImmune());
+    /// The Headless Horseman's own horse, which won't stay dead (see HorsemansSteed)
+    public static final DeferredHolder<EntityType<?>, EntityType<HorsemansSteed>> HORSEMANS_STEED = ENTITY_TYPES.registerEntityType("horsemans_steed", HorsemansSteed::new, MobCategory.MISC,
+            builder -> builder.noLootTable().sized(1.3964844F, 1.6F).eyeHeight(1.52F).passengerAttachments(1.31875F).clientTrackingRange(10));
     /// What rises from the fallen Headless Horseman (see HalloweenSpirit)
     public static final DeferredHolder<EntityType<?>, EntityType<HalloweenSpirit>> HALLOWEEN_SPIRIT = ENTITY_TYPES.registerEntityType("halloween_spirit", HalloweenSpirit::new, MobCategory.MONSTER,
             builder -> builder.sized(0.8F, 2.4F).eyeHeight(2.1F).clientTrackingRange(10).fireImmune());
@@ -201,6 +205,7 @@ public final class ModEntities {
         event.put(HEADLESS_HORSEMAN.get(), HeadlessHorseman.createAttributes().build());
         event.put(SPECTRAL_HORSEMAN.get(), HeadlessHorseman.createAttributes().build());
         event.put(GHOST_STEED.get(), ZombieHorse.createAttributes().build());
+        event.put(HORSEMANS_STEED.get(), ZombieHorse.createAttributes().build());
         event.put(HALLOWEEN_SPIRIT.get(), HalloweenSpirit.createAttributes().build());
         event.put(GHOST.get(), Ghost.createAttributes().build());
         event.put(HAUNTED_OBJECT.get(), HauntedObject.createAttributes().build());

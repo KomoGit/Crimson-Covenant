@@ -1,6 +1,7 @@
 package com.zestudio.crimsoncovenant.vampirism;
 
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
+import com.zestudio.crimsoncovenant.effect.FlightLift;
 import com.zestudio.crimsoncovenant.entity.Vampire;
 import com.zestudio.crimsoncovenant.registry.ModAttachments;
 import com.zestudio.crimsoncovenant.registry.ModEffects;
@@ -10,6 +11,7 @@ import com.zestudio.crimsoncovenant.entity.BloodOrb;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -68,8 +70,10 @@ public final class BloodPool {
     static void onKill(LivingDeathEvent event) {
         LivingEntity victim = event.getEntity();
         // getEntity() is the attacker even for projectiles (the shooter), so skill kills count too: all but the Blood
-        // Parade's (its orb's and its bats'), which give back health and more bats, never blood
-        if (event.getSource().getEntity() instanceof ServerPlayer player && player != victim && Vampirism.isVampire(player)
+        // Parade's (its orb's and its bats'), which give back health and more bats, never blood. A creature dropped from
+        // on high by a flying vampire, and killed by the fall, is theirs too.
+        Entity killer = event.getSource().getEntity() != null ? event.getSource().getEntity() : FlightLift.droppedBy(victim, event.getSource());
+        if (killer instanceof ServerPlayer player && player != victim && Vampirism.isVampire(player)
                 && Vampirism.hasLivingBlood(victim) && !(event.getSource().getDirectEntity() instanceof BloodOrb)
                 && !(event.getSource().getDirectEntity() instanceof BloodBat) && victim.level() instanceof ServerLevel level) {
             add(player, bloodFrom(victim));

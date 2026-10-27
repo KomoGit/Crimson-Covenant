@@ -204,6 +204,11 @@ public final class ModAttachments {
     public static final Supplier<AttachmentType<Long>> DROPPED = ATTACHMENT_TYPES.register("dropped",
             () -> AttachmentType.builder(() -> Long.MIN_VALUE).build());
 
+    /// The vampire who last let go of this creature from on high, credited if the fall kills it (see effect.FlightLift).
+    /// Not saved.
+    public static final Supplier<AttachmentType<Optional<UUID>>> DROPPED_BY = ATTACHMENT_TYPES.register("dropped_by",
+            () -> AttachmentType.builder(() -> Optional.<UUID>empty()).build());
+
     /// Who's carrying a lifted creature
     public record Lift(UUID carrier) {
         public static final StreamCodec<ByteBuf, Lift> STREAM_CODEC = UUIDUtil.STREAM_CODEC.map(Lift::new, Lift::carrier);
