@@ -319,6 +319,16 @@ public final class ModGameTests {
         // These two move the moon and the clock
         soloTest("belt_turns_its_wearer_under_a_blood_moon", WorldGameTests::beltTurnsItsWearerUnderABloodMoon);
         soloTest("belt_answers_to_a_full_moon", WorldGameTests::beltAnswersToAFullMoon);
+        soloTest("vampires_dont_answer_the_moon", WorldGameTests::vampiresDontAnswerTheMoon);
+        soloTest("werewolf_blows_land_with_knockback", WorldGameTests::werewolfBlowsLandWithKnockback);
+        // These two keep a player about, and hunters and skeletons look for targets far past the arena
+        soloTest("skeletons_fear_werewolf_players", WorldGameTests::skeletonsFearWerewolfPlayers);
+        soloTest("hunters_hunt_werewolf_players", WorldGameTests::huntersHuntWerewolfPlayers);
+        soloTest("werewolves_know_their_own", WorldGameTests::werewolvesKnowTheirOwn);
+        soloTest("moonbars_fill_with_the_hunt", WorldGameTests::moonbarsFillWithTheHunt);
+        soloTest("moon_powers_cost_moon", WorldGameTests::moonPowersCostMoon);
+        test("eclipse_hide_only_lets_silver_through", WorldGameTests::eclipseHideOnlyLetsSilverThrough);
+        soloTest("werewolf_blows_slam_foes_into_walls", WorldGameTests::werewolfBlowsSlamFoesIntoWalls);
     }
 
     private ModGameTests() {}

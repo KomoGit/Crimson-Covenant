@@ -4,6 +4,7 @@ import com.zestudio.crimsoncovenant.CrimsonCovenant;
 import com.zestudio.crimsoncovenant.effect.FlightLift;
 import com.zestudio.crimsoncovenant.skill.BloodSkills;
 import com.zestudio.crimsoncovenant.skill.CreatureAbilities;
+import com.zestudio.crimsoncovenant.skill.MoonPowers;
 import com.zestudio.crimsoncovenant.skill.Possession;
 import com.zestudio.crimsoncovenant.skill.SkillSlots;
 import com.zestudio.crimsoncovenant.skill.SkillsMenu;
@@ -109,17 +110,6 @@ public final class SkillPayloads {
         }
     }
 
-    /// Turn into a werewolf, or back again (see item.WerewolfBelt)
-    public record ToggleWerewolfForm() implements CustomPacketPayload {
-        public static final Type<ToggleWerewolfForm> TYPE = new Type<>(CrimsonCovenant.id("toggle_werewolf_form"));
-        public static final StreamCodec<ByteBuf, ToggleWerewolfForm> STREAM_CODEC = StreamCodec.unit(new ToggleWerewolfForm());
-
-        @Override
-        public Type<? extends CustomPacketPayload> type() {
-            return TYPE;
-        }
-    }
-
     public record OpenSkills() implements CustomPacketPayload {
         public static final Type<OpenSkills> TYPE = new Type<>(CrimsonCovenant.id("open_skills"));
         public static final StreamCodec<ByteBuf, OpenSkills> STREAM_CODEC = StreamCodec.unit(new OpenSkills());
@@ -169,7 +159,12 @@ public final class SkillPayloads {
             var registrar = event.registrar("1");
             registrar.playToServer(CastSkill.TYPE, CastSkill.STREAM_CODEC, (payload, context) -> {
                 if (context.player() instanceof ServerPlayer player && payload.slot() >= 0 && payload.slot() < SkillSlots.SLOTS) {
-                    BloodSkills.tryCast(player, payload.slot());
+                    // The same keys are a werewolf's powers
+                    if (WerewolfBelt.isTurned(player)) {
+                        MoonPowers.tryCast(player, MoonPowers.Power.values()[payload.slot()]);
+                    } else {
+                        BloodSkills.tryCast(player, payload.slot());
+                    }
                 }
             });
             registrar.playToServer(BloodCharge.TYPE, BloodCharge.STREAM_CODEC, (payload, context) -> {
@@ -196,11 +191,6 @@ public final class SkillPayloads {
             registrar.playToServer(ToggleNightVision.TYPE, ToggleNightVision.STREAM_CODEC, (payload, context) -> {
                 if (context.player() instanceof ServerPlayer player) {
                     Vampirism.toggleNightVision(player);
-                }
-            });
-            registrar.playToServer(ToggleWerewolfForm.TYPE, ToggleWerewolfForm.STREAM_CODEC, (payload, context) -> {
-                if (context.player() instanceof ServerPlayer player) {
-                    WerewolfBelt.toggle(player);
                 }
             });
             registrar.playToServer(OpenSkills.TYPE, OpenSkills.STREAM_CODEC, (payload, context) -> {

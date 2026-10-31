@@ -2,6 +2,8 @@ package com.zestudio.crimsoncovenant.entity;
 
 import org.jspecify.annotations.Nullable;
 
+import com.zestudio.crimsoncovenant.item.WerewolfBelt;
+import com.zestudio.crimsoncovenant.skill.MoonPowers;
 import com.zestudio.crimsoncovenant.world.WerewolfSpawner;
 
 import net.minecraft.core.particles.ParticleTypes;
@@ -74,10 +76,13 @@ public class Werewolf extends Monster {
         this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, LivingEntity.class, 10, true, false, (target, level) -> isPrey(target)));
     }
 
-    /// Almost everything: not other werewolves, not the Master Hunters it fears, and not what it can't catch or
-    /// shouldn't bite (creepers, ghosts, bats, fish, armor stands)
+    /// Almost everything: not other werewolves (players turned by a belt and their packs among them, see
+    /// item.WerewolfBelt), not the Master Hunters it fears, and not what it can't catch or shouldn't bite (creepers,
+    /// ghosts, bats, fish, armor stands)
     public static boolean isPrey(LivingEntity target) {
         return !(target instanceof Werewolf)
+                && !(target instanceof Player player && WerewolfBelt.isTurned(player))
+                && !MoonPowers.isPackWolf(target)
                 && !(target instanceof MasterHunter)
                 && !(target instanceof Creeper)
                 && !(target instanceof Ghost)

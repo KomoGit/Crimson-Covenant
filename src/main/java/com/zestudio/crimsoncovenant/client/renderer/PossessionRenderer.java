@@ -64,6 +64,8 @@ public final class PossessionRenderer {
     private static final ContextKey<Integer> FUSE = new ContextKey<>(CrimsonCovenant.id("possessed_fuse"));
     /// Player entity id -> the creature drawn in their place
     private static final Map<Integer, Body> BODIES = new HashMap<>();
+    /// Players seen turned by a Werewolf Belt: they need their eye height worked out again when that changes
+    private static final Set<Integer> TURNED = new HashSet<>();
 
     /// The shape of a belt's wearer: there's no saved creature behind it
     private static final PossessedForm WEREWOLF_BODY = new PossessedForm(CrimsonCovenant.id("werewolf"), new CompoundTag());
@@ -77,10 +79,14 @@ public final class PossessionRenderer {
         ClientLevel level = Minecraft.getInstance().level;
         if (level == null) {
             BODIES.clear();
+            TURNED.clear();
             return;
         }
         Set<Integer> possessing = new HashSet<>();
         for (AbstractClientPlayer player : level.players()) {
+            if (WerewolfBelt.isTurned(player) ? TURNED.add(player.getId()) : TURNED.remove(player.getId())) {
+                player.refreshDimensions();
+            }
             Optional<PossessedForm> form = formOf(player);
             if (form.isEmpty()) {
                 continue;

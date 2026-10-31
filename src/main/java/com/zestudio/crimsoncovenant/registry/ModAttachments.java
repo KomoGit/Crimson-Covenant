@@ -175,6 +175,20 @@ public final class ModAttachments {
     public static final Supplier<AttachmentType<Boolean>> WEREWOLF_FORM = ATTACHMENT_TYPES.register("werewolf_form",
             () -> AttachmentType.builder(() -> false).sync(ByteBufCodecs.BOOL).build());
 
+    /// A werewolf player's moonbars, spent on their powers (see skill.MoonPowers). Sent to their own client for the bar.
+    /// Not saved: every shape-change starts from nothing.
+    public static final Supplier<AttachmentType<Integer>> MOON = ATTACHMENT_TYPES.register("moon",
+            () -> AttachmentType.builder(() -> 0).sync((holder, to) -> holder == to, ByteBufCodecs.VAR_INT).build());
+
+    /// The game time a werewolf leapt with Moonfall, 0 when they aren't in the air (see skill.MoonPowers). Not saved.
+    public static final Supplier<AttachmentType<Long>> MOONFALL_LEAPT_AT = ATTACHMENT_TYPES.register("moonfall_leapt_at",
+            () -> AttachmentType.builder(() -> 0L).build());
+
+    /// On a wolf called by Call of the Pack: the game time it goes back to the night (see skill.MoonPowers). Saved, so a
+    /// summoned wolf can't outlast a restart as an ordinary tame one.
+    public static final Supplier<AttachmentType<Long>> PACK_WOLF_UNTIL = ATTACHMENT_TYPES.register("pack_wolf_until",
+            () -> AttachmentType.builder(() -> 0L).serialize(Codec.LONG.fieldOf("until")).build());
+
     /// Ticks left on a possessed creeper's fuse, 0 when it isn't lit. Sent to everyone nearby so they see it
     /// swell. Not saved.
     public static final Supplier<AttachmentType<Integer>> CREEPER_FUSE = ATTACHMENT_TYPES.register("creeper_fuse",

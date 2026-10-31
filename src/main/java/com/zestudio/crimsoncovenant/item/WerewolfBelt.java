@@ -3,9 +3,14 @@ package com.zestudio.crimsoncovenant.item;
 import java.util.List;
 
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
+import com.zestudio.crimsoncovenant.entity.Hunter;
+import com.zestudio.crimsoncovenant.entity.Werewolf;
 import com.zestudio.crimsoncovenant.registry.ModAttachments;
+import com.zestudio.crimsoncovenant.registry.ModEffects;
 import com.zestudio.crimsoncovenant.registry.ModItems;
+import com.zestudio.crimsoncovenant.skill.MoonPowers;
 import com.zestudio.crimsoncovenant.skill.Possession;
+import com.zestudio.crimsoncovenant.vampirism.Vampirism;
 import com.zestudio.crimsoncovenant.world.WerewolfSpawner;
 
 import net.minecraft.ChatFormatting;
@@ -13,6 +18,7 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -21,8 +27,14 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.goal.AvoidEntityGoal;
 import net.minecraft.world.entity.animal.wolf.WolfSoundVariants;
+import net.minecraft.world.entity.monster.skeleton.AbstractSkeleton;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Rarity;
@@ -33,22 +45,44 @@ import net.minecraft.world.item.equipment.Equippable;
 import net.minecraft.world.level.Level;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.EntityEvent;
+import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
+import net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
-/// The Werewolf Belt, made from Werewolf Hide and worn in the leggings slot. On a full-moon or Blood Moon night its
-/// wearer can turn into a werewolf with the transform key (see client.ModKeyMappings) and back again with the same key:
-/// Strength III, Speed II and Jump Boost III for as long as they stay turned. It's the player's own body still, with
-/// their own health, hands and inventory, only drawn as the beast (see client.renderer.PossessionRenderer). The beast
-/// leaves them at dawn, when the belt comes off, or if they leave the overworld (or the game), or die.
+/// The Werewolf Belt, made from Werewolf Hide and worn in the leggings slot. Whoever wears it on a full-moon or Blood Moon
+/// night turns into a werewolf, like it or not, unless they're a vampire: Strength III, Speed II, Jump Boost III, ten extra
+/// hearts, blows that land as if with Knockback II, and eyes higher off the ground (the body stays a player's size, so
+/// doorways still fit). They don't hunger: their moonbars and four powers take its place (see skill.MoonPowers). It's the
+/// player's own body still, with their own hands and inventory, only drawn as the beast (see
+/// client.renderer.PossessionRenderer). The beast leaves them at dawn, when the belt comes off, or if they leave the
+/// overworld (or the game), die, or turn vampire. Changing shape leaves them as badly hurt as they were, so slipping the
+/// belt off and on heals nothing.
+///
+/// Skeletons won't stand against a werewolf: they run, and won't take one for a target. Werewolves take it for one of
+/// their own, unless it strikes them. Hunters hunt it on sight, even their own sworn brothers (see Hunter.huntsPlayer),
+/// and leave off when it turns back, unless it struck them.
 @EventBusSubscriber(modid = CrimsonCovenant.MODID)
 public final class WerewolfBelt {
     public static final int STRENGTH_AMPLIFIER = 2;
     public static final int SPEED_AMPLIFIER = 1;
     public static final int JUMP_AMPLIFIER = 2;
+    /// What the Knockback enchantment adds at level II
+    public static final double EXTRA_KNOCKBACK = 2.0;
+    /// Enough for a player to stand as tall as a true werewolf, at 40
+    public static final double EXTRA_HEALTH = 20.0;
+    /// How near a werewolf has to come before skeletons run
+    public static final float SKELETON_FEAR_RANGE = 12.0F;
+    /// A werewolf's eyes are this much higher, for the camera: about where the drawn beast's are
+    public static final float EYE_HEIGHT_SCALE = 1.2F;
     private static final int EFFECT_REFRESH = 20;
     private static final int EFFECT_TICKS = 50;
+    /// How far off skeletons give up on, and hunters forget, a player who changes shape
+    private static final double CALL_OFF_RANGE = 32.0;
+    private static final Identifier KNOCKBACK_ID = CrimsonCovenant.id("werewolf_belt.knockback");
+    private static final Identifier HEALTH_ID = CrimsonCovenant.id("werewolf_belt.health");
     private static final ResourceKey<EquipmentAsset> ASSET = ResourceKey.create(EquipmentAssets.ROOT_ID, CrimsonCovenant.id("werewolf_belt"));
 
     private WerewolfBelt() {}
@@ -73,32 +107,25 @@ public final class WerewolfBelt {
         return level.dimension() == Level.OVERWORLD && WerewolfSpawner.isWerewolfNight(level);
     }
 
-    /// The transform key: turns the player, or turns them back. Returns whether anything changed.
-    public static boolean toggle(ServerPlayer player) {
-        if (isTurned(player)) {
-            turnBack(player);
-            return true;
-        }
-        if (!isWearing(player)) {
-            refuse(player, "message.crimsoncovenant.werewolf_belt.not_worn");
-            return false;
-        }
-        if (!moonIsUp(player.level())) {
-            refuse(player, "message.crimsoncovenant.werewolf_belt.no_moon");
-            return false;
-        }
-        if (Possession.isPossessing(player)) {
-            refuse(player, "message.crimsoncovenant.skill.already_active");
-            return false;
-        }
-        player.setData(ModAttachments.WEREWOLF_FORM, true);
-        giveEffects(player);
-        changeShape(player);
-        return true;
+    /// Whether the moon has this player: the belt on, the moon up, and no vampire's blood to stand in its way
+    public static boolean answersTheMoon(ServerPlayer player) {
+        return isWearing(player) && !Vampirism.isVampire(player) && moonIsUp(player.level());
     }
 
-    private static void refuse(ServerPlayer player, String message) {
-        player.sendOverlayMessage(Component.translatable(message).withStyle(ChatFormatting.GRAY));
+    private static void turn(ServerPlayer player) {
+        player.setData(ModAttachments.WEREWOLF_FORM, true);
+        MoonPowers.set(player, 0);
+        player.refreshDimensions();
+        player.getAttribute(Attributes.ATTACK_KNOCKBACK).addTransientModifier(new AttributeModifier(KNOCKBACK_ID, EXTRA_KNOCKBACK, AttributeModifier.Operation.ADD_VALUE));
+        float share = player.getHealth() / player.getMaxHealth();
+        player.getAttribute(Attributes.MAX_HEALTH).addTransientModifier(new AttributeModifier(HEALTH_ID, EXTRA_HEALTH, AttributeModifier.Operation.ADD_VALUE));
+        player.setHealth(share * player.getMaxHealth());
+        giveEffects(player);
+        changeShape(player);
+        tell(player, "message.crimsoncovenant.werewolf_belt.turned");
+        // Any skeleton already after them thinks better of it, and any werewolf knows them for kin
+        player.level().getEntitiesOfClass(Mob.class, player.getBoundingBox().inflate(CALL_OFF_RANGE), mob -> mob.getTarget() == player
+                && (mob instanceof AbstractSkeleton || (mob instanceof Werewolf && mob.getLastHurtByMob() != player))).forEach(mob -> mob.setTarget(null));
     }
 
     public static void turnBack(ServerPlayer player) {
@@ -106,10 +133,25 @@ public final class WerewolfBelt {
             return;
         }
         player.setData(ModAttachments.WEREWOLF_FORM, false);
+        player.refreshDimensions();
+        player.removeEffect(ModEffects.ECLIPSE_HIDE);
+        player.getAttribute(Attributes.ATTACK_KNOCKBACK).removeModifier(KNOCKBACK_ID);
+        float share = player.getHealth() / player.getMaxHealth();
+        player.getAttribute(Attributes.MAX_HEALTH).removeModifier(HEALTH_ID);
+        player.setHealth(share * player.getMaxHealth());
         takeEffect(player, MobEffects.STRENGTH, STRENGTH_AMPLIFIER);
         takeEffect(player, MobEffects.SPEED, SPEED_AMPLIFIER);
         takeEffect(player, MobEffects.JUMP_BOOST, JUMP_AMPLIFIER);
         changeShape(player);
+        // The beast is gone, and hunters have no quarrel with the player, unless there's another reason
+        if (!Hunter.huntsPlayer(player)) {
+            player.level().getEntitiesOfClass(Hunter.class, player.getBoundingBox().inflate(CALL_OFF_RANGE),
+                    hunter -> hunter.getTarget() == player && hunter.getLastHurtByMob() != player).forEach(hunter -> hunter.setTarget(null));
+        }
+    }
+
+    private static void tell(ServerPlayer player, String message) {
+        player.sendOverlayMessage(Component.translatable(message).withStyle(ChatFormatting.GRAY));
     }
 
     private static void changeShape(ServerPlayer player) {
@@ -140,21 +182,74 @@ public final class WerewolfBelt {
         }
     }
 
-    /// Keeps a turned player's effects up, and ends it when the belt comes off or the moon sets
+    /// Turns the player when the moon has them (a possession has to run its course first), keeps their effects up, and
+    /// turns them back when it lets them go
     public static void tickForm(ServerPlayer player) {
         if (!isTurned(player)) {
-            return;
-        }
-        boolean worn = isWearing(player);
-        if (!worn || !moonIsUp(player.level())) {
+            if (answersTheMoon(player) && !Possession.isPossessing(player)) {
+                turn(player);
+            }
+        } else if (!answersTheMoon(player)) {
             turnBack(player);
-            refuse(player, worn ? "message.crimsoncovenant.werewolf_belt.moon_set" : "message.crimsoncovenant.werewolf_belt.taken_off");
-        } else if (player.tickCount % EFFECT_REFRESH == 0) {
-            giveEffects(player);
+            tell(player, Vampirism.isVampire(player) ? "message.crimsoncovenant.werewolf_belt.vampire"
+                    : isWearing(player) ? "message.crimsoncovenant.werewolf_belt.moon_set" : "message.crimsoncovenant.werewolf_belt.taken_off");
+        } else {
+            // No hunger: food stays full (so they can sprint and heal) but without saturation, as for a vampire
+            player.getFoodData().setFoodLevel(20);
+            player.getFoodData().setSaturation(0.0F);
+            if (player.tickCount % EFFECT_REFRESH == 0) {
+                giveEffects(player);
+            }
         }
     }
 
-    // The form isn't saved, so it's over for good if the player leaves, and a corpse falls as a player
+    // Higher eyes, on both sides: the client runs this again when it hears they've turned (see PossessionRenderer)
+    @SubscribeEvent
+    static void standTall(EntityEvent.Size event) {
+        if (event.getEntity() instanceof Player player && player.hasData(ModAttachments.WEREWOLF_FORM) && isTurned(player)) {
+            EntityDimensions size = event.getNewSize();
+            event.setNewSize(size.withEyeHeight(size.eyeHeight() * EYE_HEIGHT_SCALE));
+        }
+    }
+
+    // ---- Skeletons ----
+
+    /// Whether `mob` is afraid of this player
+    public static boolean fears(Mob mob, Player player) {
+        return mob instanceof AbstractSkeleton && isTurned(player);
+    }
+
+    @SubscribeEvent
+    static void addFleeGoal(EntityJoinLevelEvent event) {
+        if (!event.getLevel().isClientSide() && event.getEntity() instanceof AbstractSkeleton skeleton) {
+            skeleton.goalSelector.addGoal(1, new FleeWerewolfGoal(skeleton));
+        }
+    }
+
+    // Afraid of them, a skeleton won't pick them for a target, nor turn on them when struck
+    @SubscribeEvent
+    static void skeletonsDareNot(LivingChangeTargetEvent event) {
+        if (event.getEntity() instanceof Mob mob && event.getNewAboutToBeSetTarget() instanceof Player player && fears(mob, player)) {
+            event.setCanceled(true);
+        }
+    }
+
+    /// Runs from a werewolf player, as from a wolf but faster and sooner. Every skeleton has this, so it only looks about
+    /// now and then.
+    static final class FleeWerewolfGoal extends AvoidEntityGoal<Player> {
+        FleeWerewolfGoal(AbstractSkeleton skeleton) {
+            super(skeleton, Player.class, SKELETON_FEAR_RANGE, 1.2, 1.5, target -> target instanceof Player player && isTurned(player));
+        }
+
+        @Override
+        public boolean canUse() {
+            return this.mob.getRandom().nextInt(reducedTickDelay(5)) == 0 && super.canUse();
+        }
+    }
+
+    // ---- Ends ----
+
+    // The form isn't saved, so it's over if the player leaves, and a corpse falls as a player
     @SubscribeEvent
     static void onDeath(LivingDeathEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {

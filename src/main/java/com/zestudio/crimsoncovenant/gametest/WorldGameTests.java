@@ -1,7 +1,12 @@
 package com.zestudio.crimsoncovenant.gametest;
 
+import java.util.List;
+import java.util.UUID;
+
+import com.mojang.authlib.GameProfile;
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
 import com.zestudio.crimsoncovenant.block.DecorBlock;
+import com.zestudio.crimsoncovenant.entity.BloodSpear;
 import com.zestudio.crimsoncovenant.entity.HeadlessHorseman;
 import com.zestudio.crimsoncovenant.entity.Hunter;
 import com.zestudio.crimsoncovenant.entity.MasterHunter;
@@ -10,16 +15,22 @@ import com.zestudio.crimsoncovenant.entity.SilverArrow;
 import com.zestudio.crimsoncovenant.entity.Vampire;
 import com.zestudio.crimsoncovenant.entity.Werewolf;
 import com.zestudio.crimsoncovenant.hunter.HunterGear;
+import com.zestudio.crimsoncovenant.hunter.HunterRanks;
 import com.zestudio.crimsoncovenant.item.WerewolfBelt;
+import com.zestudio.crimsoncovenant.registry.ModAttachments;
 import com.zestudio.crimsoncovenant.registry.ModBlocks;
+import com.zestudio.crimsoncovenant.registry.ModDamageTypes;
 import com.zestudio.crimsoncovenant.registry.ModEffects;
 import com.zestudio.crimsoncovenant.registry.ModEntities;
 import com.zestudio.crimsoncovenant.registry.ModItems;
 import com.zestudio.crimsoncovenant.registry.ModPotions;
 import com.zestudio.crimsoncovenant.registry.ModVillagers;
+import com.zestudio.crimsoncovenant.skill.MoonPowers;
 import com.zestudio.crimsoncovenant.skill.NightOfTerror;
 import com.zestudio.crimsoncovenant.world.BloodMoon;
 import com.zestudio.crimsoncovenant.world.FactionVillagers;
+
+import io.netty.channel.embedded.EmbeddedChannel;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -27,10 +38,13 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.world.clock.ServerClockManager;
 import net.minecraft.world.clock.WorldClock;
 import net.minecraft.world.clock.WorldClocks;
@@ -41,6 +55,8 @@ import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.cow.Cow;
+import net.minecraft.world.entity.animal.wolf.Wolf;
+import net.minecraft.world.entity.monster.skeleton.Skeleton;
 import net.minecraft.world.entity.monster.zombie.Husk;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.entity.npc.villager.Villager;
@@ -55,6 +71,7 @@ import net.minecraft.world.item.crafting.BrewingInput;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.item.crafting.ShapedRecipe;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.MoonPhase;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.block.Blocks;
@@ -440,12 +457,19 @@ final class WorldGameTests {
         helper.assertTrue(player.getEffect(MobEffects.STRENGTH).getAmplifier() == 2, Component.literal("A werewolf should have Strength III"));
         helper.assertTrue(player.getEffect(MobEffects.SPEED).getAmplifier() == 1, Component.literal("A werewolf should have Speed II"));
         helper.assertTrue(player.hasEffect(MobEffects.JUMP_BOOST), Component.literal("A werewolf should jump high"));
+        assertClose(helper, player.getAttributeValue(Attributes.ATTACK_KNOCKBACK), 2.0, "A werewolf's blows should carry Knockback II");
+        assertClose(helper, player.getMaxHealth(), 40.0, "A werewolf should have ten extra hearts");
+        assertClose(helper, player.getEyeHeight(), 1.62 * WerewolfBelt.EYE_HEIGHT_SCALE, "A werewolf's eyes should be higher");
+        assertClose(helper, player.getBbHeight(), 1.8, "A werewolf should still fit through a door");
     }
 
     private static void assertHuman(GameTestHelper helper, ServerPlayer player, String message) {
         helper.assertTrue(!WerewolfBelt.isTurned(player), Component.literal(message));
         helper.assertTrue(!player.hasEffect(MobEffects.STRENGTH) && !player.hasEffect(MobEffects.SPEED) && !player.hasEffect(MobEffects.JUMP_BOOST),
                 Component.literal(message + ", and take the beast's strength with it"));
+        assertClose(helper, player.getAttributeValue(Attributes.ATTACK_KNOCKBACK), 0.0, message + ", and take the beast's knockback with it");
+        assertClose(helper, player.getMaxHealth(), 20.0, message + ", and its extra hearts");
+        assertClose(helper, player.getEyeHeight(), 1.62, message + ", and bring their eyes back down");
     }
 
     static void beltTurnsItsWearerUnderABloodMoon(GameTestHelper helper) {
@@ -453,28 +477,29 @@ final class WorldGameTests {
         ServerPlayer player = helper.makeMockServerPlayerInLevel();
         ItemStack belt = new ItemStack(ModItems.WEREWOLF_BELT.get());
         helper.assertTrue(belt.get(DataComponents.EQUIPPABLE).slot() == EquipmentSlot.LEGS, Component.literal("The belt goes in the leggings slot"));
-        helper.assertTrue(!WerewolfBelt.toggle(player), Component.literal("No belt, no turning"));
         player.setItemSlot(EquipmentSlot.LEGS, belt);
-        helper.assertTrue(!WerewolfBelt.toggle(player), Component.literal("Not by day, either"));
-        assertHuman(helper, player, "Nothing should have happened yet");
+        WerewolfBelt.tickForm(player);
+        assertHuman(helper, player, "Nothing should happen by day");
+        player.setHealth(10.0F);
 
         BloodMoon.start(level);
         try {
-            helper.assertTrue(WerewolfBelt.toggle(player), Component.literal("Under a Blood Moon, the belt should turn its wearer"));
-            assertWerewolf(helper, player);
             WerewolfBelt.tickForm(player);
             assertWerewolf(helper, player);
-            helper.assertTrue(WerewolfBelt.toggle(player), Component.literal("The same key should turn them back"));
-            assertHuman(helper, player, "Their choice should turn them back");
-
-            WerewolfBelt.toggle(player);
+            assertClose(helper, player.getHealth(), 20.0, "Half hurt as a person should be half hurt as a werewolf");
+            WerewolfBelt.tickForm(player);
             assertWerewolf(helper, player);
+            assertClose(helper, player.getHealth(), 20.0, "Staying turned shouldn't change their health");
+
             player.setItemSlot(EquipmentSlot.LEGS, ItemStack.EMPTY);
             WerewolfBelt.tickForm(player);
             assertHuman(helper, player, "Taking the belt off should end it");
+            assertClose(helper, player.getHealth(), 10.0, "Slipping the belt off and on shouldn't heal anyone");
+            WerewolfBelt.tickForm(player);
+            assertHuman(helper, player, "No belt, no turning, moon or no moon");
 
             player.setItemSlot(EquipmentSlot.LEGS, belt);
-            WerewolfBelt.toggle(player);
+            WerewolfBelt.tickForm(player);
             assertWerewolf(helper, player);
         } finally {
             BloodMoon.stop(level);
@@ -496,17 +521,295 @@ final class WorldGameTests {
             // Full moons come every 8 days
             clocks.setTotalTicks(overworldClock, 24000L * 8 + 18000L);
             helper.assertTrue(BloodMoon.moonPhase(level) == MoonPhase.FULL_MOON, Component.literal("Day 8 should have a full moon, not " + BloodMoon.moonPhase(level)));
-            helper.assertTrue(WerewolfBelt.toggle(player), Component.literal("A plain full moon should do"));
+            WerewolfBelt.tickForm(player);
             assertWerewolf(helper, player);
             clocks.setTotalTicks(overworldClock, 24000L * 8 + 23500L);
             WerewolfBelt.tickForm(player);
             assertHuman(helper, player, "Dawn should end it");
             clocks.setTotalTicks(overworldClock, 24000L * 9 + 18000L);
-            helper.assertTrue(!WerewolfBelt.toggle(player), Component.literal("The night after the full moon is no good"));
+            WerewolfBelt.tickForm(player);
+            assertHuman(helper, player, "The night after the full moon is no good");
         } finally {
             clocks.setTotalTicks(overworldClock, originalTime);
         }
         level.getServer().getPlayerList().remove(player);
         helper.succeed();
+    }
+
+    static void vampiresDontAnswerTheMoon(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer player = helper.makeMockServerPlayerInLevel();
+        player.setItemSlot(EquipmentSlot.LEGS, new ItemStack(ModItems.WEREWOLF_BELT.get()));
+        player.setData(ModAttachments.IS_VAMPIRE, true);
+        BloodMoon.start(level);
+        try {
+            WerewolfBelt.tickForm(player);
+            assertHuman(helper, player, "A vampire shouldn't turn");
+            player.setData(ModAttachments.IS_VAMPIRE, false);
+            WerewolfBelt.tickForm(player);
+            assertWerewolf(helper, player);
+            player.setData(ModAttachments.IS_VAMPIRE, true);
+            WerewolfBelt.tickForm(player);
+            assertHuman(helper, player, "A werewolf who turns vampire should stop being one");
+        } finally {
+            BloodMoon.stop(level);
+        }
+        level.getServer().getPlayerList().remove(player);
+        helper.succeed();
+    }
+
+    static void werewolfBlowsLandWithKnockback(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer player = helper.makeMockServerPlayerInLevel();
+        player.setItemSlot(EquipmentSlot.LEGS, new ItemStack(ModItems.WEREWOLF_BELT.get()));
+        Vec3 at = helper.absoluteVec(new Vec3(4.5, 1.0, 4.5));
+        player.teleportTo(at.x, at.y, at.z);
+        Husk plain = spawnSturdyHusk(helper, new BlockPos(4, 1, 2));
+        Husk struck = spawnSturdyHusk(helper, new BlockPos(4, 1, 6));
+        player.attack(plain);
+        double plainPush = plain.getDeltaMovement().horizontalDistance();
+        BloodMoon.start(level);
+        try {
+            WerewolfBelt.tickForm(player);
+            player.attack(struck);
+        } finally {
+            BloodMoon.stop(level);
+        }
+        double push = struck.getDeltaMovement().horizontalDistance();
+        helper.assertTrue(push > plainPush + 0.5, Component.literal("A werewolf's blow should throw harder: " + push + " against " + plainPush));
+        plain.discard();
+        struck.discard();
+        WerewolfBelt.tickForm(player);
+        level.getServer().getPlayerList().remove(player);
+        helper.succeed();
+    }
+
+    /// helper.makeMockServerPlayerInLevel, but in survival: mobs won't take a creative player for a target at all
+    private static ServerPlayer makeSurvivalPlayer(GameTestHelper helper, Vec3 pos) {
+        ServerLevel level = helper.getLevel();
+        CommonListenerCookie cookie = CommonListenerCookie.createInitial(new GameProfile(UUID.randomUUID(), "test-survival-player"), false);
+        ServerPlayer player = new ServerPlayer(level.getServer(), level, cookie.gameProfile(), cookie.clientInformation()) {
+            @Override
+            public GameType gameMode() {
+                return GameType.SURVIVAL;
+            }
+        };
+        Connection connection = new Connection(PacketFlow.SERVERBOUND);
+        new EmbeddedChannel(connection);
+        level.getServer().getPlayerList().placeNewPlayer(connection, player, cookie);
+        player.getAbilities().invulnerable = false;
+        Vec3 at = helper.absoluteVec(pos);
+        player.teleportTo(at.x, at.y, at.z);
+        return player;
+    }
+
+    static void skeletonsFearWerewolfPlayers(GameTestHelper helper) {
+        // Out of the sun, which they'd run from anyway
+        for (int x = 0; x <= 8; x++) {
+            for (int z = 0; z <= 8; z++) {
+                helper.setBlock(new BlockPos(x, 3, z), Blocks.STONE);
+            }
+        }
+        ServerPlayer player = makeSurvivalPlayer(helper, new Vec3(1.5, 1.0, 4.5));
+        Skeleton skeleton = helper.spawn(EntityTypes.SKELETON, new BlockPos(3, 1, 4));
+        skeleton.setTarget(player);
+        helper.assertTrue(skeleton.getTarget() == player, Component.literal("Nothing should frighten a skeleton off a plain player"));
+        skeleton.setTarget(null);
+        player.setData(ModAttachments.WEREWOLF_FORM, true);
+        skeleton.setTarget(player);
+        helper.assertTrue(skeleton.getTarget() != player, Component.literal("A skeleton shouldn't take on a werewolf"));
+        double start = skeleton.distanceTo(player);
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(skeleton.distanceTo(player) > start + 2.5, Component.literal("A skeleton should run from a werewolf")))
+                .thenExecute(() -> {
+                    skeleton.discard();
+                    helper.getLevel().getServer().getPlayerList().remove(player);
+                })
+                .thenSucceed();
+    }
+
+    static void werewolvesKnowTheirOwn(GameTestHelper helper) {
+        ServerPlayer player = makeSurvivalPlayer(helper, new Vec3(2.5, 1.0, 4.5));
+        helper.assertTrue(Werewolf.isPrey(player), Component.literal("A plain player is prey"));
+        player.setData(ModAttachments.WEREWOLF_FORM, true);
+        helper.assertTrue(!Werewolf.isPrey(player), Component.literal("A werewolf player isn't"));
+        Werewolf werewolf = helper.spawn(ModEntities.WEREWOLF.get(), new BlockPos(6, 1, 4));
+        helper.startSequence()
+                .thenIdle(30)
+                .thenExecute(() -> {
+                    helper.assertTrue(werewolf.getTarget() == null, Component.literal("A werewolf should leave a fellow werewolf be"));
+                    player.setData(ModAttachments.WEREWOLF_FORM, false);
+                })
+                .thenWaitUntil(() -> helper.assertTrue(werewolf.getTarget() == player, Component.literal("Turned back, they're prey again")))
+                .thenExecute(() -> {
+                    werewolf.discard();
+                    helper.getLevel().getServer().getPlayerList().remove(player);
+                })
+                .thenSucceed();
+    }
+
+    static void moonbarsFillWithTheHunt(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer player = helper.makeMockServerPlayerInLevel();
+        ItemStack belt = new ItemStack(ModItems.WEREWOLF_BELT.get());
+        player.setItemSlot(EquipmentSlot.LEGS, belt);
+        MoonPowers.set(player, 40);
+        BloodMoon.start(level);
+        try {
+            WerewolfBelt.tickForm(player);
+            helper.assertValueEqual(MoonPowers.get(player), 0, "the moonbars on turning");
+            Cow cow = helper.spawnWithNoFreeWill(EntityTypes.COW, new BlockPos(2, 1, 4));
+            cow.hurtServer(level, level.damageSources().playerAttack(player), 1000.0F);
+            helper.assertValueEqual(MoonPowers.get(player), 5, "the moonbars after killing a cow");
+            MoonPowers.set(player, 95);
+            Zombie zombie = helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, new BlockPos(6, 1, 4));
+            zombie.hurtServer(level, level.damageSources().playerAttack(player), 1000.0F);
+            helper.assertValueEqual(MoonPowers.get(player), MoonPowers.MAX_MOON, "the moonbars at their fullest");
+
+            player.getFoodData().setFoodLevel(5);
+            WerewolfBelt.tickForm(player);
+            helper.assertValueEqual(player.getFoodData().getFoodLevel(), 20, "a werewolf's hunger");
+
+            player.setItemSlot(EquipmentSlot.LEGS, ItemStack.EMPTY);
+            WerewolfBelt.tickForm(player);
+            player.setItemSlot(EquipmentSlot.LEGS, belt);
+            WerewolfBelt.tickForm(player);
+            helper.assertValueEqual(MoonPowers.get(player), 0, "the moonbars on turning again");
+        } finally {
+            BloodMoon.stop(level);
+        }
+        WerewolfBelt.tickForm(player);
+        level.getServer().getPlayerList().remove(player);
+        helper.succeed();
+    }
+
+    static void moonPowersCostMoon(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer player = helper.makeMockServerPlayerInLevel();
+        player.setItemSlot(EquipmentSlot.LEGS, new ItemStack(ModItems.WEREWOLF_BELT.get()));
+        Vec3 at = helper.absoluteVec(new Vec3(4.5, 1.0, 4.5));
+        player.teleportTo(at.x, at.y, at.z);
+        Zombie zombie = helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, new BlockPos(2, 1, 4));
+        Cow cow = helper.spawnWithNoFreeWill(EntityTypes.COW, new BlockPos(6, 1, 4));
+        helper.assertTrue(!MoonPowers.tryCast(player, MoonPowers.Power.CALL_OF_THE_PACK), Component.literal("Only a werewolf has the powers"));
+        List<Wolf> pack;
+        BloodMoon.start(level);
+        try {
+            WerewolfBelt.tickForm(player);
+            helper.assertTrue(!MoonPowers.tryCast(player, MoonPowers.Power.CALL_OF_THE_PACK), Component.literal("No moon, no pack"));
+
+            MoonPowers.set(player, 60);
+            helper.assertTrue(MoonPowers.tryCast(player, MoonPowers.Power.CALL_OF_THE_PACK), Component.literal("The pack should come"));
+            helper.assertValueEqual(MoonPowers.get(player), 50, "the moon after Call of the Pack");
+            pack = level.getEntitiesOfClass(Wolf.class, player.getBoundingBox().inflate(8.0), MoonPowers::isPackWolf);
+            helper.assertValueEqual(pack.size(), MoonPowers.PACK_SIZE, "the wolves that came");
+            helper.assertTrue(pack.stream().allMatch(wolf -> wolf.getOwner() == player), Component.literal("The pack should be the werewolf's own"));
+
+            helper.assertTrue(MoonPowers.tryCast(player, MoonPowers.Power.MADDENING_HOWL), Component.literal("The howl should sound"));
+            helper.assertValueEqual(MoonPowers.get(player), 30, "the moon after Maddening Howl");
+            helper.assertTrue(player.hasEffect(ModEffects.FRENZY) && zombie.hasEffect(ModEffects.FRENZY) && cow.hasEffect(ModEffects.FRENZY),
+                    Component.literal("The howl should frenzy the werewolf and everything around them"));
+            helper.assertTrue(pack.stream().noneMatch(wolf -> wolf.hasEffect(ModEffects.FRENZY)), Component.literal("...but not their pack"));
+
+            helper.assertTrue(MoonPowers.tryCast(player, MoonPowers.Power.MOONFALL), Component.literal("The werewolf should leap"));
+            helper.assertValueEqual(MoonPowers.get(player), 0, "the moon after Moonfall");
+            helper.assertTrue(MoonPowers.isLeaping(player) && player.getDeltaMovement().y > 0.5, Component.literal("A Moonfall starts with a leap"));
+            float before = zombie.getHealth();
+            MoonPowers.land(player);
+            helper.assertTrue(!MoonPowers.isLeaping(player), Component.literal("It should end when it lands"));
+            helper.assertTrue(zombie.getHealth() < before - 4.0F, Component.literal("Landing should hurt what's near"));
+            helper.assertTrue(zombie.getData(ModAttachments.SPEAR_DRIVE).isPresent(), Component.literal("...and fling it away"));
+            helper.assertTrue(pack.stream().allMatch(wolf -> wolf.getHealth() == wolf.getMaxHealth()), Component.literal("...but not the pack"));
+
+            helper.assertTrue(!MoonPowers.tryCast(player, MoonPowers.Power.ECLIPSE_HIDE), Component.literal("Eclipse Hide costs 50"));
+            MoonPowers.set(player, 50);
+            helper.assertTrue(MoonPowers.tryCast(player, MoonPowers.Power.ECLIPSE_HIDE), Component.literal("Eclipse Hide should take hold"));
+            helper.assertTrue(player.hasEffect(ModEffects.ECLIPSE_HIDE), Component.literal("It should last on the werewolf"));
+        } finally {
+            BloodMoon.stop(level);
+        }
+        WerewolfBelt.tickForm(player);
+        helper.assertTrue(!player.hasEffect(ModEffects.ECLIPSE_HIDE), Component.literal("Eclipse Hide goes with the beast"));
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(pack.stream().allMatch(Wolf::isRemoved), Component.literal("The pack should go when its werewolf turns back")))
+                .thenExecute(() -> {
+                    zombie.discard();
+                    cow.discard();
+                    level.getServer().getPlayerList().remove(player);
+                })
+                .thenSucceed();
+    }
+
+    static void eclipseHideOnlyLetsSilverThrough(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        Husk husk = spawnSturdyHusk(helper, new BlockPos(4, 1, 4));
+        husk.addEffect(new MobEffectInstance(ModEffects.ECLIPSE_HIDE, 100));
+        husk.hurtServer(level, level.damageSources().generic(), 5.0F);
+        husk.hurtServer(level, level.damageSources().inFire(), 5.0F);
+        helper.assertTrue(husk.getHealth() == husk.getMaxHealth(), Component.literal("Eclipse Hide should turn aside anything but silver"));
+        husk.hurtServer(level, level.damageSources().source(ModDamageTypes.SILVER_TRAP), 5.0F);
+        helper.assertTrue(husk.getHealth() < husk.getMaxHealth(), Component.literal("Silver should get through"));
+        husk.discard();
+        helper.succeed();
+    }
+
+    static void werewolfBlowsSlamFoesIntoWalls(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer player = helper.makeMockServerPlayerInLevel();
+        player.setItemSlot(EquipmentSlot.LEGS, new ItemStack(ModItems.WEREWOLF_BELT.get()));
+        for (int z = 0; z <= 2; z++) {
+            for (int y = 1; y <= 2; y++) {
+                helper.setBlock(new BlockPos(6, y, z), Blocks.STONE);
+            }
+        }
+        Husk walled = spawnSturdyHusk(helper, new BlockPos(5, 1, 1));
+        Husk free = spawnSturdyHusk(helper, new BlockPos(2, 1, 7));
+        BloodMoon.start(level);
+        try {
+            WerewolfBelt.tickForm(player);
+            Vec3 byTheWall = helper.absoluteVec(new Vec3(3.5, 1.0, 1.5));
+            player.teleportTo(byTheWall.x, byTheWall.y, byTheWall.z);
+            player.attack(walled);
+            Vec3 inTheOpen = helper.absoluteVec(new Vec3(0.5, 1.0, 7.5));
+            player.teleportTo(inTheOpen.x, inTheOpen.y, inTheOpen.z);
+            player.attack(free);
+        } finally {
+            BloodMoon.stop(level);
+        }
+        helper.startSequence()
+                .thenExecuteAfter(8, () -> {
+                    helper.assertTrue(BloodSpear.isStaggered(walled), Component.literal("Driven into the wall, it should be slammed against it"));
+                    helper.assertTrue(!BloodSpear.isStaggered(free), Component.literal("Driven across open ground, it shouldn't"));
+                    helper.assertTrue(walled.getHealth() < free.getHealth() - 3.0F,
+                            Component.literal("The wall should hurt: " + walled.getHealth() + " against " + free.getHealth()));
+                })
+                .thenExecute(() -> {
+                    walled.discard();
+                    free.discard();
+                    WerewolfBelt.tickForm(player);
+                    level.getServer().getPlayerList().remove(player);
+                })
+                .thenSucceed();
+    }
+
+    static void huntersHuntWerewolfPlayers(GameTestHelper helper) {
+        ServerPlayer player = makeSurvivalPlayer(helper, new Vec3(2.5, 1.0, 4.5));
+        player.setData(ModAttachments.HUNTER_RANK, HunterRanks.MAX_RANK);
+        Hunter hunter = helper.spawn(ModEntities.HUNTER.get(), new BlockPos(6, 1, 4));
+        hunter.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_AXE));
+        helper.startSequence()
+                .thenIdle(30)
+                .thenExecute(() -> {
+                    helper.assertTrue(hunter.getTarget() == null, Component.literal("A hunter should leave a fellow hunter be"));
+                    player.setData(ModAttachments.WEREWOLF_FORM, true);
+                })
+                .thenWaitUntil(() -> helper.assertTrue(hunter.getTarget() == player, Component.literal("A hunter should hunt a werewolf, even one of their own")))
+                .thenExecute(() -> {
+                    WerewolfBelt.turnBack(player);
+                    helper.assertTrue(hunter.getTarget() == null, Component.literal("Turned back, they're a hunter again"));
+                    hunter.discard();
+                    helper.getLevel().getServer().getPlayerList().remove(player);
+                })
+                .thenSucceed();
     }
 }

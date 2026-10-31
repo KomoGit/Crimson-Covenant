@@ -130,5 +130,9 @@ public final class ModEffects {
     /// and Speed (see effect.FrenzyEffect)
     public static final DeferredHolder<MobEffect, FrenzyEffect> FRENZY = MOB_EFFECTS.register("frenzy", FrenzyEffect::new);
 
+    /// Eclipse Hide, a werewolf's power: nothing but silver hurts them. Checked in skill.MoonPowers.
+    public static final DeferredHolder<MobEffect, MobEffect> ECLIPSE_HIDE = MOB_EFFECTS.register("eclipse_hide",
+            () -> new MobEffect(MobEffectCategory.BENEFICIAL, 0x9FB4D8) {});
+
     private ModEffects() {}
 }

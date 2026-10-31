@@ -2,6 +2,7 @@ package com.zestudio.crimsoncovenant;
 
 import com.zestudio.crimsoncovenant.client.ModModelLayers;
 import com.zestudio.crimsoncovenant.client.hud.BloodBarLayer;
+import com.zestudio.crimsoncovenant.client.hud.MoonBarLayer;
 import com.zestudio.crimsoncovenant.client.hud.WhipReachLayer;
 import com.zestudio.crimsoncovenant.client.hud.FadingItemsLayer;
 import com.zestudio.crimsoncovenant.client.hud.SkillBarLayer;
@@ -21,6 +22,7 @@ import com.zestudio.crimsoncovenant.client.renderer.CrimsonLightningRenderer;
 import com.zestudio.crimsoncovenant.client.renderer.GargoyleRenderer;
 import com.zestudio.crimsoncovenant.client.renderer.GhostRenderer;
 import com.zestudio.crimsoncovenant.entity.Gargoyle;
+import com.zestudio.crimsoncovenant.item.WerewolfBelt;
 import com.zestudio.crimsoncovenant.client.renderer.HeadlessHorsemanRenderer;
 import com.zestudio.crimsoncovenant.client.renderer.GhostSteedRenderer;
 import com.zestudio.crimsoncovenant.client.renderer.HalloweenSpiritRenderer;
@@ -164,15 +166,17 @@ public class CrimsonCovenantClient {
     @SubscribeEvent
     static void registerGuiLayers(RegisterGuiLayersEvent event) {
         event.registerAbove(VanillaGuiLayers.FOOD_LEVEL, BloodBarLayer.ID, new BloodBarLayer());
+        event.registerAbove(VanillaGuiLayers.FOOD_LEVEL, MoonBarLayer.ID, new MoonBarLayer());
         event.registerAbove(VanillaGuiLayers.CROSSHAIR, WhipReachLayer.ID, new WhipReachLayer());
         event.registerAbove(VanillaGuiLayers.HOTBAR, SkillBarLayer.ID, new SkillBarLayer());
         event.registerAbove(VanillaGuiLayers.HOTBAR, FadingItemsLayer.ID, new FadingItemsLayer());
     }
 
-    // Vampires don't hunger, so they have no hunger bar: the blood bar takes its place
+    // Vampires don't hunger, so they have no hunger bar: the blood bar takes its place. A werewolf's moonbars do the same.
     @SubscribeEvent
     static void hideVampireHunger(RenderGuiLayerEvent.Pre event) {
-        if (event.getName().equals(VanillaGuiLayers.FOOD_LEVEL) && Minecraft.getInstance().getCameraEntity() instanceof Player player && Vampirism.isVampire(player)) {
+        if (event.getName().equals(VanillaGuiLayers.FOOD_LEVEL) && Minecraft.getInstance().getCameraEntity() instanceof Player player
+                && (Vampirism.isVampire(player) || WerewolfBelt.isTurned(player))) {
             event.setCanceled(true);
         }
     }

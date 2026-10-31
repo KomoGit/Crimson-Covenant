@@ -12,6 +12,7 @@ import com.zestudio.crimsoncovenant.registry.ModEntities;
 import com.zestudio.crimsoncovenant.vampirism.Vampirism;
 import com.zestudio.crimsoncovenant.world.BloodMoon;
 import com.zestudio.crimsoncovenant.hunter.HunterRanks;
+import com.zestudio.crimsoncovenant.item.WerewolfBelt;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderGetter;
@@ -133,9 +134,15 @@ public class Hunter extends PathfinderMob implements CrossbowAttackMob {
                 (target, level) -> target.is(EntityTypeTags.UNDEAD)));
         // Werewolves too, even though they're not undead
         this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, Werewolf.class, true));
-        // Hunters can tell when someone carries the vampire curse, even before they've fully turned
+        // Hunters can tell when someone carries the vampire curse, even before they've fully turned, and a werewolf is a
+        // werewolf, whoever it was by day
         this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, Player.class, true,
-                (target, level) -> target instanceof Player player && Vampirism.isTainted(player)));
+                (target, level) -> target instanceof Player player && huntsPlayer(player)));
+    }
+
+    /// Whether hunters go for this player on sight, whatever their rank among them
+    public static boolean huntsPlayer(Player player) {
+        return Vampirism.isTainted(player) || WerewolfBelt.isTurned(player);
     }
 
     @Override

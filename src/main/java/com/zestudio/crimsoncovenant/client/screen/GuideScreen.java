@@ -250,7 +250,7 @@ public class GuideScreen extends Screen {
     private void writeEvents(Writer w) {
         w.chapter("events", key("chapter.events"));
         // Only what happens, never who: the creatures are for the bestiary, once they've been met
-        for (String event : new String[] {"blood_moon", "hunter_parties", "graveyards", "rabies"}) {
+        for (String event : new String[] {"blood_moon", "hunter_parties", "graveyards", "rabies", "moon_gift"}) {
             w.heading(key("event." + event));
             w.para(key("event." + event + ".text"));
         }

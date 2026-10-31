@@ -66,7 +66,7 @@ public class BloodBarLayer implements GuiLayer {
     }
 
     // Same layout as the hunger bar: filled from the right
-    private static void drawRow(GuiGraphicsExtractor graphics, int xRight, int y, int drops, int blood, Identifier full, Identifier half, Identifier empty) {
+    static void drawRow(GuiGraphicsExtractor graphics, int xRight, int y, int drops, int blood, Identifier full, Identifier half, Identifier empty) {
         for (int i = 0; i < drops; i++) {
             int x = xRight - i * 8 - 9;
             int dropBlood = blood - i * BLOOD_PER_DROP;
