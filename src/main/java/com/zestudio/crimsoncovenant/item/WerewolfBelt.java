@@ -4,12 +4,14 @@ import java.util.List;
 
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
 import com.zestudio.crimsoncovenant.entity.Hunter;
+import com.zestudio.crimsoncovenant.entity.Vampire;
 import com.zestudio.crimsoncovenant.entity.Werewolf;
 import com.zestudio.crimsoncovenant.registry.ModAttachments;
 import com.zestudio.crimsoncovenant.registry.ModEffects;
 import com.zestudio.crimsoncovenant.registry.ModItems;
 import com.zestudio.crimsoncovenant.skill.MoonPowers;
 import com.zestudio.crimsoncovenant.skill.Possession;
+import com.zestudio.crimsoncovenant.skill.SkillKeeper;
 import com.zestudio.crimsoncovenant.vampirism.Vampirism;
 import com.zestudio.crimsoncovenant.world.WerewolfSpawner;
 
@@ -24,6 +26,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -37,12 +40,14 @@ import net.minecraft.world.entity.animal.wolf.WolfSoundVariants;
 import net.minecraft.world.entity.monster.skeleton.AbstractSkeleton;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
 import net.minecraft.world.item.component.ItemLore;
 import net.minecraft.world.item.equipment.EquipmentAsset;
 import net.minecraft.world.item.equipment.EquipmentAssets;
 import net.minecraft.world.item.equipment.Equippable;
 import net.minecraft.world.level.Level;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.EntityEvent;
@@ -55,7 +60,9 @@ import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 /// The Werewolf Belt, made from Werewolf Hide and worn in the leggings slot. Whoever wears it on a full-moon or Blood Moon
 /// night turns into a werewolf, like it or not, unless they're a vampire: Strength III, Speed II, Jump Boost III, ten extra
 /// hearts, blows that land as if with Knockback II, and eyes higher off the ground (the body stays a player's size, so
-/// doorways still fit). They don't hunger: their moonbars and four powers take its place (see skill.MoonPowers). It's the
+/// doorways still fit). They don't hunger: their moonbars and four powers take its place (see skill.MoonPowers). Vampire
+/// blood has no hold on them: they can drink it, and a vampire's kill won't infect them, nor cost them the belt, though it
+/// costs the belt some of its wear. It's mended with Werewolf Hide. It's the
 /// player's own body still, with their own hands and inventory, only drawn as the beast (see
 /// client.renderer.PossessionRenderer). The beast leaves them at dawn, when the belt comes off, or if they leave the
 /// overworld (or the game), die, or turn vampire. Changing shape leaves them as badly hurt as they were, so slipping the
@@ -77,6 +84,12 @@ public final class WerewolfBelt {
     public static final float SKELETON_FEAR_RANGE = 12.0F;
     /// A werewolf's eyes are this much higher, for the camera: about where the drawn beast's are
     public static final float EYE_HEIGHT_SCALE = 1.2F;
+    public static final int DURABILITY = 100;
+    /// What a vampire's kill costs the belt: four of them and it's gone
+    public static final int VAMPIRE_KILL_DAMAGE = 25;
+    /// One short of full, so a werewolf can still eat, for raw flesh (see skill.MoonPowers), but it's near enough to sprint
+    /// and heal on
+    private static final int WEREWOLF_FOOD = 19;
     private static final int EFFECT_REFRESH = 20;
     private static final int EFFECT_TICKS = 50;
     /// How far off skeletons give up on, and hunters forget, a player who changes shape
@@ -87,9 +100,9 @@ public final class WerewolfBelt {
 
     private WerewolfBelt() {}
 
-    /// Worn, not fought in: it takes no damage and gives no armor
+    /// Worn, not fought in: blows don't wear it and it gives no armor
     public static Item.Properties properties(Item.Properties properties) {
-        return properties.stacksTo(1).rarity(Rarity.RARE)
+        return properties.durability(DURABILITY).repairable(ModItems.WEREWOLF_HIDE.get()).rarity(Rarity.RARE)
                 .component(DataComponents.EQUIPPABLE, Equippable.builder(EquipmentSlot.LEGS).setEquipSound(SoundEvents.ARMOR_EQUIP_LEATHER).setAsset(ASSET).setDamageOnHurt(false).build())
                 .component(DataComponents.LORE, new ItemLore(List.of(Component.translatable("item.crimsoncovenant.werewolf_belt.hint").withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC))));
     }
@@ -194,8 +207,8 @@ public final class WerewolfBelt {
             tell(player, Vampirism.isVampire(player) ? "message.crimsoncovenant.werewolf_belt.vampire"
                     : isWearing(player) ? "message.crimsoncovenant.werewolf_belt.moon_set" : "message.crimsoncovenant.werewolf_belt.taken_off");
         } else {
-            // No hunger: food stays full (so they can sprint and heal) but without saturation, as for a vampire
-            player.getFoodData().setFoodLevel(20);
+            // No hunger: food stays up (so they can sprint and heal) but without saturation, as for a vampire
+            player.getFoodData().setFoodLevel(WEREWOLF_FOOD);
             player.getFoodData().setSaturation(0.0F);
             if (player.tickCount % EFFECT_REFRESH == 0) {
                 giveEffects(player);
@@ -249,10 +262,28 @@ public final class WerewolfBelt {
 
     // ---- Ends ----
 
-    // The form isn't saved, so it's over if the player leaves, and a corpse falls as a player
-    @SubscribeEvent
+    /// Killed by a vampire as a werewolf, the belt stays with them for a price (the rest of the death is in Vampirism)
+    private static void keepBelt(ServerPlayer player) {
+        ItemStack belt = player.getItemBySlot(EquipmentSlot.LEGS).copy();
+        player.setItemSlot(EquipmentSlot.LEGS, ItemStack.EMPTY);
+        belt.setDamageValue(belt.getDamageValue() + VAMPIRE_KILL_DAMAGE);
+        if (belt.getDamageValue() < belt.getMaxDamage()) {
+            SkillKeeper.keep(player, belt);
+        }
+    }
+
+    private static boolean isVampire(DamageSource source) {
+        return source.getEntity() instanceof Vampire || (source.getEntity() instanceof Player player && Vampirism.isVampire(player));
+    }
+
+    // The form isn't saved, so it's over if the player leaves, and a corpse falls as a player. Last, so that the rest of
+    // the death still sees a werewolf.
+    @SubscribeEvent(priority = EventPriority.LOWEST)
     static void onDeath(LivingDeathEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
+            if (isTurned(player) && isWearing(player) && isVampire(event.getSource())) {
+                keepBelt(player);
+            }
             turnBack(player);
         }
     }

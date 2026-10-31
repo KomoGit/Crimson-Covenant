@@ -19,7 +19,8 @@ import net.minecraft.world.level.Level;
 
 /// A bottle of blood, sold by the Ancient Butler and carried by vampires (who drop it when they die). A vampire who
 /// drinks it refills their blood bar a good way. It's tainted with the curse: a human who drinks it is sick to their
-/// stomach and catches Sanguine Vampiris.
+/// stomach and catches Sanguine Vampiris. A werewolf drinks it like anything else: the curse has no hold on them (see
+/// WerewolfBelt).
 public class BloodBottleItem extends Item {
     public static final int BLOOD = 30;
 
@@ -32,7 +33,7 @@ public class BloodBottleItem extends Item {
         if (!level.isClientSide() && entity instanceof Player player) {
             if (Vampirism.isVampire(player)) {
                 BloodPool.add(player, BLOOD);
-            } else {
+            } else if (!WerewolfBelt.isTurned(player)) {
                 player.addEffect(new MobEffectInstance(MobEffects.NAUSEA, 200));
                 player.addEffect(new MobEffectInstance(MobEffects.HUNGER, 200));
                 if (!Vampirism.isInfected(player)) {

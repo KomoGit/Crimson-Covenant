@@ -167,6 +167,7 @@ public final class PossessionRenderer {
                 boolean unseen = body != null && body.form() == WEREWOLF_BODY && avatar.isInvisible();
                 state.setRenderData(BODY, body == null || unseen ? null : body.entity());
                 state.setRenderData(FUSE, avatar instanceof Player player ? player.getData(ModAttachments.CREEPER_FUSE) : 0);
+                state.setRenderData(EclipseHideLayer.ACTIVE, avatar instanceof Player player && player.getData(ModAttachments.ECLIPSE_HIDE_VISIBLE));
             }
         });
     }
@@ -196,6 +197,7 @@ public final class PossessionRenderer {
             humanoid.currentSwing = playerState.currentSwing;
             humanoid.swingAnimation = playerState.swingAnimation;
             humanoid.isCrouching = playerState.isCrouching;
+            humanoid.setRenderData(EclipseHideLayer.ACTIVE, playerState.getRenderDataOrDefault(EclipseHideLayer.ACTIVE, false));
         }
         CameraRenderState camera = minecraft.gameRenderer.gameRenderState().levelRenderState.cameraRenderState;
         submit(dispatcher, bodyState, event.getPoseStack(), event.getSubmitNodeCollector(), camera);

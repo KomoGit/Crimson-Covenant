@@ -32,19 +32,22 @@ import net.minecraft.world.entity.animal.wolf.WolfSoundVariants;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.common.Tags;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
+import net.neoforged.neoforge.event.entity.living.LivingEntityUseItemEvent;
 import net.neoforged.neoforge.event.entity.living.LivingFallEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.tick.EntityTickEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
 /// What a werewolf player (see item.WerewolfBelt) has in place of hunger: moonbars, shown where the hunger bar would be.
-/// Every shape-change starts them at 0, and every kill adds half the victim's health. They pay for the four powers every
-/// werewolf has from the start, on the skill keys. They can't be swapped or upgraded.
+/// Every shape-change starts them at 0, every kill adds half the victim's health, and raw flesh is half a moon. They pay
+/// for the four powers every werewolf has from the start, on the skill keys. They can't be swapped or upgraded.
 ///
 /// A werewolf's blows also drive what they strike back a few blocks, the way a Blood Spear does: into a wall, and it's
 /// slammed against it for extra damage.
@@ -57,7 +60,7 @@ public final class MoonPowers {
         MADDENING_HOWL("maddening_howl", 20),
         /// A great leap, and where it comes down everything nearby is hurt and flung away
         MOONFALL("moonfall", 30),
-        /// For a minute nothing hurts the werewolf but silver
+        /// For a minute blows land at a tenth of their force, unless they're silver. It's a long while coming back.
         ECLIPSE_HIDE("eclipse_hide", 50);
 
         private final String name;
@@ -89,6 +92,11 @@ public final class MoonPowers {
     public static final double MOONFALL_RADIUS = 5.0;
     public static final float MOONFALL_DAMAGE = 8.0F;
     public static final int ECLIPSE_HIDE_TICKS = 1200;
+    /// Five minutes from the moment it's called on: a couple of times in a night
+    public static final int ECLIPSE_HIDE_COOLDOWN = 6000;
+    public static final float ECLIPSE_HIDE_DAMAGE_LEFT = 0.1F;
+    /// A moon on the bar is worth 10, so this is half of one
+    public static final int RAW_FLESH_MOON = 5;
     /// How far a blow drives what it strikes: about 3 blocks, unless a wall stops it first
     private static final double BLOW_DRIVE_SPEED = 0.8;
     private static final double MOONFALL_FLING_SPEED = 1.2;
@@ -216,9 +224,19 @@ public final class MoonPowers {
 
     @SubscribeEvent
     static void tick(PlayerTickEvent.Post event) {
-        if (event.getEntity() instanceof ServerPlayer player && isLeaping(player)
-                && (player.onGround() || player.isInWater()) && player.level().getGameTime() - player.getData(ModAttachments.MOONFALL_LEAPT_AT) >= LEAP_MIN_TICKS) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            tickPlayer(player);
+        }
+    }
+
+    /// Brings a leap down, and lets everyone nearby see whether Eclipse Hide is up
+    public static void tickPlayer(ServerPlayer player) {
+        if (isLeaping(player) && (player.onGround() || player.isInWater()) && player.level().getGameTime() - player.getData(ModAttachments.MOONFALL_LEAPT_AT) >= LEAP_MIN_TICKS) {
             land(player);
+        }
+        boolean shelled = player.hasEffect(ModEffects.ECLIPSE_HIDE);
+        if (player.getData(ModAttachments.ECLIPSE_HIDE_VISIBLE) != shelled) {
+            player.setData(ModAttachments.ECLIPSE_HIDE_VISIBLE, shelled);
         }
     }
 
@@ -251,11 +269,22 @@ public final class MoonPowers {
 
     // ---- Eclipse Hide ----
 
+    /// How much of Eclipse Hide's cooldown is still to run, from 1 down to 0, for its icon
+    public static float eclipseHideCooldown(Player player) {
+        return Mth.clamp((player.getData(ModAttachments.ECLIPSE_HIDE_READY_AT) - player.level().getGameTime()) / (float) ECLIPSE_HIDE_COOLDOWN, 0.0F, 1.0F);
+    }
+
     private static boolean eclipseHide(ServerPlayer player) {
         if (player.hasEffect(ModEffects.ECLIPSE_HIDE)) {
             player.sendOverlayMessage(Component.translatable("message.crimsoncovenant.skill.already_active").withStyle(ChatFormatting.GRAY));
             return false;
         }
+        long ticksLeft = player.getData(ModAttachments.ECLIPSE_HIDE_READY_AT) - player.level().getGameTime();
+        if (ticksLeft > 0L) {
+            player.sendOverlayMessage(Component.translatable("message.crimsoncovenant.moon.recharging", Power.ECLIPSE_HIDE.displayName(), Mth.ceil(ticksLeft / 20.0F)).withStyle(ChatFormatting.GRAY));
+            return false;
+        }
+        player.setData(ModAttachments.ECLIPSE_HIDE_READY_AT, player.level().getGameTime() + ECLIPSE_HIDE_COOLDOWN);
         player.addEffect(new MobEffectInstance(ModEffects.ECLIPSE_HIDE, ECLIPSE_HIDE_TICKS));
         player.level().sendParticles(ParticleTypes.END_ROD, player.getX(), player.getY(0.5), player.getZ(), 30, 0.5, 0.8, 0.5, 0.02);
         howl(player, 0.8F);
@@ -272,11 +301,23 @@ public final class MoonPowers {
     @SubscribeEvent
     static void eclipseHideTurnsTheBlow(LivingIncomingDamageEvent event) {
         if (event.getEntity().hasEffect(ModEffects.ECLIPSE_HIDE) && !isSilver(event.getSource()) && !event.getSource().is(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
-            event.setCanceled(true);
+            event.setAmount(event.getAmount() * ECLIPSE_HIDE_DAMAGE_LEFT);
         }
     }
 
     // ---- The hunt ----
+
+    /// Raw meat of any kind, and rotten flesh
+    public static boolean isRawFlesh(ItemStack stack) {
+        return stack.is(Tags.Items.FOODS_RAW_MEAT) || stack.is(Items.ROTTEN_FLESH);
+    }
+
+    @SubscribeEvent
+    static void rawFleshFeedsTheMoon(LivingEntityUseItemEvent.Finish event) {
+        if (event.getEntity() instanceof ServerPlayer player && WerewolfBelt.isTurned(player) && isRawFlesh(event.getItem())) {
+            set(player, get(player) + RAW_FLESH_MOON);
+        }
+    }
 
     @SubscribeEvent
     static void killsFillTheMoon(LivingDeathEvent event) {

@@ -27,6 +27,7 @@ import com.zestudio.crimsoncovenant.registry.ModPotions;
 import com.zestudio.crimsoncovenant.registry.ModVillagers;
 import com.zestudio.crimsoncovenant.skill.MoonPowers;
 import com.zestudio.crimsoncovenant.skill.NightOfTerror;
+import com.zestudio.crimsoncovenant.vampirism.Vampirism;
 import com.zestudio.crimsoncovenant.world.BloodMoon;
 import com.zestudio.crimsoncovenant.world.FactionVillagers;
 
@@ -83,6 +84,8 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.entity.living.LivingEntityUseItemEvent;
 
 /// GameTests for silver, decor blocks, the blood moon, faction villagers, werewolves and the newer
 /// Holy Water, Horseman and vampire behaviours. Registered in ModGameTests.
@@ -610,8 +613,8 @@ final class WorldGameTests {
                 helper.setBlock(new BlockPos(x, 3, z), Blocks.STONE);
             }
         }
-        ServerPlayer player = makeSurvivalPlayer(helper, new Vec3(1.5, 1.0, 4.5));
-        Skeleton skeleton = helper.spawn(EntityTypes.SKELETON, new BlockPos(3, 1, 4));
+        ServerPlayer player = makeSurvivalPlayer(helper, new Vec3(0.5, 1.0, 4.5));
+        Skeleton skeleton = helper.spawn(EntityTypes.SKELETON, new BlockPos(2, 1, 4));
         skeleton.setTarget(player);
         helper.assertTrue(skeleton.getTarget() == player, Component.literal("Nothing should frighten a skeleton off a plain player"));
         skeleton.setTarget(null);
@@ -620,7 +623,8 @@ final class WorldGameTests {
         helper.assertTrue(skeleton.getTarget() != player, Component.literal("A skeleton shouldn't take on a werewolf"));
         double start = skeleton.distanceTo(player);
         helper.startSequence()
-                .thenWaitUntil(() -> helper.assertTrue(skeleton.distanceTo(player) > start + 2.5, Component.literal("A skeleton should run from a werewolf")))
+                // It may bolt for either end of the arena: this far off is reachable whichever it picks
+                .thenWaitUntil(() -> helper.assertTrue(skeleton.distanceTo(player) > start + 1.5, Component.literal("A skeleton should run from a werewolf")))
                 .thenExecute(() -> {
                     skeleton.discard();
                     helper.getLevel().getServer().getPlayerList().remove(player);
@@ -668,7 +672,14 @@ final class WorldGameTests {
 
             player.getFoodData().setFoodLevel(5);
             WerewolfBelt.tickForm(player);
-            helper.assertValueEqual(player.getFoodData().getFoodLevel(), 20, "a werewolf's hunger");
+            helper.assertTrue(player.getFoodData().getFoodLevel() >= 18, Component.literal("A werewolf shouldn't hunger"));
+            helper.assertTrue(player.getFoodData().needsFood(), Component.literal("...but should still be able to eat"));
+
+            MoonPowers.set(player, 20);
+            for (ItemStack food : new ItemStack[] {new ItemStack(Items.BEEF), new ItemStack(Items.ROTTEN_FLESH), new ItemStack(Items.COOKED_BEEF)}) {
+                NeoForge.EVENT_BUS.post(new LivingEntityUseItemEvent.Finish(player, food, 0, ItemStack.EMPTY));
+            }
+            helper.assertValueEqual(MoonPowers.get(player), 30, "the moonbars after raw beef, rotten flesh and a cooked steak");
 
             player.setItemSlot(EquipmentSlot.LEGS, ItemStack.EMPTY);
             WerewolfBelt.tickForm(player);
@@ -725,6 +736,18 @@ final class WorldGameTests {
             MoonPowers.set(player, 50);
             helper.assertTrue(MoonPowers.tryCast(player, MoonPowers.Power.ECLIPSE_HIDE), Component.literal("Eclipse Hide should take hold"));
             helper.assertTrue(player.hasEffect(ModEffects.ECLIPSE_HIDE), Component.literal("It should last on the werewolf"));
+            MoonPowers.tickPlayer(player);
+            helper.assertTrue(player.getData(ModAttachments.ECLIPSE_HIDE_VISIBLE), Component.literal("Those nearby should see its shell"));
+            player.removeEffect(ModEffects.ECLIPSE_HIDE);
+            MoonPowers.tickPlayer(player);
+            helper.assertTrue(!player.getData(ModAttachments.ECLIPSE_HIDE_VISIBLE), Component.literal("The shell should go with it"));
+
+            MoonPowers.set(player, 50);
+            helper.assertTrue(MoonPowers.eclipseHideCooldown(player) > 0.9F, Component.literal("Eclipse Hide should have a long way to come back"));
+            helper.assertTrue(!MoonPowers.tryCast(player, MoonPowers.Power.ECLIPSE_HIDE), Component.literal("Eclipse Hide should be slow to come back"));
+            helper.assertValueEqual(MoonPowers.get(player), 50, "the moon, not spent on a power that wouldn't come");
+            player.setData(ModAttachments.ECLIPSE_HIDE_READY_AT, 0L);
+            helper.assertTrue(MoonPowers.tryCast(player, MoonPowers.Power.ECLIPSE_HIDE), Component.literal("Rested, it should come again"));
         } finally {
             BloodMoon.stop(level);
         }
@@ -740,16 +763,60 @@ final class WorldGameTests {
                 .thenSucceed();
     }
 
-    static void eclipseHideOnlyLetsSilverThrough(GameTestHelper helper) {
+    static void eclipseHideSparesAllButSilver(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Husk husk = spawnSturdyHusk(helper, new BlockPos(4, 1, 4));
         husk.addEffect(new MobEffectInstance(ModEffects.ECLIPSE_HIDE, 100));
-        husk.hurtServer(level, level.damageSources().generic(), 5.0F);
-        husk.hurtServer(level, level.damageSources().inFire(), 5.0F);
-        helper.assertTrue(husk.getHealth() == husk.getMaxHealth(), Component.literal("Eclipse Hide should turn aside anything but silver"));
-        husk.hurtServer(level, level.damageSources().source(ModDamageTypes.SILVER_TRAP), 5.0F);
-        helper.assertTrue(husk.getHealth() < husk.getMaxHealth(), Component.literal("Silver should get through"));
+        husk.hurtServer(level, level.damageSources().generic(), 50.0F);
+        float taken = husk.getMaxHealth() - husk.getHealth();
+        helper.assertTrue(taken > 0.0F && taken <= 5.0F, Component.literal("Eclipse Hide should take 90% off a blow, but it took " + taken));
+        husk.damageCooldownTime = 0;
+        husk.hurtServer(level, level.damageSources().source(ModDamageTypes.SILVER_TRAP), 30.0F);
+        float silver = husk.getMaxHealth() - husk.getHealth() - taken;
+        helper.assertTrue(silver > 20.0F, Component.literal("Silver should get through in full, but it took " + silver));
         husk.discard();
+        helper.succeed();
+    }
+
+    static void werewolvesShrugOffTheVampireCurse(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        Vampire vampire = helper.spawnWithNoFreeWill(ModEntities.VAMPIRE.get(), new BlockPos(2, 1, 4));
+        ItemStack belt = new ItemStack(ModItems.WEREWOLF_BELT.get());
+        helper.assertValueEqual(belt.getMaxDamage(), WerewolfBelt.DURABILITY, "the belt's durability");
+        ServerPlayer werewolf = helper.makeMockServerPlayerInLevel();
+        werewolf.setItemSlot(EquipmentSlot.LEGS, belt.copy());
+        ServerPlayer unlucky = helper.makeMockServerPlayerInLevel();
+        unlucky.setItemSlot(EquipmentSlot.LEGS, belt.copy());
+        ServerPlayer worn = helper.makeMockServerPlayerInLevel();
+        ItemStack almostGone = belt.copy();
+        almostGone.setDamageValue(WerewolfBelt.DURABILITY - 1);
+        worn.setItemSlot(EquipmentSlot.LEGS, almostGone);
+        BloodMoon.start(level);
+        try {
+            WerewolfBelt.tickForm(werewolf);
+            WerewolfBelt.tickForm(unlucky);
+            WerewolfBelt.tickForm(worn);
+            new ItemStack(ModItems.BLOOD_BOTTLE.get()).finishUsingItem(level, werewolf);
+            helper.assertTrue(!Vampirism.isInfected(werewolf), Component.literal("A werewolf should drink blood without catching the curse"));
+            werewolf.die(level.damageSources().mobAttack(vampire));
+            unlucky.die(level.damageSources().generic());
+            worn.die(level.damageSources().mobAttack(vampire));
+        } finally {
+            BloodMoon.stop(level);
+        }
+        helper.assertTrue(!Vampirism.isInfected(werewolf), Component.literal("A werewolf killed by a vampire shouldn't catch the curse"));
+        helper.assertTrue(!WerewolfBelt.isTurned(werewolf), Component.literal("Dying should end the form"));
+        helper.assertTrue(werewolf.getItemBySlot(EquipmentSlot.LEGS).isEmpty(), Component.literal("The belt shouldn't fall with them"));
+        List<ItemStack> kept = werewolf.getData(ModAttachments.KEPT_SKILLS);
+        helper.assertValueEqual(kept.size(), 1, "what a vampire's kill leaves them");
+        helper.assertTrue(kept.getFirst().is(ModItems.WEREWOLF_BELT.get()), Component.literal("It should be the belt"));
+        helper.assertValueEqual(kept.getFirst().getDamageValue(), WerewolfBelt.VAMPIRE_KILL_DAMAGE, "the wear a vampire's kill does the belt");
+        helper.assertTrue(unlucky.getData(ModAttachments.KEPT_SKILLS).isEmpty(), Component.literal("Any other death takes the belt as usual"));
+        helper.assertTrue(worn.getData(ModAttachments.KEPT_SKILLS).isEmpty(), Component.literal("A belt worn through should break"));
+        vampire.discard();
+        level.getServer().getPlayerList().remove(werewolf);
+        level.getServer().getPlayerList().remove(unlucky);
+        level.getServer().getPlayerList().remove(worn);
         helper.succeed();
     }
 

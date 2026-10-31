@@ -18,6 +18,7 @@ public class WerewolfRenderer extends HumanoidMobRenderer<Werewolf, HumanoidRend
 
     public WerewolfRenderer(EntityRendererProvider.Context context) {
         super(context, new HumanoidModel<>(context.bakeLayer(ModModelLayers.WEREWOLF)), 0.6F);
+        this.addLayer(new EclipseHideLayer(this, context.getModelSet()));
     }
 
     @Override

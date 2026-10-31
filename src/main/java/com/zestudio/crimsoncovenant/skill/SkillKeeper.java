@@ -54,6 +54,13 @@ public final class SkillKeeper {
         }
     }
 
+    /// Sets one more thing aside, to be handed back on respawn
+    public static void keep(Player player, ItemStack stack) {
+        List<ItemStack> kept = new ArrayList<>(player.getData(ModAttachments.KEPT_SKILLS));
+        kept.add(stack);
+        player.setData(ModAttachments.KEPT_SKILLS, List.copyOf(kept));
+    }
+
     public static void giveBack(Player player) {
         List<ItemStack> kept = player.getData(ModAttachments.KEPT_SKILLS);
         if (kept.isEmpty()) {

@@ -13,6 +13,8 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.TestData;
 import net.minecraft.gametest.framework.TestEnvironmentDefinition;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.gamerules.GameRuleMap;
+import net.minecraft.world.level.gamerules.GameRules;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.event.RegisterGameTestsEvent;
 import net.neoforged.neoforge.registries.DeferredHolder;
@@ -332,7 +334,8 @@ public final class ModGameTests {
         soloTest("werewolves_know_their_own", WorldGameTests::werewolvesKnowTheirOwn);
         soloTest("moonbars_fill_with_the_hunt", WorldGameTests::moonbarsFillWithTheHunt);
         soloTest("moon_powers_cost_moon", WorldGameTests::moonPowersCostMoon);
-        test("eclipse_hide_only_lets_silver_through", WorldGameTests::eclipseHideOnlyLetsSilverThrough);
+        test("eclipse_hide_spares_all_but_silver", WorldGameTests::eclipseHideSparesAllButSilver);
+        soloTest("werewolves_shrug_off_the_vampire_curse", WorldGameTests::werewolvesShrugOffTheVampireCurse);
         soloTest("werewolf_blows_slam_foes_into_walls", WorldGameTests::werewolfBlowsSlamFoesIntoWalls);
     }
 
@@ -390,14 +393,22 @@ public final class ModGameTests {
         return new TestEnvironmentDefinition.Weather(TestEnvironmentDefinition.Weather.Type.CLEAR);
     }
 
+    private static TestEnvironmentDefinition<?> stoppedClock() {
+        GameRuleMap rules = GameRuleMap.of();
+        rules.set(GameRules.ADVANCE_TIME, false);
+        return new TestEnvironmentDefinition.SetGameRules(rules);
+    }
+
     private static void registerTests(RegisterGameTestsEvent event) {
-        // Clear skies for every test: a storm darkens noon enough to throw off the ones about daylight
-        Holder<TestEnvironmentDefinition<?>> shared = event.registerEnvironment(CrimsonCovenant.id("default"), clearSkies());
+        // Clear skies for every test: a storm darkens noon enough to throw off the ones about daylight. And the clock
+        // stopped: otherwise the suite runs on past dusk into the first night, a full moon, and whichever batch comes last
+        // finds it isn't day.
+        Holder<TestEnvironmentDefinition<?>> shared = event.registerEnvironment(CrimsonCovenant.id("default"), clearSkies(), stoppedClock());
         // Tests are batched by environment, so an environment of their own keeps isolated tests apart
-        Holder<TestEnvironmentDefinition<?>> isolated = event.registerEnvironment(CrimsonCovenant.id("isolated"), clearSkies());
-        Holder<TestEnvironmentDefinition<?>> withPlayer = event.registerEnvironment(CrimsonCovenant.id("with_player"), clearSkies());
-        Holder<TestEnvironmentDefinition<?>> calm = event.registerEnvironment(CrimsonCovenant.id("calm"), clearSkies());
-        Holder<TestEnvironmentDefinition<?>> horseman = event.registerEnvironment(CrimsonCovenant.id("horseman"), clearSkies());
+        Holder<TestEnvironmentDefinition<?>> isolated = event.registerEnvironment(CrimsonCovenant.id("isolated"), clearSkies(), stoppedClock());
+        Holder<TestEnvironmentDefinition<?>> withPlayer = event.registerEnvironment(CrimsonCovenant.id("with_player"), clearSkies(), stoppedClock());
+        Holder<TestEnvironmentDefinition<?>> calm = event.registerEnvironment(CrimsonCovenant.id("calm"), clearSkies(), stoppedClock());
+        Holder<TestEnvironmentDefinition<?>> horseman = event.registerEnvironment(CrimsonCovenant.id("horseman"), clearSkies(), stoppedClock());
         for (TestEntry test : TESTS) {
             ResourceKey<Consumer<GameTestHelper>> key = test.function().getKey();
             Holder<TestEnvironmentDefinition<?>> environment = switch (test.batch()) {
@@ -406,7 +417,7 @@ public final class ModGameTests {
                 case WITH_PLAYER -> withPlayer;
                 case CALM -> calm;
                 case HORSEMAN -> horseman;
-                case SOLO -> event.registerEnvironment(CrimsonCovenant.id("solo/" + key.identifier().getPath()), clearSkies());
+                case SOLO -> event.registerEnvironment(CrimsonCovenant.id("solo/" + key.identifier().getPath()), clearSkies(), stoppedClock());
             };
             event.registerTest(key.identifier(), new FunctionGameTestInstance(key,
                     new TestData<>(environment, CrimsonCovenant.id("arena"), test.maxTicks(), 0, true)));

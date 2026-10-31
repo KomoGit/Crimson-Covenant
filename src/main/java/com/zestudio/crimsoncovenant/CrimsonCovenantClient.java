@@ -114,6 +114,8 @@ public class CrimsonCovenantClient {
         event.registerLayerDefinition(ModModelLayers.GHOST, GhostModel::createBodyLayer);
         event.registerLayerDefinition(ModModelLayers.HALLOWEEN_SPIRIT, HalloweenSpiritModel::createBodyLayer);
         event.registerLayerDefinition(ModModelLayers.WEREWOLF, WerewolfModel::createBodyLayer);
+        // Slightly inflated, as with the vampire's blood armor
+        event.registerLayerDefinition(ModModelLayers.WEREWOLF_ECLIPSE_HIDE, () -> WerewolfModel.createLayer(new CubeDeformation(0.5F)));
         event.registerLayerDefinition(ModModelLayers.GARGOYLE, GargoyleModel::createBodyLayer);
         event.registerLayerDefinition(ModModelLayers.BLOOD_SPEAR, BloodSpearModel::createLayer);
         event.registerLayerDefinition(ModModelLayers.RAT, RatModel::createBodyLayer);

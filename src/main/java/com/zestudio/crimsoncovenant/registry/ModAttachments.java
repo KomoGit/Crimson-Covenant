@@ -180,6 +180,16 @@ public final class ModAttachments {
     public static final Supplier<AttachmentType<Integer>> MOON = ATTACHMENT_TYPES.register("moon",
             () -> AttachmentType.builder(() -> 0).sync((holder, to) -> holder == to, ByteBufCodecs.VAR_INT).build());
 
+    /// The game time a werewolf's Eclipse Hide can next be called on (see skill.MoonPowers). Sent to their own client for
+    /// the icon. Not saved.
+    public static final Supplier<AttachmentType<Long>> ECLIPSE_HIDE_READY_AT = ATTACHMENT_TYPES.register("eclipse_hide_ready_at",
+            () -> AttachmentType.builder(() -> 0L).sync((holder, to) -> holder == to, ByteBufCodecs.VAR_LONG).build());
+
+    /// Whether the player has Eclipse Hide up, sent to everyone nearby so they can see its shell (effects themselves only
+    /// reach the player's own client). Not saved.
+    public static final Supplier<AttachmentType<Boolean>> ECLIPSE_HIDE_VISIBLE = ATTACHMENT_TYPES.register("eclipse_hide_visible",
+            () -> AttachmentType.builder(() -> false).sync(ByteBufCodecs.BOOL).build());
+
     /// The game time a werewolf leapt with Moonfall, 0 when they aren't in the air (see skill.MoonPowers). Not saved.
     public static final Supplier<AttachmentType<Long>> MOONFALL_LEAPT_AT = ATTACHMENT_TYPES.register("moonfall_leapt_at",
             () -> AttachmentType.builder(() -> 0L).build());

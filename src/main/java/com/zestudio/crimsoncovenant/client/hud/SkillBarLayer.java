@@ -14,6 +14,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.client.gui.GuiLayer;
@@ -72,6 +73,10 @@ public class SkillBarLayer implements GuiLayer {
             graphics.blitSprite(RenderPipelines.GUI_TEXTURED, CrimsonCovenant.id("hud/moon_power_" + powers[i].getName()), x + 3, y + 4, 16, 16);
             if (moon < powers[i].cost()) {
                 graphics.fill(x + 3, y + 4, x + 19, y + 20, TOO_DEAR);
+            } else if (powers[i] == MoonPowers.Power.ECLIPSE_HIDE) {
+                // Its long cooldown, draining away from the top
+                int waiting = Mth.ceil(16.0F * MoonPowers.eclipseHideCooldown(player));
+                graphics.fill(x + 3, y + 20 - waiting, x + 19, y + 20, TOO_DEAR);
             }
             String key = ModKeyMappings.CAST_SKILL[i].getTranslatedKeyMessage().getString();
             graphics.text(minecraft.font, key, x + 22, y + 12, MOON_KEY_LABEL_COLOR, true);

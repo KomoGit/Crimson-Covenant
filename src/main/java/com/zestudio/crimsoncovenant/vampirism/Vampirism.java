@@ -1,6 +1,7 @@
 package com.zestudio.crimsoncovenant.vampirism;
 
 import com.zestudio.crimsoncovenant.CrimsonCovenant;
+import com.zestudio.crimsoncovenant.item.WerewolfBelt;
 import com.zestudio.crimsoncovenant.entity.Gargoyle;
 import com.zestudio.crimsoncovenant.entity.MasterVampire;
 import com.zestudio.crimsoncovenant.entity.Vampire;
@@ -153,10 +154,11 @@ public final class Vampirism {
             return;
         }
         // Dying with the curse in your blood cuts the wait short: you rise as a vampire.
-        // Otherwise, players killed by a vampire (bites or arrows) wake up infected. The data survives death.
+        // Otherwise, players killed by a vampire (bites or arrows) wake up infected, werewolves aside (see
+        // item.WerewolfBelt). The data survives death.
         if (isInfected(player) || player.hasEffect(ModEffects.SANGUINE_VAMPIRIS)) {
             turn(player, "message.crimsoncovenant.turned_in_death");
-        } else if (event.getSource().getEntity() instanceof Vampire) {
+        } else if (event.getSource().getEntity() instanceof Vampire && !WerewolfBelt.isTurned(player)) {
             infect(player, INFECTION_DURATION);
         }
     }
