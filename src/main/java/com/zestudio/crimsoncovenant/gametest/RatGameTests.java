@@ -711,6 +711,112 @@ final class RatGameTests {
         });
     }
 
+    static void rabidAnimalsFearWaterToo(GameTestHelper helper) {
+        helper.setBlock(new BlockPos(1, 0, 4), Blocks.WATER);
+        Vec3 water = helper.absoluteVec(new Vec3(1.5, 0.5, 4.5));
+        Wolf wolf = helper.spawn(EntityTypes.WOLF, new BlockPos(2, 1, 4));
+        Rabies.becomeRabid(wolf);
+        helper.succeedWhen(() -> {
+            helper.assertTrue(wolf.position().distanceTo(water) > 4.0, Component.literal("A rabid wolf should run from water as a hydrophobic one does"));
+            wolf.discard();
+        });
+    }
+
+    static void rabidAnimalsLeaveThoseByWaterAlone(GameTestHelper helper) {
+        Fox fox = helper.spawn(EntityTypes.FOX, new BlockPos(2, 1, 4));
+        Cow cow = helper.spawnWithNoFreeWill(EntityTypes.COW, new BlockPos(5, 1, 4));
+        float health = cow.getHealth();
+        Rabies.becomeRabid(fox);
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(fox.getTarget() == cow, Component.literal("The rabid fox should go for the cow")))
+                .thenExecute(() -> {
+                    // Water appears beside the cow while the fox is still on its way: it's as good as reaching it
+                    helper.setBlock(new BlockPos(5, 0, 6), Blocks.WATER);
+                    helper.assertTrue(Rabies.byWater(cow) && !Rabies.wantsToBite(fox, cow), Component.literal("A rabid animal shouldn't want anyone standing by water"));
+                })
+                .thenWaitUntil(() -> helper.assertTrue(fox.getTarget() != cow, Component.literal("The rabid fox should give up on a cow by water")))
+                .thenExecuteAfter(40, () -> {
+                    helper.assertValueEqual(cow.getHealth(), health, "the health of the cow by the water");
+                    fox.discard();
+                    cow.discard();
+                })
+                .thenSucceed();
+    }
+
+    static void rabidAnimalsSnapAtWhatCantCatchIt(GameTestHelper helper) {
+        Fox fox = helper.spawn(EntityTypes.FOX, new BlockPos(2, 1, 4));
+        Villager villager = helper.spawnWithNoFreeWill(EntityTypes.VILLAGER, new BlockPos(4, 1, 4));
+        IronGolem golem = helper.spawnWithNoFreeWill(EntityTypes.IRON_GOLEM, new BlockPos(2, 1, 7));
+        Zombie zombie = helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, new BlockPos(4, 1, 2));
+        zombie.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+        Villager far = helper.spawnWithNoFreeWill(EntityTypes.VILLAGER, new BlockPos(8, 1, 8));
+        villager.setHealth(2.0F);
+        Rabies.becomeRabid(fox);
+        helper.assertTrue(Rabies.wantsToBite(fox, villager) && Rabies.wantsToBite(fox, golem) && Rabies.wantsToBite(fox, zombie),
+                Component.literal("A rabid animal should go for anything close, whether it can catch rabies or not"));
+        helper.assertTrue(!Rabies.wantsToBite(fox, far), Component.literal("A rabid animal should leave be mobs that keep their distance"));
+        // Only the villager stays, so it's the one bitten
+        golem.discard();
+        zombie.discard();
+        far.discard();
+        helper.succeedWhen(() -> {
+            helper.assertTrue(villager.getHealth() < 2.0F, Component.literal("The rabid fox should bite the villager beside it"));
+            helper.assertTrue(villager.isAlive(), Component.literal("The rabid fox shouldn't bite the villager to death"));
+            helper.assertTrue(!Rabies.isSick(villager) && !Rabies.bite(fox, villager, 0.0F), Component.literal("Bitten or not, a villager can't catch rabies"));
+            helper.assertTrue(fox.getTarget() == null && !Rabies.wantsToBite(fox, villager), Component.literal("Having snapped at the villager, the fox should leave it a while"));
+            fox.discard();
+            villager.discard();
+        });
+    }
+
+    static void healthyAnimalsKeepClearOfTheRabid(GameTestHelper helper) {
+        Wolf rabid = helper.spawnWithNoFreeWill(EntityTypes.WOLF, new BlockPos(1, 1, 4));
+        Wolf sick = helper.spawnWithNoFreeWill(EntityTypes.WOLF, new BlockPos(1, 1, 7));
+        Cow cow = helper.spawn(EntityTypes.COW, new BlockPos(3, 1, 4));
+        Rabies.becomeRabid(rabid);
+        Rabies.infect(sick, Rabies.HYDROPHOBIA_TICKS);
+        helper.assertTrue(Rabies.shuns(cow, rabid), Component.literal("A healthy animal should keep clear of a rabid one"));
+        helper.assertTrue(!Rabies.shuns(cow, sick), Component.literal("Hydrophobia alone shouldn't frighten other animals"));
+        helper.assertTrue(!Rabies.shuns(sick, rabid), Component.literal("An animal that's sick itself shouldn't shy from the rabid"));
+        sick.discard();
+        helper.succeedWhen(() -> {
+            helper.assertTrue(cow.distanceTo(rabid) > 5.0F, Component.literal("The cow should move well away from the rabid wolf"));
+            rabid.discard();
+            cow.discard();
+        });
+    }
+
+    static void plagueDoctorsCleanseHydrophobicAnimals(GameTestHelper helper) {
+        // A corner walled off, with a sick wolf he can't see in it
+        for (BlockPos pos : BlockPos.betweenClosed(new BlockPos(6, 1, 5), new BlockPos(6, 3, 8))) {
+            helper.setBlock(pos, Blocks.STONE);
+        }
+        for (BlockPos pos : BlockPos.betweenClosed(new BlockPos(7, 1, 5), new BlockPos(8, 3, 5))) {
+            helper.setBlock(pos, Blocks.STONE);
+        }
+        PlagueDoctor doctor = helper.spawn(ModEntities.PLAGUE_DOCTOR.get(), new BlockPos(2, 1, 4));
+        Wolf seen = helper.spawnWithNoFreeWill(EntityTypes.WOLF, new BlockPos(5, 1, 3));
+        Wolf hidden = helper.spawnWithNoFreeWill(EntityTypes.WOLF, new BlockPos(7, 1, 7));
+        Fox rabid = helper.spawnWithNoFreeWill(EntityTypes.FOX, new BlockPos(2, 1, 7));
+        ServerPlayer player = SkillGameTests.makePlayer(helper);
+        Rabies.infect(seen, Rabies.HYDROPHOBIA_TICKS);
+        Rabies.infect(hidden, Rabies.HYDROPHOBIA_TICKS);
+        Rabies.becomeRabid(rabid);
+        Rabies.infect(player, Rabies.HYDROPHOBIA_TICKS);
+        helper.assertTrue(PlagueDoctor.needsCleansing(doctor, seen), Component.literal("The doctor should mean to cleanse a hydrophobic animal he can see"));
+        helper.assertTrue(!PlagueDoctor.needsCleansing(doctor, hidden), Component.literal("The doctor can't cleanse what he can't see"));
+        helper.assertTrue(!PlagueDoctor.needsCleansing(doctor, rabid), Component.literal("Rabies is past the doctor's help"));
+        helper.assertTrue(!PlagueDoctor.needsCleansing(doctor, player), Component.literal("People should buy the potion, not be cleansed for free"));
+        SkillGameTests.removePlayer(helper, player);
+        rabid.discard();
+        helper.succeedWhen(() -> {
+            helper.assertTrue(!Rabies.isSick(seen), Component.literal("The doctor's thrown Cleanse should cure the wolf"));
+            doctor.discard();
+            seen.discard();
+            hidden.discard();
+        });
+    }
+
     static void doctorLeavesHydrophobiaToThePotion(GameTestHelper helper) {
         PlagueDoctor doctor = helper.spawnWithNoFreeWill(ModEntities.PLAGUE_DOCTOR.get(), new BlockPos(4, 1, 4));
         ServerPlayer player = SkillGameTests.makePlayer(helper);

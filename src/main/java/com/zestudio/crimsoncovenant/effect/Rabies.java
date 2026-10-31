@@ -217,6 +217,11 @@ public final class Rabies {
                 && (nipped == null || rabid.level().getGameTime() - nipped >= NIP_REST);
     }
 
+    /// Whether this animal keeps clear of `other`: the rabid, unless it's sick itself
+    public static boolean shuns(LivingEntity animal, LivingEntity other) {
+        return isRabid(other) && !isSick(animal);
+    }
+
     /// A bite from a rabid creature: `roll` (0 to 1) under the bite chance passes Hydrophobia on. Returns whether it did.
     public static boolean bite(LivingEntity rabid, LivingEntity victim, float roll) {
         return isRabid(rabid) && roll < BITE_CHANCE && canCatch(victim) && infect(victim, HYDROPHOBIA_TICKS);
@@ -455,7 +460,7 @@ public final class Rabies {
     /// A healthy animal keeps clear of the rabid. Every animal has this, so it only looks about now and then.
     static final class ShunRabidGoal extends AvoidEntityGoal<LivingEntity> {
         ShunRabidGoal(Animal animal) {
-            super(animal, LivingEntity.class, AVOID_RANGE, 1.2, 1.5, other -> isRabid(other) && !isSick(animal));
+            super(animal, LivingEntity.class, AVOID_RANGE, 1.2, 1.5, other -> shuns(animal, other));
         }
 
         @Override

@@ -295,6 +295,11 @@ public final class ModGameTests {
         // A rabid fox goes about its own business, and other tests' monsters would draw it off
         calmTest("rabid_animals_go_for_those_near", RatGameTests::rabidAnimalsGoForThoseNear, 300);
         calmTest("hydrophobic_animals_run_from_water", RatGameTests::hydrophobicAnimalsRunFromWater, 300);
+        calmTest("rabid_animals_fear_water_too", RatGameTests::rabidAnimalsFearWaterToo, 300);
+        calmTest("rabid_animals_leave_those_by_water_alone", RatGameTests::rabidAnimalsLeaveThoseByWaterAlone, 300);
+        calmTest("rabid_animals_snap_at_what_cant_catch_it", RatGameTests::rabidAnimalsSnapAtWhatCantCatchIt, 300);
+        calmTest("healthy_animals_keep_clear_of_the_rabid", RatGameTests::healthyAnimalsKeepClearOfTheRabid, 300);
+        calmTest("plague_doctors_cleanse_hydrophobic_animals", RatGameTests::plagueDoctorsCleanseHydrophobicAnimals, 300);
         test("only_vampires_open_the_skills", RatGameTests::onlyVampiresOpenTheSkills);
         test("hunter_cabin_style_follows_the_biome", HunterCabinGameTests::cabinStyleFollowsTheBiome);
         test("bear_trap_snaps_and_holds", TrapGameTests::bearTrapSnapsAndHolds);
