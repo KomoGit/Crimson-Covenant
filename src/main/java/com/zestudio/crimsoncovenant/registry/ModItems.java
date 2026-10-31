@@ -11,6 +11,7 @@ import com.zestudio.crimsoncovenant.entity.Gargoyle;
 import com.zestudio.crimsoncovenant.item.EphemeralSwordItem;
 import com.zestudio.crimsoncovenant.item.GargoyleStatueItem;
 import com.zestudio.crimsoncovenant.item.SilverArrowItem;
+import com.zestudio.crimsoncovenant.item.WerewolfBelt;
 import com.zestudio.crimsoncovenant.skill.AncientTomeItem;
 import com.zestudio.crimsoncovenant.skill.BloodSkill;
 import com.zestudio.crimsoncovenant.skill.SkillItem;
@@ -54,6 +55,12 @@ public final class ModItems {
     public static final DeferredItem<Item> TOKEN_OF_MASTER = ITEMS.registerSimpleItem("token_of_master", properties -> properties.rarity(Rarity.RARE));
     /// Dropped by Ghosts when Holy Water banishes them
     public static final DeferredItem<Item> ECTOPLASM = ITEMS.registerSimpleItem("ectoplasm", properties -> properties.rarity(Rarity.UNCOMMON));
+    /// Dropped by werewolves: brewed into the Potion of Frenzy
+    public static final DeferredItem<Item> WEREWOLF_TOOTH = ITEMS.registerSimpleItem("werewolf_tooth", properties -> properties.rarity(Rarity.UNCOMMON));
+    /// Dropped by werewolves: plaited into whips and made into the Werewolf Belt
+    public static final DeferredItem<Item> WEREWOLF_HIDE = ITEMS.registerSimpleItem("werewolf_hide", properties -> properties.rarity(Rarity.UNCOMMON));
+    /// Worn as leggings: under a full moon or a Blood Moon, its wearer can turn into a werewolf (see WerewolfBelt)
+    public static final DeferredItem<Item> WEREWOLF_BELT = ITEMS.registerSimpleItem("werewolf_belt", WerewolfBelt::properties);
 
     // ---- Silver: ore -> raw silver -> ingot <-> nuggets -> dust (brewed into Holy Water) ----
     public static final DeferredItem<Item> RAW_SILVER = ITEMS.registerSimpleItem("raw_silver");

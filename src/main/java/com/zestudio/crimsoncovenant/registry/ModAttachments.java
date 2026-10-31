@@ -170,6 +170,11 @@ public final class ModAttachments {
             () -> AttachmentType.builder(() -> Optional.<PossessedForm>empty()).serialize(PossessedForm.CODEC.optionalFieldOf("form"))
                     .sync(ByteBufCodecs.optional(PossessedForm.STREAM_CODEC)).build());
 
+    /// Whether a player has turned into a werewolf with their belt (see item.WerewolfBelt). Sent to every client that can
+    /// see them, so they can draw the beast in the player's place. Not saved: logging out ends it.
+    public static final Supplier<AttachmentType<Boolean>> WEREWOLF_FORM = ATTACHMENT_TYPES.register("werewolf_form",
+            () -> AttachmentType.builder(() -> false).sync(ByteBufCodecs.BOOL).build());
+
     /// Ticks left on a possessed creeper's fuse, 0 when it isn't lit. Sent to everyone nearby so they see it
     /// swell. Not saved.
     public static final Supplier<AttachmentType<Integer>> CREEPER_FUSE = ATTACHMENT_TYPES.register("creeper_fuse",

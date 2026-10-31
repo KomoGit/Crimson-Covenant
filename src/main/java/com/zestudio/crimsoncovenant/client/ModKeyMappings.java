@@ -22,7 +22,8 @@ import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 /// The blood skill keys: one per skill slot, and one to open the Blood Skills screen; and the hunters' curse key, to
-/// unleash the curse on the weapon in hand; and one for a vampire to turn their night vision on or off. All can be changed in Options > Controls, under Crimson Covenant.
+/// unleash the curse on the weapon in hand; one for a vampire to turn their night vision on or off; and one for the
+/// wearer of a Werewolf Belt to turn. All can be changed in Options > Controls, under Crimson Covenant.
 @EventBusSubscriber(modid = CrimsonCovenant.MODID, value = Dist.CLIENT)
 public final class ModKeyMappings {
     public static final KeyMapping.Category CATEGORY = new KeyMapping.Category(CrimsonCovenant.id("skills"));
@@ -32,6 +33,7 @@ public final class ModKeyMappings {
     public static final KeyMapping[] CAST_SKILL = new KeyMapping[SkillSlots.SLOTS];
     public static final KeyMapping UNLEASH_CURSE = new KeyMapping("key.crimsoncovenant.unleash_curse", InputConstants.Type.KEYBOARD, InputConstants.KEY_Z, CATEGORY);
     public static final KeyMapping NIGHT_VISION = new KeyMapping("key.crimsoncovenant.night_vision", InputConstants.Type.KEYBOARD, InputConstants.KEY_N, CATEGORY);
+    public static final KeyMapping WEREWOLF_FORM = new KeyMapping("key.crimsoncovenant.werewolf_form", InputConstants.Type.KEYBOARD, InputConstants.KEY_H, CATEGORY);
 
     static {
         for (int i = 0; i < SkillSlots.SLOTS; i++) {
@@ -47,6 +49,7 @@ public final class ModKeyMappings {
         event.register(OPEN_SKILLS);
         event.register(UNLEASH_CURSE);
         event.register(NIGHT_VISION);
+        event.register(WEREWOLF_FORM);
         for (KeyMapping key : CAST_SKILL) {
             event.register(key);
         }
@@ -108,6 +111,9 @@ public final class ModKeyMappings {
         }
         while (NIGHT_VISION.consumeClick()) {
             ClientPacketDistributor.sendToServer(new SkillPayloads.ToggleNightVision());
+        }
+        while (WEREWOLF_FORM.consumeClick()) {
+            ClientPacketDistributor.sendToServer(new SkillPayloads.ToggleWerewolfForm());
         }
         for (int i = 0; i < CAST_SKILL.length; i++) {
             while (CAST_SKILL[i].consumeClick()) {

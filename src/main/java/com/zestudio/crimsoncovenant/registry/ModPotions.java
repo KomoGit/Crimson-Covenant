@@ -51,5 +51,15 @@ public final class ModPotions {
     public static final DeferredHolder<Potion, Potion> CLEANSE = POTIONS.register("cleanse",
             () -> new Potion("cleanse", new MobEffectInstance(ModEffects.CLEANSE, 1)));
 
+    /// A Werewolf Tooth in an Awkward Potion: thrown, hostile creatures turn on each other and the rest scatter; drunk, it
+    /// gives Strength and Speed in one (see effect.FrenzyEffect). Redstone and glowstone as usual; gunpowder and dragon's
+    /// breath make it splash and linger. It's no craft of the hunters, so anyone can brew it.
+    public static final DeferredHolder<Potion, Potion> FRENZY = POTIONS.register("frenzy",
+            () -> new Potion("frenzy", new MobEffectInstance(ModEffects.FRENZY, 1800)));
+    public static final DeferredHolder<Potion, Potion> LONG_FRENZY = POTIONS.register("long_frenzy",
+            () -> new Potion("frenzy", new MobEffectInstance(ModEffects.FRENZY, 4800)));
+    public static final DeferredHolder<Potion, Potion> STRONG_FRENZY = POTIONS.register("strong_frenzy",
+            () -> new Potion("frenzy", new MobEffectInstance(ModEffects.FRENZY, 900, 1)));
+
     private ModPotions() {}
 }

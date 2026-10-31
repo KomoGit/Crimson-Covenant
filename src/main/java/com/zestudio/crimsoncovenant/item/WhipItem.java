@@ -33,7 +33,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 
-/// The whip: plaited leather, studded and tipped with silver. It reaches twice as far as an arm, cracks out in a lash
+/// The whip: plaited werewolf hide, studded and tipped with silver. It reaches twice as far as an arm, cracks out in a lash
 /// with every swing (see WhipLash), cutting through everything along it, and drives whatever it strikes back a few
 /// blocks, the way the Blood Spear does: into a wall, and it's slammed against it. The silver in it bites anything weak to
 /// silver as a silvered weapon does (see Silvering). Mended with leather. Right-click and its lash catches the first

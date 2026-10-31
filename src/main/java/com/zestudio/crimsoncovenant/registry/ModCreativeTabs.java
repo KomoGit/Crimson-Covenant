@@ -38,6 +38,11 @@ public final class ModCreativeTabs {
                 for (Item container : new Item[] {Items.POTION, Items.SPLASH_POTION, Items.LINGERING_POTION}) {
                     output.accept(PotionContents.createItemStack(container, ModPotions.CLEANSE));
                 }
+                for (Item container : new Item[] {Items.POTION, Items.SPLASH_POTION, Items.LINGERING_POTION}) {
+                    output.accept(PotionContents.createItemStack(container, ModPotions.FRENZY));
+                    output.accept(PotionContents.createItemStack(container, ModPotions.LONG_FRENZY));
+                    output.accept(PotionContents.createItemStack(container, ModPotions.STRONG_FRENZY));
+                }
                 output.accept(PotionContents.createItemStack(Items.POTION, ModPotions.EPHEMERAL));
                 output.accept(PotionContents.createItemStack(Items.POTION, ModPotions.LONG_EPHEMERAL));
             })

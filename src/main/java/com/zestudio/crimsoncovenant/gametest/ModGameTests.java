@@ -308,6 +308,17 @@ public final class ModGameTests {
         test("chemists_throw_the_right_potions", TrapGameTests::chemistsThrowTheRightPotions);
         test("chemists_heal_hurt_hunters", TrapGameTests::chemistsHealHurtHunters);
         test("silver_splash_scatters_undead", TrapGameTests::silverSplashScattersUndead);
+        test("werewolves_leave_teeth_and_hide", WorldGameTests::werewolvesLeaveTeethAndHide);
+        test("teeth_brew_into_frenzy", WorldGameTests::teethBrewIntoFrenzy);
+        test("frenzy_makes_a_drinker_strong_and_fast", WorldGameTests::frenzyMakesADrinkerStrongAndFast);
+        test("frenzy_scatters_the_harmless", WorldGameTests::frenzyScattersTheHarmless);
+        // Frenzied monsters go for anything hostile 16 blocks off, so other tests' mobs would draw them away
+        soloTest("frenzied_monsters_turn_on_each_other", WorldGameTests::frenziedMonstersTurnOnEachOther);
+        soloTest("thrown_frenzy_sets_a_crowd_on_each_other", WorldGameTests::thrownFrenzySetsACrowdOnEachOther);
+        test("whips_and_belts_are_made_from_hide", WorldGameTests::whipsAndBeltsAreMadeFromHide);
+        // These two move the moon and the clock
+        soloTest("belt_turns_its_wearer_under_a_blood_moon", WorldGameTests::beltTurnsItsWearerUnderABloodMoon);
+        soloTest("belt_answers_to_a_full_moon", WorldGameTests::beltAnswersToAFullMoon);
     }
 
     private ModGameTests() {}

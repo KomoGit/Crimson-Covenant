@@ -9,6 +9,7 @@ import com.zestudio.crimsoncovenant.skill.SkillSlots;
 import com.zestudio.crimsoncovenant.skill.SkillsMenu;
 import com.zestudio.crimsoncovenant.vampirism.Vampirism;
 import com.zestudio.crimsoncovenant.curse.Curses;
+import com.zestudio.crimsoncovenant.item.WerewolfBelt;
 import com.zestudio.crimsoncovenant.item.WhipItem;
 import com.zestudio.crimsoncovenant.guide.SkillLore;
 import com.zestudio.crimsoncovenant.skill.BloodSkill;
@@ -108,6 +109,17 @@ public final class SkillPayloads {
         }
     }
 
+    /// Turn into a werewolf, or back again (see item.WerewolfBelt)
+    public record ToggleWerewolfForm() implements CustomPacketPayload {
+        public static final Type<ToggleWerewolfForm> TYPE = new Type<>(CrimsonCovenant.id("toggle_werewolf_form"));
+        public static final StreamCodec<ByteBuf, ToggleWerewolfForm> STREAM_CODEC = StreamCodec.unit(new ToggleWerewolfForm());
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
     public record OpenSkills() implements CustomPacketPayload {
         public static final Type<OpenSkills> TYPE = new Type<>(CrimsonCovenant.id("open_skills"));
         public static final StreamCodec<ByteBuf, OpenSkills> STREAM_CODEC = StreamCodec.unit(new OpenSkills());
@@ -184,6 +196,11 @@ public final class SkillPayloads {
             registrar.playToServer(ToggleNightVision.TYPE, ToggleNightVision.STREAM_CODEC, (payload, context) -> {
                 if (context.player() instanceof ServerPlayer player) {
                     Vampirism.toggleNightVision(player);
+                }
+            });
+            registrar.playToServer(ToggleWerewolfForm.TYPE, ToggleWerewolfForm.STREAM_CODEC, (payload, context) -> {
+                if (context.player() instanceof ServerPlayer player) {
+                    WerewolfBelt.toggle(player);
                 }
             });
             registrar.playToServer(OpenSkills.TYPE, OpenSkills.STREAM_CODEC, (payload, context) -> {

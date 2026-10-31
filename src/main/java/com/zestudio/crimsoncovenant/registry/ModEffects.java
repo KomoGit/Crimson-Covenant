@@ -7,6 +7,7 @@ import com.zestudio.crimsoncovenant.effect.BloodFlightEffect;
 import com.zestudio.crimsoncovenant.effect.BloodLossEffect;
 import com.zestudio.crimsoncovenant.effect.BloodlustEffect;
 import com.zestudio.crimsoncovenant.effect.EphemeralEffect;
+import com.zestudio.crimsoncovenant.effect.FrenzyEffect;
 import com.zestudio.crimsoncovenant.effect.GarlicEffect;
 import com.zestudio.crimsoncovenant.effect.OverhealEffect;
 import com.zestudio.crimsoncovenant.effect.SilverDreadEffect;
@@ -124,6 +125,10 @@ public final class ModEffects {
 
     /// Rabies itself: incurable. Foaming at the mouth, biting on sight, and dead in two days (see effect.Rabies)
     public static final DeferredHolder<MobEffect, RabiesEffect> RABIES = MOB_EFFECTS.register("rabies", RabiesEffect::new);
+
+    /// From the Potion of Frenzy: hostile creatures turn on each other, the rest scatter, and a drinker gets Strength
+    /// and Speed (see effect.FrenzyEffect)
+    public static final DeferredHolder<MobEffect, FrenzyEffect> FRENZY = MOB_EFFECTS.register("frenzy", FrenzyEffect::new);
 
     private ModEffects() {}
 }

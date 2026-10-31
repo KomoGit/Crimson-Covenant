@@ -11,11 +11,11 @@
       },
       "trigger": "minecraft:inventory_changed"
     },
-    "has_leather": {
+    "has_werewolf_hide": {
       "conditions": {
         "items": [
           {
-            "items": "minecraft:leather"
+            "items": "crimsoncovenant:werewolf_hide"
           }
         ]
       },
@@ -31,7 +31,7 @@
   "requirements": [
     [
       "has_silver_nugget",
-      "has_leather",
+      "has_werewolf_hide",
       "has_the_recipe"
     ]
   ],

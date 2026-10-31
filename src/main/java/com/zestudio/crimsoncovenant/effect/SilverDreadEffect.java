@@ -53,7 +53,7 @@ public class SilverDreadEffect extends MobEffect {
 
     /// Where the silver landed: the thrown potion (still there while it splashes) or lingering cloud nearest the
     /// creature, or just where the creature stands
-    private static Vec3 splashPoint(ServerLevel level, LivingEntity entity) {
+    static Vec3 splashPoint(ServerLevel level, LivingEntity entity) {
         List<Entity> sources = level.getEntities(entity, entity.getBoundingBox().inflate(SOURCE_RANGE),
                 candidate -> candidate instanceof AbstractThrownPotion || candidate instanceof AreaEffectCloud);
         return sources.stream().min(Comparator.comparingDouble(entity::distanceToSqr)).map(Entity::position).orElse(entity.position());

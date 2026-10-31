@@ -2,14 +2,14 @@
   "type": "minecraft:crafting_shaped",
   "category": "equipment",
   "key": {
-    "L": "minecraft:leather",
+    "H": "crimsoncovenant:werewolf_hide",
     "S": "minecraft:string",
     "N": "crimsoncovenant:silver_nugget"
   },
   "pattern": [
     "  N",
     " SN",
-    "LS "
+    "HS "
   ],
   "result": {
     "count": 1,
